@@ -1,0 +1,316 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Statuts et formats{% endblock %}
+
+{% block body %}
+<style>
+    .grid-two {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    .panel h2 { margin: 0 0 0.4rem; }
+    .panel p { margin: 0 0 0.9rem; color: var(--muted); }
+    .add-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.8rem;
+    }
+    .btn-big {
+        padding: 0.65rem 1.1rem;
+        font-size: 0.94rem;
+    }
+    .add-form {
+        display: none;
+        border: 1px dashed var(--card-border);
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin-bottom: 0.9rem;
+    }
+    .add-form-row {
+        display: grid;
+        grid-template-columns: 1fr 180px auto;
+        gap: 0.5rem;
+        align-items: end;
+    }
+    .items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    .item-card {
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 0.75rem;
+        background: var(--card-bg);
+    }
+    .item-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+    .item-badge-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .edit-icon-btn,
+    .order-btn {
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        border-radius: 999px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .edit-icon-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.82rem;
+    }
+    .order-controls {
+        display: inline-flex;
+        gap: 0.35rem;
+    }
+    .order-btn {
+        width: 36px;
+        height: 36px;
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+    .edit-inline {
+        display: none;
+        margin-top: 0.6rem;
+        border-top: 1px dashed var(--card-border);
+        padding-top: 0.6rem;
+    }
+    .edit-inline form {
+        display: grid;
+        grid-template-columns: 1fr 180px auto;
+        gap: 0.5rem;
+        align-items: end;
+    }
+    .muted {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 0.45rem;
+    }
+    .status-pill-preview {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        border: 1px solid rgba(15, 23, 42, 0.18);
+    }
+    .format-pill-preview {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        background: rgba(91, 33, 182, 0.15);
+        border: 1px solid rgba(91, 33, 182, 0.35);
+        color: var(--text);
+    }
+    .hidden {
+        display: none !important;
+    }
+    @media (max-width: 1100px) {
+        .grid-two { grid-template-columns: 1fr; }
+        .add-form-row,
+        .edit-inline form { grid-template-columns: 1fr; }
+    }
+</style>
+
+<h1>Statuts et formats</h1>
+
+<div class="grid-two">
+    <section class="panel">
+        <h2>Statuts des posts</h2>
+        <p>Ajouter, renommer, supprimer, ordonner et choisir une couleur.</p>
+
+        <div class="add-actions">
+            <button type="button" class="btn btn-big" onclick="toggleAddForm('status-add-form')">+ Ajouter un statut</button>
+        </div>
+
+        <div id="status-add-form" class="add-form">
+            <form method="post" action="{{ path('app_admin_status_add') }}" class="add-form-row">
+                <div>
+                    <label>Nom du statut</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div>
+                    <label>Couleur</label>
+                    <input type="color" name="color" value="#6d28d9" required>
+                </div>
+                <div>
+                    <button type="submit" class="btn">Ajouter</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="items-list">
+            {% for status in statuses %}
+                <div class="item-card">
+                    <div class="item-top">
+                        <div class="item-badge-line">
+                            {% if status.color starts with '#' %}
+                                <span class="status-pill-preview" style="background: {{ status.color }}; color: #ffffff;">{{ status.name }}</span>
+                            {% else %}
+                                <span class="status-badge status-{{ status.color }}">{{ status.name }}</span>
+                            {% endif %}
+                            <button type="button" class="edit-icon-btn" title="Modifier" onclick="toggleInlineEdit('status-edit-{{ status.id }}')">✎</button>
+                        </div>
+                        <div class="order-controls">
+                            <form method="post" action="{{ path('app_admin_status_move', {id: status.id, direction: 'up'}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('move_status_' ~ status.id ~ '_up') }}">
+                                <button type="submit" class="order-btn" title="Monter">↑</button>
+                            </form>
+                            <form method="post" action="{{ path('app_admin_status_move', {id: status.id, direction: 'down'}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('move_status_' ~ status.id ~ '_down') }}">
+                                <button type="submit" class="order-btn" title="Descendre">↓</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="status-edit-{{ status.id }}" class="edit-inline">
+                        <form method="post" action="{{ path('app_admin_status_edit', {id: status.id}) }}">
+                            <div>
+                                <label>Nom</label>
+                                <input type="text" name="name" value="{{ status.name }}" required>
+                            </div>
+                            <div>
+                                <label>Couleur</label>
+                                <input
+                                    type="color"
+                                    name="color"
+                                    value="{{ status.color starts with '#' ? status.color : statusColorHexes[status.color]|default('#6d28d9') }}"
+                                    required
+                                >
+                            </div>
+                            <div>
+                                <input type="hidden" name="_token" value="{{ csrf_token('edit_status_' ~ status.id) }}">
+                                <button type="submit" class="btn">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="muted">Utilise par {{ statusUsage[status.id] }} post(s)</div>
+                    <div style="margin-top: 0.45rem;">
+                        <form method="post" action="{{ path('app_admin_status_delete', {id: status.id}) }}" onsubmit="return confirm('Supprimer ce statut ?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete_status_' ~ status.id) }}">
+                            <button type="submit" class="btn btn-sm btn-danger" {{ statusUsage[status.id] > 0 ? 'disabled' : '' }}>Supprimer</button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <p>Aucun statut defini.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Formats de posts</h2>
+        <p>Ajouter, renommer, supprimer et ordonner les formats.</p>
+
+        <div class="add-actions">
+            <button type="button" class="btn btn-big" onclick="toggleAddForm('format-add-form')">+ Ajouter un format</button>
+        </div>
+
+        <div id="format-add-form" class="add-form">
+            <form method="post" action="{{ path('app_admin_format_add') }}" class="add-form-row">
+                <div>
+                    <label>Nom du format</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div></div>
+                <div>
+                    <button type="submit" class="btn">Ajouter</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="items-list">
+            {% for format in formats %}
+                <div class="item-card">
+                    <div class="item-top">
+                        <div class="item-badge-line">
+                            <span class="format-pill-preview">{{ format.name }}</span>
+                            <button type="button" class="edit-icon-btn" title="Modifier" onclick="toggleInlineEdit('format-edit-{{ format.id }}')">✎</button>
+                        </div>
+                        <div class="order-controls">
+                            <form method="post" action="{{ path('app_admin_format_move', {id: format.id, direction: 'up'}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('move_format_' ~ format.id ~ '_up') }}">
+                                <button type="submit" class="order-btn" title="Monter">↑</button>
+                            </form>
+                            <form method="post" action="{{ path('app_admin_format_move', {id: format.id, direction: 'down'}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token('move_format_' ~ format.id ~ '_down') }}">
+                                <button type="submit" class="order-btn" title="Descendre">↓</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="format-edit-{{ format.id }}" class="edit-inline">
+                        <form method="post" action="{{ path('app_admin_format_edit', {id: format.id}) }}">
+                            <div>
+                                <label>Nom</label>
+                                <input type="text" name="name" value="{{ format.name }}" required>
+                            </div>
+                            <div></div>
+                            <div>
+                                <input type="hidden" name="_token" value="{{ csrf_token('edit_format_' ~ format.id) }}">
+                                <button type="submit" class="btn">Enregistrer</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="muted">Utilise par {{ formatUsage[format.id] }} post(s)</div>
+                    <div style="margin-top: 0.45rem;">
+                        <form method="post" action="{{ path('app_admin_format_delete', {id: format.id}) }}" onsubmit="return confirm('Supprimer ce format ?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete_format_' ~ format.id) }}">
+                            <button type="submit" class="btn btn-sm btn-danger" {{ formatUsage[format.id] > 0 ? 'disabled' : '' }}>Supprimer</button>
+                        </form>
+                    </div>
+                </div>
+            {% else %}
+                <p>Aucun format defini.</p>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+
+<script>
+    function toggleAddForm(id) {
+        var el = document.getElementById(id);
+        if (!el) {
+            return;
+        }
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleInlineEdit(id) {
+        var el = document.getElementById(id);
+        if (!el) {
+            return;
+        }
+        if (el.style.display === 'block') {
+            el.style.display = 'none';
+            return;
+        }
+        el.style.display = 'block';
+    }
+</script>
+{% endblock %}

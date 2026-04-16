@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ client.id ? 'Modifier' : 'Nouveau' }} Client{% endblock %}
+
+{% block body %}
+<h1>{{ client.id ? 'Modifier' : 'Nouveau' }} Client</h1>
+<p><a href="{{ path('app_admin_client_index') }}">← Retour</a></p>
+
+<form method="post">
+    <label for="name">Nom</label>
+    <input type="text" id="name" name="name" value="{{ client.name }}" required>
+    <label for="communityManager">Community Manager</label>
+    <select id="communityManager" name="communityManager" required>
+        <option value="">Sélectionner</option>
+        {% for cm in communityManagers %}
+            <option value="{{ cm.id }}" {{ client.communityManager and client.communityManager.id == cm.id ? 'selected' : '' }}>{{ cm.name }}</option>
+        {% endfor %}
+    </select>
+    <label for="editor">Monteur</label>
+    <select id="editor" name="editor">
+        <option value="">—</option>
+        {% for u in editors|default([]) %}
+            <option value="{{ u.id }}" {{ client.editor and client.editor.id == u.id ? 'selected' : '' }}>{{ u.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn">Enregistrer</button>
+</form>
+{% endblock %}

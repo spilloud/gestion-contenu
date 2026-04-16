@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ user.id ? 'Modifier' : 'Nouveau' }} utilisateur{% endblock %}
+
+{% block body %}
+<h1>{{ user.id ? 'Modifier' : 'Nouveau' }} utilisateur</h1>
+<p><a href="{{ path('app_admin_user_index') }}">← Retour</a></p>
+
+<form method="post" style="max-width: 620px;">
+    <label for="name">Nom</label>
+    <input type="text" id="name" name="name" value="{{ user.name }}" required>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" value="{{ user.email }}" required>
+
+    <label for="password">{{ user.id ? 'Mot de passe (laisser vide pour ne pas changer)' : 'Mot de passe' }}</label>
+    <input type="password" id="password" name="password" value="">
+
+    <div style="margin: 1rem 0 0.5rem;">
+        <strong>Rôles</strong>
+        <div style="display:grid; gap: 0.35rem; margin-top: 0.5rem;">
+            {% set roles = user.roles %}
+            <label class="check-item" style="display:flex; align-items:center; gap: 0.5rem;">
+                <input type="checkbox" name="isAdmin" value="1" {{ 'ROLE_ADMIN' in roles ? 'checked' : '' }}>
+                <span>Admin (voit tout + peut valider PROD)</span>
+            </label>
+            <label class="check-item" style="display:flex; align-items:center; gap: 0.5rem;">
+                <input type="checkbox" name="isCommunityManager" value="1" {{ 'ROLE_CM' in roles ? 'checked' : '' }}>
+                <span>Community Manager</span>
+            </label>
+            <label class="check-item" style="display:flex; align-items:center; gap: 0.5rem;">
+                <input type="checkbox" name="isEditor" value="1" {{ 'ROLE_EDITOR' in roles ? 'checked' : '' }}>
+                <span>Monteur</span>
+            </label>
+        </div>
+    </div>
+
+    <button type="submit" class="btn">Enregistrer</button>
+</form>
+{% endblock %}
+

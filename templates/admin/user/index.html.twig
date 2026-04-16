@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Utilisateurs{% endblock %}
+
+{% block body %}
+<h1>Utilisateurs</h1>
+<p style="color: var(--muted); max-width: 720px; font-size: 0.92rem;">
+    Accès : menu latéral <strong>Admin</strong> → <strong>Utilisateurs</strong> (comptes administrateurs uniquement).
+    Le bouton <strong>Supprimer</strong> n’apparaît pas sur <em>votre</em> propre ligne (sécurité) : il est visible pour les autres comptes.
+</p>
+<p><a href="{{ path('app_admin_user_new') }}" class="btn">+ Nouveau</a></p>
+
+<table style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #f8f9fa;">
+            <th style="padding: 0.75rem; text-align: left;">Nom</th>
+            <th style="padding: 0.75rem; text-align: left;">Email</th>
+            <th style="padding: 0.75rem; text-align: left;">Rôles</th>
+            <th style="padding: 0.75rem; text-align: left;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;">{{ u.name }}</td>
+                <td style="padding: 0.75rem;">{{ u.email }}</td>
+                <td style="padding: 0.75rem; font-size: 0.9rem; color: #475569;">
+                    {% set roles = u.roles %}
+                    {% if 'ROLE_ADMIN' in roles %}<span class="status-badge status-violet">Admin</span>{% endif %}
+                    {% if 'ROLE_CM' in roles %}<span class="status-badge status-canard">CM</span>{% endif %}
+                    {% if 'ROLE_EDITOR' in roles %}<span class="status-badge status-orange">Monteur</span>{% endif %}
+                    {% if roles|length <= 1 %}
+                        <span style="color:#999;">—</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem; vertical-align: middle;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
+                        <a href="{{ path('app_admin_user_edit', {id: u.id}) }}" class="btn btn-sm">Modifier</a>
+                        {% if app.user and app.user.id is same as(u.id) %}
+                            <span style="font-size: 0.82rem; color: var(--muted);" title="Impossible de supprimer le compte avec lequel vous êtes connecté.">— (vous)</span>
+                        {% else %}
+                            <form method="post" action="{{ path('app_admin_user_delete', {id: u.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer cet utilisateur ? Cette action est définitive.');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" style="padding: 1rem; color: #999;">Aucun utilisateur.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+

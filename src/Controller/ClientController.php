@@ -1,0 +1,105 @@
+<?php
+
+namespace App\Controller;
+
+use App\Entity\Client;
+use App\Entity\ClientPage;
+use App\Form\ClientPageType;
+use App\Repository\ContentRepository;
+use App\Repository\StatusRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Attribute\Route;
+
+#[Route('/client')]
+class ClientController extends AbstractController
+{
+    public function __construct(
+        private readonly ContentRepository $contentRepository,
+        private readonly StatusRepository $statusRepository,
+        private readonly EntityManagerInterface $entityManager,
+    ) {
+    }
+
+    #[Route('/{id}', name: 'app_client_show', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
+    public function show(Client $client, Request $request): Response
+    {
+        $showArchives = $request->query->getBoolean('archives');
+        $calendarMonth = $request->query->getInt('cmonth', (int) date('n'));
+        $calendarYear = $request->query->getInt('cyear', (int) date('Y'));
+        $calendarMonthStart = new \DateTimeImmutable(sprintf('%d-%02d-01', $calendarYear, $calendarMonth));
+        $calendarMonthEnd = $calendarMonthStart->modify('last day of this month');
+
+        $clientPage = $client->getClientPage();
+        if ($clientPage === null) {
+            $clientPage = new ClientPage();
+            $clientPage->setClient($client);
+            $client->setClientPage($clientPage);
+        }
+
+        $form = $this->createForm(ClientPageType::class, $clientPage);
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            foreach ($clientPage->getTodoItems() as $i => $item) {
+                $item->setSortOrder($i);
+            }
+            $this->entityManager->persist($clientPage);
+            $this->entityManager->flush();
+
+            $this->addFlash('success', 'Modifications enregistrées.');
+
+            $redirectParams = ['id' => $client->getId()];
+            if ($showArchives) {
+                $redirectParams['archives'] = 1;
+            }
+            $redirectParams['cmonth'] = $calendarMonth;
+            $redirectParams['cyear'] = $calendarYear;
+
+            return $this->redirectToRoute('app_client_show', $redirectParams);
+        }
+
+        $contents = $this->contentRepository->findByClientAndArchiveState($client, $showArchives);
+        $calendarContents = $this->contentRepository->findByFilters(
+            [$client->getId()],
+            null,
+            null,
+            $calendarMonthStart,
+            $calendarMonthEnd
+        );
+
+        return $this->render('client/show.html.twig', [
+            'client' => $client,
+            'clientPage' => $clientPage,
+            'contents' => $contents,
+            'calendarContents' => $calendarContents,
+            'form' => $form,
+            'showArchives' => $showArchives,
+            'calendarMonth' => $calendarMonth,
+            'calendarYear' => $calendarYear,
+            'calendarMonthStart' => $calendarMonthStart,
+            'statuses' => $this->statusRepository->findAllOrdered(),
+        ]);
+    }
+
+    #[Route('/{id}/todo/toggle/{todoId}', name: 'app_client_todo_toggle', requirements: ['id' => '\d+', 'todoId' => '\d+'], methods: ['POST'])]
+    public function toggleTodo(Client $client, int $todoId): Response
+    {
+        $clientPage = $client->getClientPage();
+        if ($clientPage === null) {
+            return $this->redirectToRoute('app_client_show', ['id' => $client->getId()]);
+        }
+
+        foreach ($clientPage->getTodoItems() as $item) {
+            if ($item->getId() === $todoId) {
+                $item->setDone(!$item->isDone());
+                $this->entityManager->flush();
+                break;
+            }
+        }
+
+        return $this->redirectToRoute('app_client_show', ['id' => $client->getId()]);
+    }
+}

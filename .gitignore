@@ -1,0 +1,12 @@
+/vendor/
+/var/cache/*
+/var/log/*
+!/var/log/nginx/.gitkeep
+.env
+.env.local
+.env.*.local
+.phpunit.result.cache
+*.tgz
+deploy_bundle.tgz
+.DS_Store
+Thumbs.db

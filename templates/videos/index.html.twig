@@ -1,0 +1,109 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vidéos{% endblock %}
+
+{% block body %}
+<h1>Vidéos</h1>
+<p style="color: var(--muted);">
+    Liste de tous les contenus <strong>format vidéo</strong>. Tout le monde voit tout, mais tu peux filtrer par client / statut / monteur.
+</p>
+
+<div style="display:flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+    <a href="{{ path('app_derush_index') }}" class="btn">+ Dérush vidéo</a>
+    <a href="{{ path('app_calendar', {formats: [videoFormat.id]}) }}" class="btn" style="background:#64748b;">Calendrier (vidéos)</a>
+    {% if app.user %}
+        <a href="{{ path('app_videos_index', {editors: [app.user.id]}) }}" class="btn" style="background:#64748b;">Mes vidéos</a>
+    {% endif %}
+</div>
+
+<form method="get" style="display:grid; gap: 0.8rem; margin-bottom: 1rem; max-width: 1100px;">
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.8rem;">
+        <div>
+            <label>Clients</label>
+            <select name="clients[]" multiple size="6" style="max-width:none;">
+                {% for c in clients %}
+                    <option value="{{ c.id }}" {{ c.id in selectedClientIds ? 'selected' : '' }}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Statuts</label>
+            <select name="statuses[]" multiple size="6" style="max-width:none;">
+                {% for s in statuses %}
+                    <option value="{{ s.id }}" {{ s.id in selectedStatusIds ? 'selected' : '' }}>{{ s.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label>Monteurs</label>
+            <select name="editors[]" multiple size="6" style="max-width:none;">
+                {% for u in editors %}
+                    <option value="{{ u.id }}" {{ u.id in selectedEditorIds ? 'selected' : '' }}>{{ u.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap;">
+        <button type="submit" class="btn">Filtrer</button>
+        <a href="{{ path('app_videos_index') }}" class="btn" style="background:#64748b;">Reset</a>
+    </div>
+</form>
+
+<div style="overflow-x:auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
+    <table style="width:100%; min-width: 1100px; border-collapse: collapse;">
+        <thead>
+            <tr style="background: rgba(148, 163, 184, 0.12);">
+                <th style="text-align:left; padding: 0.6rem;">Date</th>
+                <th style="text-align:left; padding: 0.6rem;">Client</th>
+                <th style="text-align:left; padding: 0.6rem;">Titre</th>
+                <th style="text-align:left; padding: 0.6rem;">Monteur</th>
+                <th style="text-align:left; padding: 0.6rem;">Sous-titres</th>
+                <th style="text-align:left; padding: 0.6rem;">Statut</th>
+                <th style="text-align:left; padding: 0.6rem;">Liens</th>
+                <th style="padding: 0.6rem; width: 1%; white-space: nowrap;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for c in contents %}
+            <tr>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
+                    {{ c.scheduledDate|date('d/m/Y') }}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    <strong>{{ c.client.name }}</strong><br>
+                    <span style="color: var(--muted); font-size: 0.85rem;">{{ c.client.communityManager.name }}</span>
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    {{ c.title }}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    {{ c.videoEditor ? c.videoEditor.name : '—' }}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    {{ c.videoHasSubtitles is same as(true) ? 'Oui' : (c.videoHasSubtitles is same as(false) ? 'Non' : '—') }}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    {% if c.status.color starts with '#' %}
+                        <span class="status-badge" style="background: {{ c.status.color }}; color: #ffffff;">{{ c.status.name }}</span>
+                    {% else %}
+                        <span class="status-badge status-{{ c.status.color }}">{{ c.status.name }}</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border); font-size: 0.86rem;">
+                    {% if c.videoRushesUrl %}<a href="{{ c.videoRushesUrl }}" target="_blank" rel="noopener">Rushs</a>{% endif %}
+                    {% if c.videoEditUrl %}{% if c.videoRushesUrl %} · {% endif %}<a href="{{ c.videoEditUrl }}" target="_blank" rel="noopener">Montage</a>{% endif %}
+                    {% if c.videoFinalUrl %}{% if c.videoRushesUrl or c.videoEditUrl %} · {% endif %}<a href="{{ c.videoFinalUrl }}" target="_blank" rel="noopener">Final</a>{% endif %}
+                    {% if c.videoSubmagicUrl %}{% if c.videoRushesUrl or c.videoEditUrl or c.videoFinalUrl %} · {% endif %}<a href="{{ c.videoSubmagicUrl }}" target="_blank" rel="noopener">SubMagic</a>{% endif %}
+                </td>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    <a class="btn btn-sm" href="{{ path('app_video_show', {id: c.id, return_to: app.request.requestUri}) }}">Ouvrir</a>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="8" style="padding: 0.8rem; color: var(--muted);">Aucune vidéo.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

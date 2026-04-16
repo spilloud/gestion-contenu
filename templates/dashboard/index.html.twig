@@ -1,0 +1,331 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<style>
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+    .dashboard-subtitle {
+        margin: 0.25rem 0 0;
+        color: var(--muted);
+    }
+    .header-actions {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .header-actions .btn {
+        font-size: 0.82rem;
+    }
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(160px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .kpi-card {
+        background: linear-gradient(145deg, #ffffff, #f8fafc);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+    .kpi-card .label {
+        color: var(--muted);
+        font-size: 0.86rem;
+        margin-bottom: 0.4rem;
+    }
+    .kpi-card .value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    .kpi-trend {
+        font-size: 0.78rem;
+        margin-top: 0.3rem;
+        color: var(--muted);
+    }
+    .kpi-trend.up { color: #15803d; }
+    .kpi-trend.down { color: #b91c1c; }
+    .shortcut-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    .shortcut {
+        display: block;
+        background: linear-gradient(135deg, #5b21b6, #7c3aed);
+        color: #fff;
+        text-decoration: none;
+        padding: 0.9rem 1rem;
+        border-radius: 12px;
+        font-size: 0.93rem;
+        font-weight: 600;
+        box-shadow: 0 10px 22px rgba(76, 29, 149, 0.28);
+    }
+    .shortcut:hover { filter: brightness(1.06); }
+    .dashboard-main {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .panel {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1rem;
+    }
+    .panel h2 {
+        margin: 0 0 0.8rem;
+        font-size: 1rem;
+    }
+    .chart-box {
+        height: 280px;
+    }
+    .chart-box-small {
+        height: 220px;
+        margin-bottom: 0.8rem;
+    }
+    .priority-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+    }
+    .priority-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+    .priority-list li {
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 0.5rem;
+        background: rgba(248, 250, 252, 0.8);
+        font-size: 0.84rem;
+    }
+    .priority-list em {
+        color: var(--muted);
+        font-style: italic;
+    }
+    .priority-empty {
+        color: var(--muted);
+        font-size: 0.85rem;
+    }
+    .badge-mini {
+        display: inline-block;
+        margin-top: 0.25rem;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.74rem;
+        font-weight: 600;
+        background: #eef2ff;
+        color: #4338ca;
+    }
+    @media (max-width: 1200px) {
+        .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .dashboard-main { grid-template-columns: 1fr; }
+        .priority-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="dashboard-header">
+    <div>
+        <h1 style="margin-bottom: 0;">Dashboard Contenu</h1>
+        <p class="dashboard-subtitle">Vue globale de la production, des priorités et de la charge</p>
+    </div>
+    <div class="header-actions">
+        <a href="{{ path('app_content_new') }}" class="btn">+ Nouveau post</a>
+        <a href="{{ path('app_derush_index') }}" class="btn">+ Dérush vidéo</a>
+        <a href="{{ path('app_calendar') }}" class="btn">Calendrier</a>
+        <a href="{{ path('app_clients_table') }}" class="btn">Clients</a>
+    </div>
+</div>
+
+<div class="shortcut-grid">
+    <a href="{{ path('app_admin_cm_index') }}" class="shortcut">Community Managers</a>
+    <a href="{{ path('app_admin_client_index') }}" class="shortcut">Admin Clients</a>
+    <a href="{{ path('app_admin_status_format_index') }}" class="shortcut">Statuts et formats</a>
+</div>
+
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="label">Posts prévus ce mois</div>
+        <div class="value">{{ postsThisMonth }}</div>
+        {% if volumeTrendPercent is not null %}
+            <div class="kpi-trend {{ volumeTrendPercent >= 0 ? 'up' : 'down' }}">
+                {{ volumeTrendPercent >= 0 ? '+' : '' }}{{ volumeTrendPercent }}% vs mois dernier
+            </div>
+        {% endif %}
+    </div>
+    <div class="kpi-card">
+        <div class="label">Posts publiés ce mois</div>
+        <div class="value">{{ publishedThisMonth }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="label">Taux de réalisation</div>
+        <div class="value">{{ completionRate }}%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="label">Posts en retard</div>
+        <div class="value">{{ overdueCount }}</div>
+    </div>
+    <div class="kpi-card">
+        <div class="label">Charge 7 jours</div>
+        <div class="value">{{ upcomingWeekCount }}</div>
+    </div>
+</div>
+
+<div class="dashboard-main">
+    <section class="panel">
+        <h2>Production hebdomadaire</h2>
+        <div class="chart-box">
+            <canvas id="weeklyChart"></canvas>
+        </div>
+    </section>
+    <section class="panel">
+        <h2>Répartition des statuts</h2>
+        <div class="chart-box-small">
+            <canvas id="statusChart"></canvas>
+        </div>
+        <h2>Top clients du mois</h2>
+        <div class="chart-box-small" style="height: 200px;">
+            <canvas id="topClientsChart"></canvas>
+        </div>
+    </section>
+</div>
+
+<div class="priority-grid">
+    <section class="panel">
+        <h2>A traiter aujourd'hui</h2>
+        {% if todayItems is empty %}
+            <p class="priority-empty">Aucun post planifié aujourd'hui.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in todayItems %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> - {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <a href="{{ path('app_content_edit', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Ouvrir</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Retards prioritaires</h2>
+        {% if overdueItems is empty %}
+            <p class="priority-empty">Aucun retard. Bravo 🎉</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in overdueItems %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> - {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <a href="{{ path('app_content_edit', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Corriger</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>A venir (7 jours)</h2>
+        {% if upcomingItems is empty %}
+            <p class="priority-empty">Aucun post prévu sur 7 jours.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in upcomingItems %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> - {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <a href="{{ path('app_content_edit', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Préparer</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (function () {
+        var weeklyLabels = {{ weeklyLabels|json_encode|raw }};
+        var weeklyPlanned = {{ weeklyPlanned|json_encode|raw }};
+        var weeklyPublished = {{ weeklyPublished|json_encode|raw }};
+        var weeklyOverdue = {{ weeklyOverdue|json_encode|raw }};
+        var statusLabels = {{ statusLabels|json_encode|raw }};
+        var statusValues = {{ statusValues|json_encode|raw }};
+        var statusColors = {{ statusColors|json_encode|raw }};
+        var topClientLabels = {{ topClientLabels|json_encode|raw }};
+        var topClientValues = {{ topClientValues|json_encode|raw }};
+
+        var weeklyEl = document.getElementById('weeklyChart');
+        if (weeklyEl) {
+            new Chart(weeklyEl, {
+                type: 'bar',
+                data: {
+                    labels: weeklyLabels,
+                    datasets: [
+                        { label: 'Prévu', data: weeklyPlanned, backgroundColor: '#5b21b6' },
+                        { label: 'Publié', data: weeklyPublished, backgroundColor: '#16a34a' },
+                        { label: 'En retard', data: weeklyOverdue, backgroundColor: '#dc2626' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+
+        var statusEl = document.getElementById('statusChart');
+        if (statusEl) {
+            new Chart(statusEl, {
+                type: 'doughnut',
+                data: {
+                    labels: statusLabels,
+                    datasets: [{ data: statusValues, backgroundColor: statusColors }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        var topClientsEl = document.getElementById('topClientsChart');
+        if (topClientsEl) {
+            new Chart(topClientsEl, {
+                type: 'bar',
+                data: {
+                    labels: topClientLabels,
+                    datasets: [{ label: 'Posts', data: topClientValues, backgroundColor: '#0ea5e9' }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+                }
+            });
+        }
+    })();
+</script>
+{% endblock %}

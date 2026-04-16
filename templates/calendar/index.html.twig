@@ -1,0 +1,467 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Calendrier des contenus{% endblock %}
+
+{% block body %}
+<style>
+    .week-calendar {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1rem;
+        overflow-x: auto;
+    }
+    .week-calendar table {
+        width: 100%;
+        min-width: 1080px;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: transparent;
+    }
+    .week-calendar th {
+        text-align: left;
+        padding: 0.7rem;
+        color: var(--muted);
+        border-bottom: 1px solid var(--card-border);
+    }
+    .week-calendar td {
+        vertical-align: top;
+        border-right: 1px solid var(--card-border);
+        border-bottom: 1px solid var(--card-border);
+        padding: 0.5rem;
+        width: 14.285%;
+        min-height: 165px;
+        height: 165px;
+    }
+    .week-calendar tr td:first-child { border-left: 1px solid var(--card-border); }
+    .day-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.45rem;
+        font-size: 0.86rem;
+        color: var(--muted);
+    }
+    .day-out-month {
+        opacity: 0.5;
+        background: rgba(148, 163, 184, 0.08);
+    }
+    .day-past {
+        background: rgba(148, 163, 184, 0.16);
+    }
+    .day-past .day-head {
+        color: #64748b;
+    }
+    .day-event {
+        background: rgba(91, 33, 182, 0.14);
+        border: 1px solid rgba(91, 33, 182, 0.35);
+        border-radius: 8px;
+        padding: 0.4rem;
+        margin-bottom: 0.45rem;
+        font-size: 0.82rem;
+    }
+    .day-event.past-post {
+        background: rgba(148, 163, 184, 0.22);
+        border-color: rgba(100, 116, 139, 0.45);
+        color: #475569;
+    }
+    .day-event.past-post .status-badge {
+        filter: grayscale(0.55);
+        opacity: 0.85;
+    }
+    .day-event strong { display: block; margin-bottom: 0.25rem; }
+    .day-event .mini-actions { margin-top: 0.3rem; display: flex; gap: 0.3rem; flex-wrap: wrap; }
+    .day-event .mini-actions .btn { font-size: 0.72rem; padding: 0.23rem 0.45rem; }
+    .status-inline-form { display: inline-block; margin-top: 0.25rem; }
+    .status-inline-select {
+        min-width: 130px;
+        border-radius: 999px;
+        padding: 0.2rem 0.45rem;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 0.77rem;
+    }
+    .status-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.32rem;
+        margin-top: 0.25rem;
+    }
+    .status-edit-btn,
+    .status-save-btn {
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        border-radius: 999px;
+        font-size: 0.75rem;
+        width: 24px;
+        height: 24px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+    .status-edit-btn:hover,
+    .status-save-btn:hover {
+        background: var(--sidebar-active);
+        color: #fff;
+    }
+    .status-editor {
+        display: none;
+        align-items: center;
+        gap: 0.32rem;
+        margin-top: 0.25rem;
+    }
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 1rem;
+        width: 100%;
+    }
+    .filter-box {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 0.7rem;
+        min-height: 210px;
+    }
+    .filter-box h3 {
+        margin: 0 0 0.5rem;
+        font-size: 0.92rem;
+    }
+    .filter-actions {
+        display: flex;
+        gap: 0.45rem;
+        margin-bottom: 0.55rem;
+    }
+    .filter-actions button {
+        border: 1px solid var(--card-border);
+        background: var(--input-bg);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 0.28rem 0.5rem;
+        font-size: 0.74rem;
+        cursor: pointer;
+    }
+    .checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        max-height: 135px;
+        overflow: auto;
+        padding-right: 0.2rem;
+    }
+    .check-item {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.84rem;
+        color: var(--text);
+    }
+    .calendar-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    .filters-bottom-actions {
+        width: 100%;
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 0.75rem;
+    }
+    .view-filter-wrap {
+        display: inline-flex;
+        align-items: flex-end;
+        gap: 0.45rem;
+    }
+    .month-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 0.25rem 0.55rem;
+    }
+    .month-nav a {
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--input-bg);
+        font-weight: 700;
+    }
+    .month-nav a:hover {
+        background: var(--sidebar-active);
+        color: #fff;
+    }
+    .month-label {
+        font-weight: 700;
+        min-width: 130px;
+        text-align: center;
+        color: var(--text);
+    }
+    @media (max-width: 980px) {
+        .filters-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<h1>Calendrier des contenus</h1>
+
+{% set prevMonth = monthStart|date_modify('-1 month') %}
+{% set nextMonth = monthStart|date_modify('+1 month') %}
+{% set todayDate = 'now'|date('Y-m-d') %}
+
+<form method="get" class="filters" style="margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-end;">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="year" value="{{ year }}">
+    <div class="calendar-topbar" style="width: 100%;">
+        <div class="month-nav">
+            <a href="{{ path('app_calendar', app.request.query.all|merge({month: prevMonth|date('n'), year: prevMonth|date('Y')})) }}" title="Mois précédent">‹</a>
+            <span class="month-label">{{ monthStart|date('F Y')|capitalize }}</span>
+            <a href="{{ path('app_calendar', app.request.query.all|merge({month: nextMonth|date('n'), year: nextMonth|date('Y')})) }}" title="Mois suivant">›</a>
+        </div>
+    </div>
+
+    {% set hasClientFilter = app.request.query.has('clients') %}
+    {% set hasStatusFilter = app.request.query.has('statuses') %}
+    {% set hasFormatFilter = app.request.query.has('formats') %}
+
+    <div class="filters-grid">
+        <div class="filter-box">
+            <h3>Clients</h3>
+            <div class="filter-actions">
+                <button type="button" onclick="toggleColumnChecks('client-check', true)">Tout cocher</button>
+                <button type="button" onclick="toggleColumnChecks('client-check', false)">Tout décocher</button>
+            </div>
+            <div class="checklist">
+                {% for client in clients %}
+                    {% set checked = hasClientFilter ? (client.id in selectedClientIds) : true %}
+                    <label class="check-item">
+                        <input type="checkbox" class="client-check" name="clients[]" value="{{ client.id }}" {{ checked ? 'checked' : '' }}>
+                        <span>{{ client.name }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="filter-box">
+            <h3>Statuts</h3>
+            <div class="filter-actions">
+                <button type="button" onclick="toggleColumnChecks('status-check', true)">Tout cocher</button>
+                <button type="button" onclick="toggleColumnChecks('status-check', false)">Tout décocher</button>
+            </div>
+            <div class="checklist">
+                {% for status in statuses %}
+                    {% set checked = hasStatusFilter ? (status.id in selectedStatusIds) : true %}
+                    <label class="check-item">
+                        <input type="checkbox" class="status-check" name="statuses[]" value="{{ status.id }}" {{ checked ? 'checked' : '' }}>
+                        <span>{{ status.name }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="filter-box">
+            <h3>Formats</h3>
+            <div class="filter-actions">
+                <button type="button" onclick="toggleColumnChecks('format-check', true)">Tout cocher</button>
+                <button type="button" onclick="toggleColumnChecks('format-check', false)">Tout décocher</button>
+            </div>
+            <div class="checklist">
+                {% for format in formats %}
+                    {% set checked = hasFormatFilter ? (format.id in selectedFormatIds) : true %}
+                    <label class="check-item">
+                        <input type="checkbox" class="format-check" name="formats[]" value="{{ format.id }}" {{ checked ? 'checked' : '' }}>
+                        <span>{{ format.name }}</span>
+                    </label>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="filters-bottom-actions">
+        <div class="view-filter-wrap">
+            <div>
+                <label>Vue</label>
+                <select name="view">
+                    <option value="calendar" {{ view == 'calendar' ? 'selected' : '' }}>Calendrier</option>
+                    <option value="list" {{ view == 'list' ? 'selected' : '' }}>Liste</option>
+                </select>
+            </div>
+            <button type="submit" class="btn">Filtrer</button>
+        </div>
+    </div>
+</form>
+
+<p><a href="{{ path('app_content_new') }}" class="btn">+ Nouveau contenu</a></p>
+
+{% if view == 'calendar' %}
+<div class="week-calendar">
+    <h2>{{ monthStart|date('F Y')|capitalize }}</h2>
+    {% set gridStart = monthStart|date_modify('monday this week') %}
+    <table>
+        <thead>
+            <tr>
+                <th>Lundi</th>
+                <th>Mardi</th>
+                <th>Mercredi</th>
+                <th>Jeudi</th>
+                <th>Vendredi</th>
+                <th>Samedi</th>
+                <th>Dimanche</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in 0..5 %}
+            <tr>
+                {% for weekday in 0..6 %}
+                    {% set offset = week * 7 + weekday %}
+                    {% set dayObj = gridStart|date_modify('+' ~ offset ~ ' days') %}
+                    {% set dayDate = dayObj|date('Y-m-d') %}
+                    {% set inCurrentMonth = dayObj|date('m') == monthStart|date('m') %}
+                    {% set dayContents = contents|filter(c => c.scheduledDate|date('Y-m-d') == dayDate) %}
+                    <td class="{{ inCurrentMonth ? '' : 'day-out-month' }} {{ dayDate < todayDate ? 'day-past' : '' }}">
+                        <div class="day-head">
+                            <strong>{{ dayObj|date('d') }}</strong>
+                            <span>{{ dayObj|date('d/m') }}</span>
+                        </div>
+                        {% for content in dayContents %}
+                            <div class="day-event {{ content.scheduledDate|date('Y-m-d') < todayDate ? 'past-post' : '' }}">
+                                {% set fmt = content.format.name|lower %}
+                                {% set isVideo = (fmt == 'vidéo' or fmt == 'video') %}
+                                <strong>
+                                    {% if isVideo %}
+                                        <a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a>
+                                    {% else %}
+                                        <a href="{{ path('app_content_edit', {id: content.id, return_to: app.request.requestUri}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a>
+                                    {% endif %}
+                                </strong>
+                                <div style="font-style: italic;">{{ content.client.name }}</div>
+                                <div style="margin-top:0.25rem;">
+                                    <span>{{ content.format.name }}</span>
+                                    <div id="status-display-{{ content.id }}" class="status-display">
+                                        {% if content.status.color starts with '#' %}
+                                            <span class="status-badge" style="background: {{ content.status.color }}; color: #ffffff;">{{ content.status.name }}</span>
+                                        {% else %}
+                                            <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
+                                        {% endif %}
+                                        <button type="button" class="status-edit-btn" title="Modifier le statut" onclick="toggleStatusEditor({{ content.id }}, true)">✎</button>
+                                    </div>
+                                    <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
+                                        <select name="statusId" class="status-inline-select">
+                                            {% for status in statuses %}
+                                                <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <button type="submit" class="status-save-btn" title="Valider">✓</button>
+                                    </form>
+                                </div>
+                                {% if isVideo %}
+                                    <div class="mini-actions">
+                                        <a class="btn" href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}">Flux vidéo</a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span style="color: var(--muted);">—</span>
+                        {% endfor %}
+                    </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="list-view" style="background: white; border-radius: 8px; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f8f9fa;">
+                <th style="padding: 0.75rem; text-align: left;">Date</th>
+                <th style="padding: 0.75rem; text-align: left;">Titre</th>
+                <th style="padding: 0.75rem; text-align: left;">Client</th>
+                <th style="padding: 0.75rem; text-align: left;">Format</th>
+                <th style="padding: 0.75rem; text-align: left;">Statut</th>
+                <th style="padding: 0.75rem; text-align: left;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for content in contents %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 0.75rem;">{{ content.scheduledDate|date('d/m/Y') }}</td>
+                    <td style="padding: 0.75rem;">
+                        {% set fmt = content.format.name|lower %}
+                        {% set isVideo = (fmt == 'vidéo' or fmt == 'video') %}
+                        {% if isVideo %}
+                            <a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}">{{ content.title }}</a>
+                        {% else %}
+                            <a href="{{ path('app_content_edit', {id: content.id, return_to: app.request.requestUri}) }}">{{ content.title }}</a>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: content.client.id}) }}">{{ content.client.name }}</a></td>
+                    <td style="padding: 0.75rem;">{{ content.format.name }}</td>
+                    <td style="padding: 0.75rem;">
+                        <div id="status-display-{{ content.id }}" class="status-display">
+                            {% if content.status.color starts with '#' %}
+                                <span class="status-badge" style="background: {{ content.status.color }}; color: #ffffff;">{{ content.status.name }}</span>
+                            {% else %}
+                                <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
+                            {% endif %}
+                            <button type="button" class="status-edit-btn" title="Modifier le statut" onclick="toggleStatusEditor({{ content.id }}, true)">✎</button>
+                        </div>
+                        <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
+                            <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
+                            <select name="statusId" class="status-inline-select">
+                                {% for status in statuses %}
+                                    <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="status-save-btn" title="Valider">✓</button>
+                        </form>
+                    </td>
+                    <td style="padding: 0.75rem;">
+                        {% if isVideo %}
+                            <a class="btn btn-sm" href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}">Flux vidéo</a>
+                        {% endif %}
+                        <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer ?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="6" style="padding: 1rem; color: #999;">Aucun contenu pour ce mois.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+<script>
+    function toggleColumnChecks(className, checked) {
+        document.querySelectorAll('.' + className).forEach(function (checkbox) {
+            checkbox.checked = checked;
+        });
+    }
+
+    function toggleStatusEditor(contentId, showEditor) {
+        var display = document.getElementById('status-display-' + contentId);
+        var editor = document.getElementById('status-editor-' + contentId);
+        if (!display || !editor) {
+            return;
+        }
+        display.style.display = showEditor ? 'none' : 'inline-flex';
+        editor.style.display = showEditor ? 'inline-flex' : 'none';
+    }
+</script>
+{% endblock %}

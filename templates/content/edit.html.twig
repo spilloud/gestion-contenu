@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Modifier {{ content.title }}{% endblock %}
+
+{% block body %}
+<h1>Modifier {{ content.title }}</h1>
+<p><a href="{{ returnTo|default(path('app_calendar')) }}">← Retour</a></p>
+
+{{ form_start(form) }}
+<input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_calendar')) }}">
+{{ form_widget(form) }}
+<button type="submit" class="btn">Enregistrer</button>
+{{ form_end(form) }}
+{% endblock %}

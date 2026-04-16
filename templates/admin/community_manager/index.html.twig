@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Community Managers{% endblock %}
+
+{% block body %}
+<h1>Community Managers</h1>
+<p><a href="{{ path('app_admin_cm_new') }}" class="btn">+ Nouveau</a></p>
+
+<table style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse;">
+    <thead>
+        <tr style="background: #f8f9fa;">
+            <th style="padding: 0.75rem; text-align: left;">Nom</th>
+            <th style="padding: 0.75rem; text-align: left;">Email</th>
+            <th style="padding: 0.75rem; text-align: left;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for cm in communityManagers %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;">{{ cm.name }}</td>
+                <td style="padding: 0.75rem;">{{ cm.email ?? '—' }}</td>
+                <td style="padding: 0.75rem;"><a href="{{ path('app_admin_cm_edit', {id: cm.id}) }}" class="btn btn-sm">Modifier</a></td>
+            </tr>
+        {% else %}
+            <tr><td colspan="3" style="padding: 1rem; color: #999;">Aucun community manager.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

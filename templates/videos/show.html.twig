@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vidéo — {{ content.title }}{% endblock %}
+
+{% block body %}
+<h1>Vidéo — {{ content.title }}</h1>
+<p style="color: var(--muted);">
+    Client : <strong>{{ content.client.name }}</strong> · Date publication : <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong>
+</p>
+
+<p>
+    <a href="{{ returnTo|default(path('app_videos_index')) }}">← Retour</a>
+    ·
+    <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Voir dans le calendrier</a>
+</p>
+
+{{ form_start(form) }}
+<input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
+{{ form_row(form.title) }}
+{{ form_row(form.scheduledDate) }}
+{{ form_row(form.client) }}
+{{ form_row(form.format) }}
+{{ form_row(form.status) }}
+{{ form_row(form.notes) }}
+<div class="subtitles-field-row">
+    <span class="field-label" id="label-video-subtitles">Sous-titres</span>
+    <label class="toggle-switch" aria-labelledby="label-video-subtitles">
+        {{ form_widget(form.videoHasSubtitles) }}
+        <span class="toggle-switch-ui" aria-hidden="true"></span>
+    </label>
+</div>
+{{ form_errors(form.videoHasSubtitles) }}
+{{ form_row(form.videoEditor) }}
+{{ form_row(form.videoRushesUrl) }}
+{{ form_row(form.videoEditUrl) }}
+{{ form_row(form.videoEditFilename) }}
+{{ form_row(form.videoSubmagicUrl) }}
+{{ form_row(form.videoFinalUrl) }}
+{{ form_row(form.videoFinalFilename) }}
+{{ form_row(form.videoThumbnailUrl) }}
+{{ form_row(form.videoCaption) }}
+{{ form_rest(form) }}
+<button type="submit" class="btn">Enregistrer</button>
+{{ form_end(form, { render_rest: false }) }}
+
+<hr style="margin: 1.5rem 0;">
+<h2>Retours / discussion</h2>
+{% if content.comments is empty %}
+    <p style="color: var(--muted);">Aucun retour pour le moment.</p>
+{% else %}
+    <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+        {% for c in content.comments %}
+            <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--card-bg);">
+                <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
+                    <div>
+                        <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
+                    </div>
+                    <div>{{ c.createdAt|date('d/m/Y H:i') }}</div>
+                </div>
+                <div style="white-space: pre-wrap;">{{ c.message }}</div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem; max-width: 780px;">
+    <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
+    <textarea name="message" rows="4" placeholder="Ajouter un retour (prod/CM)..." style="width: 100%;"></textarea>
+    <button type="submit" class="btn">Ajouter un commentaire</button>
+</form>
+{% endblock %}

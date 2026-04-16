@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Clients sous gestion{% endblock %}
+
+{% block body %}
+<h1>Clients sous gestion</h1>
+
+<table style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse; overflow: hidden;">
+    <thead>
+        <tr style="background: #1c1040; color: white;">
+            <th style="padding: 0.75rem; text-align: left;">Client</th>
+            <th style="padding: 0.75rem; text-align: left;">Community Manager</th>
+            <th style="padding: 0.75rem; text-align: left;">Monteur</th>
+            <th style="padding: 0.75rem; text-align: left;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for client in clients %}
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}">{{ client.name }}</a></td>
+                <td style="padding: 0.75rem;">{{ client.communityManager ? client.communityManager.name : '—' }}</td>
+                <td style="padding: 0.75rem;">{{ client.editor ? client.editor.name : '—' }}</td>
+                <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Voir</a></td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" style="padding: 1rem; color: #999;">Aucun client. <a href="{{ path('app_admin_client_new') }}">Ajouter un client</a></td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

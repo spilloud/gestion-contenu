@@ -1,0 +1,29 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Fusionner un client{% endblock %}
+
+{% block body %}
+<h1>Fusionner un client</h1>
+<p style="color: var(--muted); max-width: 720px;">
+    Toutes les <strong>publications</strong> du client <strong>{{ source.name }}</strong> seront rattachées au client cible.
+    La fiche « infos / idées / todos » sera déplacée ou fusionnée avec celle du client cible. Ensuite, <strong>{{ source.name }}</strong> sera supprimé.
+</p>
+<p><strong>Publications actuellement liées :</strong> {{ contentCount }}</p>
+
+<form method="post" style="max-width: 520px; display: grid; gap: 1rem;">
+    <input type="hidden" name="_token" value="{{ csrf_token('merge_client_' ~ source.id) }}">
+    <div>
+        <label for="target_client_id" style="display:block; font-weight:600; margin-bottom:0.35rem;">Fusionner dans le client</label>
+        <select id="target_client_id" name="target_client_id" required style="width:100%; padding:0.55rem;">
+            <option value="">— Choisir —</option>
+            {% for c in targets %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+        <button type="submit" class="btn" onclick="return confirm('Confirmer la fusion ? Le client source sera supprimé après transfert vers le client choisi.');">Confirmer la fusion</button>
+        <a href="{{ path('app_admin_client_index') }}" class="btn" style="background:#64748b;">Annuler</a>
+    </div>
+</form>
+{% endblock %}

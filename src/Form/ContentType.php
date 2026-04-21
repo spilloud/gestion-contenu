@@ -26,6 +26,7 @@ class ContentType extends AbstractType
             ->add('scheduledDate', DateType::class, [
                 'label' => 'Date prévue',
                 'widget' => 'single_text',
+                'required' => false,
                 'attr' => [
                     'style' => 'max-width: 320px; padding: 0.9rem 0.8rem; font-size: 1.05rem; min-height: 52px;',
                 ],

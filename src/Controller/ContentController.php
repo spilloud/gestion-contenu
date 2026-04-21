@@ -42,10 +42,39 @@ class ContentController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            if ($this->isVideoContent($content)) {
-                $this->addFlash('error', 'Les vidéos se gèrent dans le flux Vidéo (Dérush / fiche vidéo), pas ici.');
+            $isVideo = $this->isVideoContent($content);
 
-                return $this->redirectToRoute('app_derush_index');
+            // `scheduledDate` est obligatoire en base, mais on autorise un champ vide ici :
+            // - vidéos : par défaut +14 jours (comme dérush)
+            // - autres formats : on exige une date
+            if ($content->getScheduledDate() === null) {
+                if ($isVideo) {
+                    $content->setScheduledDate((new \DateTimeImmutable('today'))->modify('+14 days'));
+                } else {
+                    $this->addFlash('error', 'La date est obligatoire.');
+
+                    return $this->render('content/new.html.twig', [
+                        'content' => $content,
+                        'form' => $form,
+                        'returnTo' => $defaultReturnTo,
+                    ]);
+                }
+            }
+
+            if ($isVideo) {
+                // On démarre le même process que le dérush (sans liens) :
+                // - statut initial vidéo
+                // - monteur auto depuis le client (si défini)
+                // - sous-titres par défaut à non
+                $content->setStatus($this->findInitialVideoStatus());
+
+                $client = $content->getClient();
+                if ($client && $content->getVideoEditor() === null && $client->getEditor() !== null) {
+                    $content->setVideoEditor($client->getEditor());
+                }
+                if ($content->getVideoHasSubtitles() === null) {
+                    $content->setVideoHasSubtitles(false);
+                }
             }
 
             $this->entityManager->persist($content);
@@ -54,6 +83,13 @@ class ContentController extends AbstractController
             $this->addFlash('success', 'Contenu créé.');
 
             $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request) ?? $defaultReturnTo;
+
+            if ($isVideo) {
+                return $this->redirectToRoute('app_video_show', [
+                    'id' => $content->getId(),
+                    'return_to' => $returnTo,
+                ]);
+            }
 
             return $this->redirect($returnTo);
         }
@@ -243,5 +279,24 @@ class ContentController extends AbstractController
         $name = mb_strtolower(trim((string) ($content->getFormat()?->getName() ?? '')));
 
         return $name === 'vidéo' || $name === 'video';
+    }
+
+    private function findInitialVideoStatus(): \App\Entity\Status
+    {
+        foreach ($this->statusRepository->findAllOrdered() as $status) {
+            if ($status->getName() === 'Brouillon (Dérush)') {
+                return $status;
+            }
+        }
+
+        // fallback: create if missing (safe for fresh DBs)
+        $status = new \App\Entity\Status();
+        $status->setName('Brouillon (Dérush)');
+        $status->setColor(\App\Entity\Status::COLOR_GRAY);
+        $status->setSortOrder(999);
+        $this->entityManager->persist($status);
+        $this->entityManager->flush();
+
+        return $status;
     }
 }

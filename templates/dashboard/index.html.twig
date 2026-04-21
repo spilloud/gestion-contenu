@@ -138,6 +138,39 @@
         .dashboard-main { grid-template-columns: 1fr; }
         .priority-grid { grid-template-columns: 1fr; }
     }
+    .todo-columns {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .todo-columns .panel h2 {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+    }
+    .pill-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background: rgba(91, 33, 182, 0.12);
+        color: #5b21b6;
+        border: 1px solid rgba(91, 33, 182, 0.25);
+    }
+    body.theme-dark .pill-count {
+        background: rgba(167, 139, 250, 0.16);
+        color: #c4b5fd;
+        border-color: rgba(167, 139, 250, 0.25);
+    }
+    @media (max-width: 1200px) {
+        .todo-columns { grid-template-columns: 1fr; }
+    }
 </style>
 
 <div class="dashboard-header">
@@ -151,6 +184,62 @@
         <a href="{{ path('app_calendar') }}" class="btn">Calendrier</a>
         <a href="{{ path('app_clients_table') }}" class="btn">Clients</a>
     </div>
+</div>
+
+<div class="todo-columns">
+    <section class="panel">
+        <h2>Montages à faire <span class="pill-count">{{ montagesAFaire|length }}</span></h2>
+        {% if montagesAFaire is empty %}
+            <p class="priority-empty">Rien à faire pour le moment.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in montagesAFaire %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> · {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <span class="badge-mini">{{ item.videoEditor ? item.videoEditor.name : 'Monteur —' }}</span>
+                        <a href="{{ path('app_video_show', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Ouvrir</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Montages à contrôler <span class="pill-count">{{ montagesAControler|length }}</span></h2>
+        {% if montagesAControler is empty %}
+            <p class="priority-empty">Rien à contrôler pour le moment.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in montagesAControler %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> · {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <span class="badge-mini">{{ item.videoEditor ? item.videoEditor.name : 'Monteur —' }}</span>
+                        <a href="{{ path('app_video_show', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Ouvrir</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Sous-titres à relire <span class="pill-count">{{ soustitresARelire|length }}</span></h2>
+        {% if soustitresARelire is empty %}
+            <p class="priority-empty">Aucun sous-titre à relire.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in soustitresARelire %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> · {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <span class="badge-mini">{{ item.videoEditor ? item.videoEditor.name : 'Monteur —' }}</span>
+                        <a href="{{ path('app_video_show', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Ouvrir</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
 </div>
 
 <div class="shortcut-grid">
@@ -227,7 +316,7 @@
     <section class="panel">
         <h2>Retards prioritaires</h2>
         {% if overdueItems is empty %}
-            <p class="priority-empty">Aucun retard. Bravo 🎉</p>
+            <p class="priority-empty">Aucun retard.</p>
         {% else %}
             <ul class="priority-list">
                 {% for item in overdueItems %}

@@ -7,7 +7,10 @@ use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
+use App\Entity\User;
+use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -18,13 +21,18 @@ class DefaultController extends AbstractController
     #[Route('/dashboard', name: 'app_dashboard', methods: ['GET'])]
     public function index(
         ContentRepository $contentRepository,
+        ClientRepository $clientRepository,
     ): Response
     {
         $entityManager = $contentRepository->getEntityManager();
         $statusRepository = $entityManager->getRepository(Status::class);
 
-        $totalClients = $entityManager->getRepository(Client::class)->count([]);
-        $totalPosts = $entityManager->getRepository(Content::class)->count([]);
+        $visibleClientIds = $this->resolveVisibleClientIds($entityManager);
+        $hasClientScope = $visibleClientIds !== null;
+
+        // KPIs : on scope par utilisateur (admin = tout).
+        $totalClients = $hasClientScope ? count($visibleClientIds) : $entityManager->getRepository(Client::class)->count([]);
+        $totalPosts = $this->countPosts($contentRepository, $visibleClientIds);
         $totalCommunityManagers = $entityManager->getRepository(CommunityManager::class)->count([]);
         $totalStatuses = $entityManager->getRepository(Status::class)->count([]);
         $totalFormats = $entityManager->getRepository(Format::class)->count([]);
@@ -41,8 +49,16 @@ class DefaultController extends AbstractController
             ->andWhere('c.scheduledDate <= :monthEnd')
             ->setParameter('monthStart', $monthStart)
             ->setParameter('monthEnd', $monthEnd)
-            ->getQuery()
-            ->getSingleScalarResult();
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $postsThisMonth->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        if ($hasClientScope && $visibleClientIds === []) {
+            $postsThisMonth = 0;
+        } else {
+            $postsThisMonth = (int) $postsThisMonth->getQuery()->getSingleScalarResult();
+        }
 
         $postsPreviousMonth = (int) $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
@@ -50,8 +66,16 @@ class DefaultController extends AbstractController
             ->andWhere('c.scheduledDate <= :monthEnd')
             ->setParameter('monthStart', $previousMonthStart)
             ->setParameter('monthEnd', $previousMonthEnd)
-            ->getQuery()
-            ->getSingleScalarResult();
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $postsPreviousMonth->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        if ($hasClientScope && $visibleClientIds === []) {
+            $postsPreviousMonth = 0;
+        } else {
+            $postsPreviousMonth = (int) $postsPreviousMonth->getQuery()->getSingleScalarResult();
+        }
 
         $publishedStatusIds = [];
         foreach ($statusRepository->findAll() as $status) {
@@ -74,19 +98,31 @@ class DefaultController extends AbstractController
                 ->setParameter('monthStart', $monthStart)
                 ->setParameter('monthEnd', $monthEnd)
                 ->setParameter('publishedStatusIds', $publishedStatusIds)
-                ->getQuery()
-                ->getSingleScalarResult();
+            ;
+            if ($hasClientScope && $visibleClientIds !== []) {
+                $publishedThisMonth->andWhere('c.client IN (:clientIds)')
+                    ->setParameter('clientIds', $visibleClientIds);
+            }
+            if ($hasClientScope && $visibleClientIds === []) {
+                $publishedThisMonth = 0;
+            } else {
+                $publishedThisMonth = (int) $publishedThisMonth->getQuery()->getSingleScalarResult();
+            }
         }
 
         $overdueQb = $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
             ->andWhere('c.scheduledDate < :today')
             ->setParameter('today', $today);
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $overdueQb->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
         if ($publishedStatusIds !== []) {
             $overdueQb->andWhere('c.status NOT IN (:publishedStatusIds)')
                 ->setParameter('publishedStatusIds', $publishedStatusIds);
         }
-        $overdueCount = (int) $overdueQb->getQuery()->getSingleScalarResult();
+        $overdueCount = ($hasClientScope && $visibleClientIds === []) ? 0 : (int) $overdueQb->getQuery()->getSingleScalarResult();
 
         $upcomingWeekCount = (int) $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
@@ -94,8 +130,12 @@ class DefaultController extends AbstractController
             ->andWhere('c.scheduledDate <= :upcomingEnd')
             ->setParameter('today', $today)
             ->setParameter('upcomingEnd', $today->modify('+6 days'))
-            ->getQuery()
-            ->getSingleScalarResult();
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $upcomingWeekCount->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        $upcomingWeekCount = ($hasClientScope && $visibleClientIds === []) ? 0 : (int) $upcomingWeekCount->getQuery()->getSingleScalarResult();
 
         $completionRate = $postsThisMonth > 0 ? (int) round(($publishedThisMonth / $postsThisMonth) * 100) : 0;
         $volumeTrendPercent = $postsPreviousMonth > 0
@@ -104,12 +144,19 @@ class DefaultController extends AbstractController
 
         $contentsThisMonth = $contentRepository->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
             ->leftJoin('c.status', 's')->addSelect('s')
             ->leftJoin('c.format', 'f')->addSelect('f')
             ->andWhere('c.scheduledDate >= :monthStart')
             ->andWhere('c.scheduledDate <= :monthEnd')
             ->setParameter('monthStart', $monthStart)
             ->setParameter('monthEnd', $monthEnd)
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $contentsThisMonth->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        $contentsThisMonth = ($hasClientScope && $visibleClientIds === []) ? [] : $contentsThisMonth
             ->orderBy('c.scheduledDate', 'ASC')
             ->getQuery()
             ->getResult();
@@ -195,29 +242,40 @@ class DefaultController extends AbstractController
 
         $overdueItemsQb = $contentRepository->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
             ->leftJoin('c.status', 's')->addSelect('s')
             ->andWhere('c.scheduledDate < :today')
             ->setParameter('today', $today)
             ->orderBy('c.scheduledDate', 'ASC')
             ->setMaxResults(8);
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $overdueItemsQb->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
         if ($publishedStatusIds !== []) {
             $overdueItemsQb->andWhere('c.status NOT IN (:publishedStatusIds)')
                 ->setParameter('publishedStatusIds', $publishedStatusIds);
         }
-        $overdueItems = $overdueItemsQb->getQuery()->getResult();
+        $overdueItems = ($hasClientScope && $visibleClientIds === []) ? [] : $overdueItemsQb->getQuery()->getResult();
 
         $todayItems = $contentRepository->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
             ->leftJoin('c.status', 's')->addSelect('s')
             ->andWhere('c.scheduledDate = :today')
             ->setParameter('today', $today)
             ->orderBy('c.id', 'ASC')
             ->setMaxResults(8)
-            ->getQuery()
-            ->getResult();
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $todayItems->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        $todayItems = ($hasClientScope && $visibleClientIds === []) ? [] : $todayItems->getQuery()->getResult();
 
         $upcomingItems = $contentRepository->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
             ->leftJoin('c.status', 's')->addSelect('s')
             ->andWhere('c.scheduledDate > :today')
             ->andWhere('c.scheduledDate <= :soon')
@@ -225,8 +283,22 @@ class DefaultController extends AbstractController
             ->setParameter('soon', $today->modify('+7 days'))
             ->orderBy('c.scheduledDate', 'ASC')
             ->setMaxResults(8)
-            ->getQuery()
-            ->getResult();
+        ;
+        if ($hasClientScope && $visibleClientIds !== []) {
+            $upcomingItems->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $visibleClientIds);
+        }
+        $upcomingItems = ($hasClientScope && $visibleClientIds === []) ? [] : $upcomingItems->getQuery()->getResult();
+
+        // --- Colonnes vidéo (to-do) ---
+        $videoFormat = $this->findVideoFormat($entityManager);
+        $statusMontageAFaire = $statusRepository->findOneBy(['name' => 'Montage à faire']);
+        $statusMontageAControler = $statusRepository->findOneBy(['name' => 'À valider (Prod)']);
+        $statusSousTitresRelire = $statusRepository->findOneBy(['name' => 'Sous-titres à valider']);
+
+        $montagesAFaire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAFaire, $visibleClientIds, 12);
+        $montagesAControler = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAControler, $visibleClientIds, 12);
+        $soustitresARelire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusSousTitresRelire, $visibleClientIds, 12);
 
         return $this->render('dashboard/index.html.twig', [
             'totalClients' => $totalClients,
@@ -252,6 +324,123 @@ class DefaultController extends AbstractController
             'overdueItems' => $overdueItems,
             'todayItems' => $todayItems,
             'upcomingItems' => $upcomingItems,
+            'montagesAFaire' => $montagesAFaire,
+            'montagesAControler' => $montagesAControler,
+            'soustitresARelire' => $soustitresARelire,
         ]);
+    }
+
+    /**
+     * @return int[]|null Null = pas de filtre (admin)
+     */
+    private function resolveVisibleClientIds(EntityManagerInterface $entityManager): ?array
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return [];
+        }
+
+        $roles = $user->getRoles();
+        if (in_array(User::ROLE_ADMIN, $roles, true)) {
+            return null;
+        }
+
+        if (in_array(User::ROLE_EDITOR, $roles, true)) {
+            $rows = $entityManager->createQueryBuilder()
+                ->select('c.id')
+                ->from(Client::class, 'c')
+                ->andWhere('c.editor = :editor')
+                ->setParameter('editor', $user)
+                ->orderBy('c.name', 'ASC')
+                ->getQuery()
+                ->getArrayResult();
+
+            return array_map(static fn (array $r): int => (int) $r['id'], $rows);
+        }
+
+        // CM : match via email (User.email == CommunityManager.email)
+        $cm = $entityManager->getRepository(CommunityManager::class)->findOneBy([
+            'email' => $user->getUserIdentifier(),
+        ]);
+        if (!$cm instanceof CommunityManager) {
+            return [];
+        }
+
+        $rows = $entityManager->createQueryBuilder()
+            ->select('c.id')
+            ->from(Client::class, 'c')
+            ->andWhere('c.communityManager = :cm')
+            ->setParameter('cm', $cm)
+            ->orderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn (array $r): int => (int) $r['id'], $rows);
+    }
+
+    private function countPosts(ContentRepository $repo, ?array $clientIds): int
+    {
+        $qb = $repo->createQueryBuilder('c')
+            ->select('COUNT(c.id)');
+        if ($clientIds !== null) {
+            if ($clientIds === []) {
+                return 0;
+            }
+            $qb->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $clientIds);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    private function findVideoFormat(EntityManagerInterface $entityManager): ?Format
+    {
+        $formats = $entityManager->getRepository(Format::class)->findAll();
+        foreach ($formats as $format) {
+            $name = mb_strtolower(trim((string) $format->getName()));
+            if ($name === 'vidéo' || $name === 'video') {
+                return $format;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return Content[]
+     */
+    private function findDashboardVideoItems(
+        ContentRepository $repo,
+        ?Format $videoFormat,
+        ?Status $status,
+        ?array $clientIds,
+        int $limit
+    ): array {
+        if ($videoFormat === null || $status === null) {
+            return [];
+        }
+        if ($clientIds !== null && $clientIds === []) {
+            return [];
+        }
+
+        $qb = $repo->createQueryBuilder('c')
+            ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.videoEditor', 'e')->addSelect('e')
+            ->andWhere('c.format = :format')
+            ->andWhere('c.status = :status')
+            ->setParameter('format', $videoFormat)
+            ->setParameter('status', $status)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('cl.name', 'ASC')
+            ->setMaxResults($limit);
+
+        if ($clientIds !== null) {
+            $qb->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $clientIds);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 }

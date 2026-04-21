@@ -43,7 +43,7 @@ class DefaultController extends AbstractController
         $previousMonthStart = $monthStart->modify('-1 month');
         $previousMonthEnd = $monthStart->modify('-1 day');
 
-        $postsThisMonth = (int) $contentRepository->createQueryBuilder('c')
+        $postsThisMonthQb = $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
             ->andWhere('c.scheduledDate >= :monthStart')
             ->andWhere('c.scheduledDate <= :monthEnd')
@@ -51,16 +51,16 @@ class DefaultController extends AbstractController
             ->setParameter('monthEnd', $monthEnd)
         ;
         if ($hasClientScope && $visibleClientIds !== []) {
-            $postsThisMonth->andWhere('c.client IN (:clientIds)')
+            $postsThisMonthQb->andWhere('c.client IN (:clientIds)')
                 ->setParameter('clientIds', $visibleClientIds);
         }
         if ($hasClientScope && $visibleClientIds === []) {
             $postsThisMonth = 0;
         } else {
-            $postsThisMonth = (int) $postsThisMonth->getQuery()->getSingleScalarResult();
+            $postsThisMonth = (int) $postsThisMonthQb->getQuery()->getSingleScalarResult();
         }
 
-        $postsPreviousMonth = (int) $contentRepository->createQueryBuilder('c')
+        $postsPreviousMonthQb = $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
             ->andWhere('c.scheduledDate >= :monthStart')
             ->andWhere('c.scheduledDate <= :monthEnd')
@@ -68,13 +68,13 @@ class DefaultController extends AbstractController
             ->setParameter('monthEnd', $previousMonthEnd)
         ;
         if ($hasClientScope && $visibleClientIds !== []) {
-            $postsPreviousMonth->andWhere('c.client IN (:clientIds)')
+            $postsPreviousMonthQb->andWhere('c.client IN (:clientIds)')
                 ->setParameter('clientIds', $visibleClientIds);
         }
         if ($hasClientScope && $visibleClientIds === []) {
             $postsPreviousMonth = 0;
         } else {
-            $postsPreviousMonth = (int) $postsPreviousMonth->getQuery()->getSingleScalarResult();
+            $postsPreviousMonth = (int) $postsPreviousMonthQb->getQuery()->getSingleScalarResult();
         }
 
         $publishedStatusIds = [];
@@ -90,7 +90,7 @@ class DefaultController extends AbstractController
 
         $publishedThisMonth = 0;
         if ($publishedStatusIds !== []) {
-            $publishedThisMonth = (int) $contentRepository->createQueryBuilder('c')
+            $publishedThisMonthQb = $contentRepository->createQueryBuilder('c')
                 ->select('COUNT(c.id)')
                 ->andWhere('c.scheduledDate >= :monthStart')
                 ->andWhere('c.scheduledDate <= :monthEnd')
@@ -100,13 +100,13 @@ class DefaultController extends AbstractController
                 ->setParameter('publishedStatusIds', $publishedStatusIds)
             ;
             if ($hasClientScope && $visibleClientIds !== []) {
-                $publishedThisMonth->andWhere('c.client IN (:clientIds)')
+                $publishedThisMonthQb->andWhere('c.client IN (:clientIds)')
                     ->setParameter('clientIds', $visibleClientIds);
             }
             if ($hasClientScope && $visibleClientIds === []) {
                 $publishedThisMonth = 0;
             } else {
-                $publishedThisMonth = (int) $publishedThisMonth->getQuery()->getSingleScalarResult();
+                $publishedThisMonth = (int) $publishedThisMonthQb->getQuery()->getSingleScalarResult();
             }
         }
 
@@ -124,7 +124,7 @@ class DefaultController extends AbstractController
         }
         $overdueCount = ($hasClientScope && $visibleClientIds === []) ? 0 : (int) $overdueQb->getQuery()->getSingleScalarResult();
 
-        $upcomingWeekCount = (int) $contentRepository->createQueryBuilder('c')
+        $upcomingWeekCountQb = $contentRepository->createQueryBuilder('c')
             ->select('COUNT(c.id)')
             ->andWhere('c.scheduledDate >= :today')
             ->andWhere('c.scheduledDate <= :upcomingEnd')
@@ -132,10 +132,10 @@ class DefaultController extends AbstractController
             ->setParameter('upcomingEnd', $today->modify('+6 days'))
         ;
         if ($hasClientScope && $visibleClientIds !== []) {
-            $upcomingWeekCount->andWhere('c.client IN (:clientIds)')
+            $upcomingWeekCountQb->andWhere('c.client IN (:clientIds)')
                 ->setParameter('clientIds', $visibleClientIds);
         }
-        $upcomingWeekCount = ($hasClientScope && $visibleClientIds === []) ? 0 : (int) $upcomingWeekCount->getQuery()->getSingleScalarResult();
+        $upcomingWeekCount = ($hasClientScope && $visibleClientIds === []) ? 0 : (int) $upcomingWeekCountQb->getQuery()->getSingleScalarResult();
 
         $completionRate = $postsThisMonth > 0 ? (int) round(($publishedThisMonth / $postsThisMonth) * 100) : 0;
         $volumeTrendPercent = $postsPreviousMonth > 0

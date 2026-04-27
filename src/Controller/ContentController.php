@@ -8,11 +8,13 @@ use App\Form\ContentType;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
+use App\Service\AsanaService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[Route('/contenu')]
 class ContentController extends AbstractController
@@ -22,6 +24,7 @@ class ContentController extends AbstractController
         private readonly ContentRepository $contentRepository,
         private readonly ClientRepository $clientRepository,
         private readonly StatusRepository $statusRepository,
+        private readonly AsanaService $asanaService,
     ) {
     }
 
@@ -218,6 +221,21 @@ class ContentController extends AbstractController
             $this->entityManager->persist($comment);
             $content->setUpdatedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
+
+            // Synchronisation Asana (best-effort) : ajout du commentaire sur la tâche liée
+            $taskGid = $content->getAsanaTaskGid();
+            if ($taskGid && $this->isVideoContent($content) && $this->asanaService->isEnabled()) {
+                $authorName = ($user instanceof \App\Entity\User) ? ($user->getName() ?? $user->getUserIdentifier()) : '—';
+                $mention = $authorName ? '@'.$authorName : '';
+                $videoUrl = $this->generateUrl('app_video_show', ['id' => $content->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+                $text = trim(implode("\n", array_filter([
+                    $mention !== '' ? $mention.' (via Lucy)' : 'Commentaire (via Lucy)',
+                    'Vidéo : '.$videoUrl,
+                    '',
+                    $message,
+                ])));
+                $this->asanaService->addCommentToTask($taskGid, $text);
+            }
         }
 
         $referer = $request->headers->get('referer');

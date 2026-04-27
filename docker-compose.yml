@@ -29,8 +29,12 @@ services:
         environment:
             - APP_ENV=prod
             - APP_DEBUG=0
+            - APP_SECRET=${APP_SECRET:-change_me}
             - TRUSTED_PROXIES=private_ranges
             - MAILER_FROM=${MAILER_FROM:-noreply@osmose-marketing.ch}
+            - ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN:-}
+            - ASANA_WORKSPACE_GID=${ASANA_WORKSPACE_GID:-}
+            - ASANA_FALLBACK_ASSIGNEE_GID=${ASANA_FALLBACK_ASSIGNEE_GID:-}
             - POSTGRES_HOST=contenu_postgres
             - POSTGRES_DB=contenu
             - POSTGRES_USER=contenu_user

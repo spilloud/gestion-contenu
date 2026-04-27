@@ -3,7 +3,6 @@
 namespace App\Service;
 
 use App\Entity\Content;
-use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AsanaService
@@ -92,7 +91,7 @@ class AsanaService
                 'json' => $payload,
             ]);
             $data = $resp->toArray(false);
-        } catch (TransportExceptionInterface) {
+        } catch (\Throwable) {
             return null;
         }
 
@@ -102,6 +101,41 @@ class AsanaService
         }
 
         return trim($gid);
+    }
+
+    /**
+     * Ajoute un commentaire (story) sur une tâche Asana existante.
+     */
+    public function addCommentToTask(string $taskGid, string $text): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        if ($taskGid === '' || trim($text) === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks/'.$taskGid.'/stories', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        'text' => $text,
+                    ],
+                ],
+            ]);
+
+            $status = $resp->getStatusCode();
+            return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 }
 

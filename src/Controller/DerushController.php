@@ -8,11 +8,13 @@ use App\Entity\Status;
 use App\Repository\ClientRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
+use App\Service\AsanaService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[Route('/derush')]
 class DerushController extends AbstractController
@@ -22,6 +24,7 @@ class DerushController extends AbstractController
         private readonly ClientRepository $clientRepository,
         private readonly FormatRepository $formatRepository,
         private readonly StatusRepository $statusRepository,
+        private readonly AsanaService $asanaService,
     ) {
     }
 
@@ -36,6 +39,7 @@ class DerushController extends AbstractController
 
             $rows = $request->request->all('videos');
             $created = 0;
+            $createdContents = [];
 
             $videoFormat = $this->findVideoFormat();
             $initialStatus = $this->findInitialVideoStatus();
@@ -66,12 +70,40 @@ class DerushController extends AbstractController
                     ->setVideoRushesUrl(trim((string) ($row['rushes_url'] ?? '')) ?: null);
 
                 $this->entityManager->persist($content);
+                $createdContents[] = $content;
                 $created++;
             }
 
             if ($created > 0) {
                 $this->entityManager->flush();
+
+                // Création des tâches Asana (best-effort).
+                $fallbackAssignee = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
+                $asanaCreated = 0;
+                foreach ($createdContents as $content) {
+                    if ($content->getAsanaTaskGid()) {
+                        continue;
+                    }
+                    $url = $this->generateUrl('app_video_show', ['id' => $content->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
+                    $gid = $this->asanaService->createTaskForVideo(
+                        $content,
+                        $url,
+                        $fallbackAssignee === false ? null : (string) $fallbackAssignee,
+                    );
+                    if ($gid) {
+                        $content->setAsanaTaskGid($gid);
+                        $asanaCreated++;
+                    }
+                }
+                if ($asanaCreated > 0) {
+                    $this->entityManager->flush();
+                }
                 $this->addFlash('success', sprintf('%d vidéo(s) créée(s) en brouillon.', $created));
+                if ($asanaCreated > 0) {
+                    $this->addFlash('success', sprintf('%d tâche(s) Asana créée(s).', $asanaCreated));
+                } elseif ($this->asanaService->isEnabled()) {
+                    $this->addFlash('error', 'Aucune tâche Asana créée (mapping client→projet ou assignee manquant).');
+                }
                 return $this->redirectToRoute('app_calendar', ['formats' => [$videoFormat->getId()]]);
             }
 

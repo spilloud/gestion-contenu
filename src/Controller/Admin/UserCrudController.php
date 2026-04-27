@@ -61,6 +61,7 @@ class UserCrudController extends AbstractController
             $user->setEmail($email);
             $user->setRoles($roles);
             $user->setRole('ROLE_USER');
+            $user->setAsanaUserGid(trim($request->request->getString('asanaUserGid')) ?: null);
             $user->setPassword($this->passwordHasher->hashPassword($user, $password));
 
             $this->entityManager->persist($user);
@@ -104,6 +105,7 @@ class UserCrudController extends AbstractController
             $user->setName($name);
             $user->setEmail($email);
             $user->setRoles($roles);
+            $user->setAsanaUserGid(trim($request->request->getString('asanaUserGid')) ?: null);
 
             if ($password !== '') {
                 $user->setPassword($this->passwordHasher->hashPassword($user, $password));

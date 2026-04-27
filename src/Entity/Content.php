@@ -70,6 +70,9 @@ class Content
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $videoCaption = null;
 
+    #[ORM\Column(length: 32, nullable: true, unique: true)]
+    private ?string $asanaTaskGid = null;
+
     /**
      * @var Collection<int, ContentComment>
      */
@@ -283,6 +286,18 @@ class Content
     public function setVideoCaption(?string $videoCaption): static
     {
         $this->videoCaption = $videoCaption;
+
+        return $this;
+    }
+
+    public function getAsanaTaskGid(): ?string
+    {
+        return $this->asanaTaskGid;
+    }
+
+    public function setAsanaTaskGid(?string $asanaTaskGid): static
+    {
+        $this->asanaTaskGid = $asanaTaskGid === null ? null : trim($asanaTaskGid);
 
         return $this;
     }

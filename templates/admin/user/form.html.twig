@@ -35,6 +35,17 @@
         </div>
     </div>
 
+    <div style="margin: 1rem 0 0.5rem;">
+        <strong>Asana</strong>
+        <div style="display:grid; gap: 0.35rem; margin-top: 0.5rem;">
+            <label for="asanaUserGid">Asana — User GID (monteur)</label>
+            <input type="text" id="asanaUserGid" name="asanaUserGid" value="{{ user.asanaUserGid }}" placeholder="ex: 1201234567890123">
+            <div style="color: var(--muted); font-size: 0.85rem; max-width: 520px;">
+                Si vide, les tâches seront assignées à l’utilisateur “fallback” (Nicolas) si configuré.
+            </div>
+        </div>
+    </div>
+
     <button type="submit" class="btn">Enregistrer</button>
 </form>
 {% endblock %}

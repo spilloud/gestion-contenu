@@ -48,6 +48,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $passwordResetRequestedAt = null;
 
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $asanaUserGid = null;
+
     private ?string $plainPassword = null;
 
     public function __construct()
@@ -197,6 +200,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->passwordResetToken = null;
         $this->passwordResetRequestedAt = null;
+
+        return $this;
+    }
+
+    public function getAsanaUserGid(): ?string
+    {
+        return $this->asanaUserGid;
+    }
+
+    public function setAsanaUserGid(?string $asanaUserGid): static
+    {
+        $this->asanaUserGid = $asanaUserGid === null ? null : trim($asanaUserGid);
 
         return $this;
     }

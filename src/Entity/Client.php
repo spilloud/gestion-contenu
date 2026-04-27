@@ -19,6 +19,9 @@ class Client
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
+    #[ORM\Column(length: 32, nullable: true)]
+    private ?string $asanaProjectGid = null;
+
     #[ORM\ManyToOne(inversedBy: 'clients')]
     #[ORM\JoinColumn(nullable: false)]
     private ?CommunityManager $communityManager = null;
@@ -56,6 +59,18 @@ class Client
     public function setName(string $name): static
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    public function getAsanaProjectGid(): ?string
+    {
+        return $this->asanaProjectGid;
+    }
+
+    public function setAsanaProjectGid(?string $asanaProjectGid): static
+    {
+        $this->asanaProjectGid = $asanaProjectGid === null ? null : trim($asanaProjectGid);
 
         return $this;
     }

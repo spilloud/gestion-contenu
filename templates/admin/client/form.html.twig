@@ -23,6 +23,8 @@
             <option value="{{ u.id }}" {{ client.editor and client.editor.id == u.id ? 'selected' : '' }}>{{ u.name }}</option>
         {% endfor %}
     </select>
+    <label for="asanaProjectGid">Asana — Project GID (optionnel)</label>
+    <input type="text" id="asanaProjectGid" name="asanaProjectGid" value="{{ client.asanaProjectGid }}" placeholder="ex: 1201234567890123">
     <button type="submit" class="btn">Enregistrer</button>
 </form>
 {% endblock %}

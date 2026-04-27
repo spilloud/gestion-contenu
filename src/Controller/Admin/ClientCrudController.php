@@ -48,6 +48,7 @@ class ClientCrudController extends AbstractController
                 $editorId = $request->request->getInt('editor');
                 $editor = $editorId > 0 ? $this->entityManager->getRepository(User::class)->find($editorId) : null;
                 $client->setEditor($editor);
+                $client->setAsanaProjectGid(trim($request->request->getString('asanaProjectGid')) ?: null);
                 $this->entityManager->persist($client);
                 $this->entityManager->flush();
                 $this->addFlash('success', 'Client créé.');
@@ -78,6 +79,7 @@ class ClientCrudController extends AbstractController
                 $editorId = $request->request->getInt('editor');
                 $editor = $editorId > 0 ? $this->entityManager->getRepository(User::class)->find($editorId) : null;
                 $client->setEditor($editor);
+                $client->setAsanaProjectGid(trim($request->request->getString('asanaProjectGid')) ?: null);
                 $this->entityManager->flush();
                 $this->addFlash('success', 'Client modifié.');
                 return $this->redirectToRoute('app_admin_client_index');

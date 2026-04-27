@@ -69,6 +69,11 @@ class DerushController extends AbstractController
                     ->setVideoHasSubtitles(($row['has_subtitles'] ?? '') === '1')
                     ->setVideoRushesUrl(trim((string) ($row['rushes_url'] ?? '')) ?: null);
 
+                // Auto-assign monteur depuis le client si défini.
+                if ($client->getEditor() !== null) {
+                    $content->setVideoEditor($client->getEditor());
+                }
+
                 $this->entityManager->persist($content);
                 $createdContents[] = $content;
                 $created++;

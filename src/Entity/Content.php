@@ -73,6 +73,9 @@ class Content
     #[ORM\Column(length: 32, nullable: true, unique: true)]
     private ?string $asanaTaskGid = null;
 
+    #[ORM\Column(length: 32, nullable: true, unique: true)]
+    private ?string $asanaSubtitlesTaskGid = null;
+
     /**
      * @var Collection<int, ContentComment>
      */
@@ -298,6 +301,18 @@ class Content
     public function setAsanaTaskGid(?string $asanaTaskGid): static
     {
         $this->asanaTaskGid = $asanaTaskGid === null ? null : trim($asanaTaskGid);
+
+        return $this;
+    }
+
+    public function getAsanaSubtitlesTaskGid(): ?string
+    {
+        return $this->asanaSubtitlesTaskGid;
+    }
+
+    public function setAsanaSubtitlesTaskGid(?string $asanaSubtitlesTaskGid): static
+    {
+        $this->asanaSubtitlesTaskGid = $asanaSubtitlesTaskGid === null ? null : trim($asanaSubtitlesTaskGid);
 
         return $this;
     }

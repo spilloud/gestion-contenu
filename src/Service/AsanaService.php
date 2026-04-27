@@ -137,5 +137,79 @@ class AsanaService
             return false;
         }
     }
+
+    /**
+     * Crée une tâche "relecture sous-titres" pour une vidéo.
+     * Retourne le task gid (string) ou null si non créé.
+     */
+    public function createSubtitlesReviewTaskForVideo(
+        Content $content,
+        string $videoUrl,
+        ?string $assigneeGid,
+        ?string $fallbackAssigneeGid,
+    ): ?string {
+        if (!$this->isEnabled()) {
+            return null;
+        }
+
+        if ($content->getAsanaSubtitlesTaskGid()) {
+            return $content->getAsanaSubtitlesTaskGid();
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+        $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
+        $client = $content->getClient();
+        $projectGid = $client ? (string) ($client->getAsanaProjectGid() ?? '') : '';
+        $projectGid = trim($projectGid);
+
+        if ($workspaceGid === '' || $projectGid === '') {
+            return null;
+        }
+
+        $assigneeGid = $assigneeGid !== null && trim($assigneeGid) !== '' ? trim($assigneeGid)
+            : ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '' ? trim($fallbackAssigneeGid) : null);
+
+        $clientName = $client?->getName() ?? 'Sans client';
+        $title = $content->getTitle() ?? '';
+        $name = trim('Relecture sous-titres — '.$clientName.' — '.$title);
+
+        $notes = implode("\n", array_filter([
+            'Relecture des sous-titres (créé via Lucy).',
+            'Client : '.$clientName,
+            $title !== '' ? 'Titre : '.$title : null,
+            '',
+            'Fiche vidéo : '.$videoUrl,
+        ]));
+
+        $payload = [
+            'data' => array_filter([
+                'name' => $name,
+                'notes' => $notes,
+                'workspace' => $workspaceGid,
+                'projects' => [$projectGid],
+                'assignee' => $assigneeGid,
+            ], static fn ($v) => $v !== null && $v !== ''),
+        ];
+
+        try {
+            $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => $payload,
+            ]);
+            $data = $resp->toArray(false);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $gid = $data['data']['gid'] ?? null;
+        if (!is_string($gid) || trim($gid) === '') {
+            return null;
+        }
+
+        return trim($gid);
+    }
 }
 

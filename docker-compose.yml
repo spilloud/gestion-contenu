@@ -31,6 +31,8 @@ services:
             - APP_DEBUG=0
             - APP_SECRET=${APP_SECRET:-change_me}
             - TRUSTED_PROXIES=private_ranges
+            # Temporaire : mettre 1 pour que le 403 API inclue les IP vues par Symfony (dépannage Lucy / whitelist).
+            - AI_API_DEBUG_IP=${AI_API_DEBUG_IP:-0}
             - MAILER_FROM=${MAILER_FROM:-noreply@osmose-marketing.ch}
             - ASANA_ACCESS_TOKEN=${ASANA_ACCESS_TOKEN:-}
             - ASANA_WORKSPACE_GID=${ASANA_WORKSPACE_GID:-}

@@ -1,0 +1,73 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Intégration API{% endblock %}
+
+{% block body %}
+<h1>Intégration API — Lucy & n8n</h1>
+<p style="font-size: 0.9rem; margin: -0.25rem 0 0.75rem;">
+    <strong>Page :</strong>
+    <a href="{{ path('app_admin_integration_api') }}">{{ url('app_admin_integration_api') }}</a>
+</p>
+<p style="color: var(--muted); max-width: 820px;">
+    Configurez le <strong>token</strong> et, si besoin, les <strong>IP autorisées</strong> (VPS n8n / Lucy).
+    Ces réglages sont lus en priorité par l’API ; le fichier <code>.env</code> du serveur sert de secours (variables <code>AI_API_TOKEN</code> / <code>AI_API_ALLOWED_IPS</code>).
+</p>
+
+{% for t in app.flashes('integration_luc_new_token') %}
+    <div class="flash-success" style="word-break: break-all;">
+        <strong>Token (copiez maintenant) :</strong><br>
+        <code id="new-token-value">{{ t }}</code>
+        <p style="margin: 0.5rem 0 0; font-size: 0.88rem;">Utilisez exactement cette valeur dans n8n (Header <code>Authorization: Bearer …</code> ou <code>X-API-Key</code>).</p>
+    </div>
+{% endfor %}
+
+<div style="display: grid; gap: 1.25rem; max-width: 720px; margin-top: 1rem;">
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 1rem;">
+        <h2 style="margin-top: 0; font-size: 1.05rem;">1. Clé API (token)</h2>
+        <p style="color: var(--muted); font-size: 0.9rem; margin-top: 0;">
+            {% if tokenSource == 'database' and config.apiToken %}
+                Token actuel enregistré ici : <code>{{ tokenMasked }}</code>
+            {% elseif tokenSource == 'env' and effectiveTokenSet %}
+                Aucun token en base : l’API utilise <strong>AI_API_TOKEN</strong> du serveur (fichier <code>.env</code> / Docker). Générez un token ci-dessous pour le gérer depuis l’interface.
+            {% else %}
+                <strong>Aucun token actif</strong> — l’API renverra 401. Générez un token ou définissez <code>AI_API_TOKEN</code> sur le serveur.
+            {% endif %}
+        </p>
+        <form method="post" style="display: inline;" onsubmit="return confirm('Un nouveau token invalide l’ancien pour l’API. Continuer ?');">
+            <input type="hidden" name="_token" value="{{ csrf_token('integration_luc') }}">
+            <input type="hidden" name="action" value="generate_token">
+            <button type="submit" class="btn">Générer un nouveau token</button>
+        </form>
+        {% if config.apiToken %}
+            <form method="post" style="display: inline; margin-left: 0.5rem;" onsubmit="return confirm('Supprimer le token en base ?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('integration_luc') }}">
+                <input type="hidden" name="action" value="clear_token">
+                <button type="submit" class="btn btn-sm" style="background: #64748b;">Supprimer le token (revenir au .env)</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 1rem;">
+        <h2 style="margin-top: 0; font-size: 1.05rem;">2. IP autorisées (optionnel)</h2>
+        <p style="color: var(--muted); font-size: 0.9rem;">Laissez vide pour accepter toute IP (recommandé seulement si le token est fort). Sinon : adresse <strong>publique</strong> du VPS n8n (ex. <code>203.0.113.10</code>), plusieurs IP séparées par des <strong>virgules</strong> sans espace.</p>
+        <form method="post">
+            <input type="hidden" name="_token" value="{{ csrf_token('integration_luc') }}">
+            <input type="hidden" name="action" value="save_ips">
+            <label for="allowed_ips" class="field-label" style="display: block; margin-bottom: 0.35rem;">IP du VPS Lucy / n8n</label>
+            <input type="text" id="allowed_ips" name="allowed_ips" value="{{ config.allowedIps|default('') }}" placeholder="ex. 198.51.100.7 ou 198.51.100.7,198.51.100.8" style="max-width: 100%; width: 100%; margin-bottom: 0.75rem;">
+            <button type="submit" class="btn">Enregistrer les IP</button>
+        </form>
+    </div>
+
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px; padding: 1rem;">
+        <h2 style="margin-top: 0; font-size: 1.05rem;">3. URLs API (même auth pour toutes)</h2>
+        <ul style="margin: 0; padding-left: 1.2rem; color: var(--text); line-height: 1.6;">
+            <li><strong>KPI (léger)</strong> : <code>{{ apiEndpoint }}</code></li>
+            <li><strong>Export métier complet</strong> (posts, clients, vidéos… + pagination <code>page</code> / <code>per_page</code>) : <code>{{ apiFullExportEndpoint }}</code></li>
+            <li><strong>Auth</strong> : header <code>Authorization: Bearer VOTRE_TOKEN</code> ou <code>X-API-Key: VOTRE_TOKEN</code></li>
+        </ul>
+        <p style="color: var(--muted); font-size: 0.88rem; margin-bottom: 0;">Test KPI : <code>curl -H "Authorization: Bearer VOTRE_TOKEN" "{{ apiEndpoint }}"</code></p>
+        <p style="color: var(--muted); font-size: 0.88rem; margin-bottom: 0;">Test export : <code>curl -H "Authorization: Bearer VOTRE_TOKEN" "{{ apiFullExportEndpoint }}"</code></p>
+    </div>
+</div>
+{% endblock %}

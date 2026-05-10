@@ -4,6 +4,7 @@ namespace App\Controller\Api;
 
 use App\Entity\Status;
 use App\Repository\ContentRepository;
+use App\Service\AiApiAccessChecker;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,18 +15,15 @@ class AiMetricsController extends AbstractController
 {
     public function __construct(
         private readonly ContentRepository $contentRepository,
+        private readonly AiApiAccessChecker $aiApiAccessChecker,
     ) {
     }
 
     #[Route('/dashboard-kpi', name: 'app_api_ai_dashboard_kpi', methods: ['GET'])]
     public function dashboardKpi(Request $request): JsonResponse
     {
-        if (!$this->isAuthorized($request)) {
-            return $this->json(['error' => 'Unauthorized'], 401);
-        }
-
-        if (!$this->isAllowedIp($request)) {
-            return $this->json(['error' => 'Forbidden'], 403);
+        if ($response = $this->aiApiAccessChecker->validate($request)) {
+            return $response;
         }
 
         $entityManager = $this->contentRepository->getEntityManager();
@@ -157,43 +155,5 @@ class AiMetricsController extends AbstractController
         ]);
     }
 
-    private function isAuthorized(Request $request): bool
-    {
-        $configuredToken = $this->readEnv('AI_API_TOKEN');
-        if ($configuredToken === '') {
-            return false;
-        }
-
-        $bearer = trim((string) preg_replace('/^Bearer\s+/i', '', (string) $request->headers->get('Authorization')));
-        $apiKey = trim((string) $request->headers->get('X-API-Key'));
-        $providedToken = $bearer !== '' ? $bearer : $apiKey;
-        if ($providedToken === '') {
-            return false;
-        }
-
-        return hash_equals($configuredToken, $providedToken);
-    }
-
-    private function isAllowedIp(Request $request): bool
-    {
-        $raw = $this->readEnv('AI_API_ALLOWED_IPS');
-        if ($raw === '') {
-            return true;
-        }
-
-        $allowedIps = array_values(array_filter(array_map('trim', explode(',', $raw))));
-        if ($allowedIps === []) {
-            return true;
-        }
-
-        $clientIp = (string) $request->getClientIp();
-        return in_array($clientIp, $allowedIps, true);
-    }
-
-    private function readEnv(string $name): string
-    {
-        $value = $_SERVER[$name] ?? $_ENV[$name] ?? '';
-        return is_string($value) ? trim($value) : '';
-    }
 }
 

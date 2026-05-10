@@ -265,12 +265,14 @@
             <a href="{{ path('app_calendar') }}" class="{{ app.request.attributes.get('_route') == 'app_calendar' ? 'active' : '' }}">Calendrier des contenus</a>
             <a href="{{ path('app_videos_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_videos_' ? 'active' : '' }}">Vidéos</a>
             <a href="{{ path('app_derush_index') }}" class="{{ app.request.attributes.get('_route') == 'app_derush_index' ? 'active' : '' }}">Dérush vidéo</a>
+            <a href="{{ path('app_reports_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_reports_' ? 'active' : '' }}">Rapports</a>
             <a href="{{ path('app_clients_table') }}" class="{{ app.request.attributes.get('_route') == 'app_clients_table' ? 'active' : '' }}">Clients sous gestion</a>
             <h3>Admin</h3>
             <a href="{{ path('app_admin_cm_index') }}">Community Managers</a>
             <a href="{{ path('app_admin_client_index') }}">Clients</a>
             {% if 'ROLE_ADMIN' in app.user.roles %}
                 <a href="{{ path('app_admin_user_index') }}">Utilisateurs</a>
+                <a href="{{ path('app_admin_integration_api') }}" class="{{ app.request.attributes.get('_route') in ['app_admin_integration_api', 'app_admin_integration_luc'] ? 'active' : '' }}">Intégration API</a>
             {% endif %}
             <a href="{{ path('app_admin_status_format_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_admin_status_' or app.request.attributes.get('_route') starts with 'app_admin_format_' or app.request.attributes.get('_route') == 'app_admin_status_format_index' ? 'active' : '' }}">Statuts et formats</a>
             <hr class="divider">

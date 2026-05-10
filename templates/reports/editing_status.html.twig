@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rapport montages — {{ client.name }} | Osmose</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --text: #0b1220;
+            --muted: #334155;
+            --border: #d7dee8;
+            --card: #ffffff;
+            --accent: #5b21b6;
+            --accent-2: #2f1b5f;
+            --frame: #6b7280;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, "Public Sans", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 9pt;
+            font-weight: 400;
+        }
+        .wrap { max-width: 1040px; margin: 0 auto; padding: 14px 12px 24px; }
+        .sheet {
+            border: 0;
+            border-radius: 0;
+            padding: 0;
+        }
+        .header {
+            background: #f3f4f6;
+            color: var(--text);
+            border-radius: 14px;
+            padding: 14px 14px;
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            gap: 14px;
+            align-items: center;
+            border: 1px solid var(--frame);
+        }
+        .header img {
+            width: 170px;
+            height: auto;
+            object-fit: contain;
+            /* Violet + noir depuis le logo blanc: rendu propre sur fond clair */
+            filter: brightness(0) saturate(100%) invert(18%) sepia(78%) saturate(3550%) hue-rotate(262deg) brightness(88%) contrast(110%);
+        }
+        .header h1 { margin: 0; font-size: 10pt; letter-spacing: 0.2px; font-weight: 600; }
+        .header .meta { margin-top: 6px; display: grid; gap: 2px; color: #111827; font-size: 8.5pt; }
+        .header .meta strong { font-weight: 600; }
+
+        .card { margin-top: 12px; background: var(--card); border: 0; padding: 0; }
+        .subtle { color: var(--muted); font-size: 8.5pt; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid var(--frame);
+        }
+        thead th {
+            background: #f8fafc;
+            color: var(--text);
+            font-size: 8pt;
+            text-align: left;
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--frame);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+        }
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+            font-size: 8.5pt;
+            font-weight: 400;
+        }
+        tbody tr:nth-child(2n) td { background: #fbfdff; }
+        .col-title { font-weight: 500; }
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--frame);
+            background: #f9fafb;
+            font-size: 8pt;
+            color: #0b1220;
+            font-weight: 500;
+        }
+        .xcell {
+            text-align: center;
+            width: 92px;
+            white-space: nowrap;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: 0.04em;
+        }
+        .xcell .x { display: inline-block; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border); line-height: 20px; font-size: 9pt; }
+        .xcell .x.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .footer {
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            color: var(--muted);
+            font-size: 8pt;
+            border-top: 1px solid var(--border);
+            padding-top: 10px;
+        }
+
+        @page {
+            margin: 14mm;
+        }
+
+        @media print {
+            body { background: #fff; }
+            .wrap { padding: 8mm; }
+            .sheet { border: 0; border-radius: 0; padding: 0; }
+            .header { box-shadow: none; border-radius: 0; border: 1px solid #6b7280; }
+            .card { border: 0; padding: 0; }
+            .footer { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="sheet">
+    <div class="header">
+        <div>
+            <img src="{{ absolute_url(asset('logo-site-blanc.svg')) }}" alt="Osmose">
+        </div>
+        <div>
+            <h1>Point de situation des montages</h1>
+            <div class="meta">
+                <div><strong>Client :</strong> {{ client.name }}</div>
+                <div><strong>Généré par :</strong> {{ generatedBy }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="subtle" style="margin-bottom: 10px;">
+            {{ items|length }} vidéo(s) — {{ periodLabel }}.
+        </div>
+
+        <table>
+            <thead>
+            <tr>
+                <th style="width: 54%;">Vidéo</th>
+                <th style="width: 26%;">Statut</th>
+                {% for stage in stages %}
+                    <th class="xcell">{{ stage.label }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in items %}
+                {% set statusName = item.status ? item.status.name : '' %}
+                <tr>
+                    <td class="col-title">{{ item.title }}</td>
+                    <td><span class="badge">{{ statusName ?: '—' }}</span></td>
+                    {% for stage in stages %}
+                        {% set isOn = stage.doneIfIn is defined ? (statusName in stage.doneIfIn) : (statusName not in stage.doneIfNotIn) %}
+                        <td class="xcell">
+                            <span class="x {{ isOn ? 'on' : '' }}">{{ isOn ? 'X' : '' }}</span>
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="{{ 2 + (stages|length) }}" style="padding: 14px; color: var(--muted);">
+                        Aucune vidéo trouvée pour cette période.
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <div>Outil de gestion de contenu — Osmose Marketing</div>
+            <div>État au : {{ generatedAt|date('d.m.Y') }}</div>
+        </div>
+    </div>
+    </div>
+</div>
+</body>
+</html>
+

@@ -1,0 +1,68 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Rapports{% endblock %}
+
+{% block body %}
+<h1>Rapports</h1>
+<p style="color: var(--muted); max-width: 820px;">
+    Génère un <strong>point de situation des montages</strong> par client. Le rapport s’ouvre dans une nouvelle fenêtre, prêt à imprimer / enregistrer en PDF.
+</p>
+
+<div style="display: grid; gap: 1rem; max-width: 720px;">
+    <form method="get" action="{{ path('app_reports_editing_status') }}" target="_blank" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 0.9rem; padding: 1rem;">
+        <div style="display: grid; gap: 0.9rem;">
+            <div>
+                <label for="client_id">Client</label>
+                <select id="client_id" name="client_id" required>
+                    <option value="">— Choisir —</option>
+                    {% for client in clients %}
+                        <option value="{{ client.id }}">{{ client.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="range">Plage de dates</label>
+                <select id="range" name="range">
+                    <option value="all">Toutes les dates</option>
+                    <option value="1m">Dernier mois</option>
+                    <option value="3m">3 derniers mois</option>
+                    <option value="custom">Personnalisée</option>
+                </select>
+            </div>
+
+            <div id="customDates" style="display:none; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+                <div>
+                    <label for="from">Du</label>
+                    <input id="from" name="from" type="date">
+                </div>
+                <div>
+                    <label for="to">Au</label>
+                    <input id="to" name="to" type="date">
+                </div>
+            </div>
+
+            <div style="display:flex; gap: 0.7rem; align-items:center; flex-wrap: wrap;">
+                <button class="btn" type="submit">Ouvrir le rapport</button>
+                <span style="color: var(--muted); font-size: 0.9rem;">Astuce : dans la fenêtre du rapport, tu peux faire “Imprimer” → “Enregistrer en PDF”.</span>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    (function () {
+        var range = document.getElementById('range');
+        var custom = document.getElementById('customDates');
+        var toggle = function () {
+            if (!range || !custom) return;
+            custom.style.display = (range.value === 'custom') ? 'grid' : 'none';
+        };
+        if (range) {
+            range.addEventListener('change', toggle);
+            toggle();
+        }
+    })();
+</script>
+{% endblock %}
+

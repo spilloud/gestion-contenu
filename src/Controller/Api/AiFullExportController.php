@@ -56,7 +56,11 @@ class AiFullExportController extends AbstractController
         $formats = $this->formatRepository->findAllOrdered();
         $statuses = $this->statusRepository->findAllOrdered();
         $communityManagers = $this->communityManagerRepository->findAllOrderedByName();
-        $clients = $this->clientRepository->findAllOrderedByClientNameIncludingArchived();
+        // Sur main distant, findAllOrderedByClientNameIncludingArchived / Client::isArchived peuvent être absents ;
+        // on reste compatible avec les deux versions du dépôt.
+        $clients = method_exists($this->clientRepository, 'findAllOrderedByClientNameIncludingArchived')
+            ? $this->clientRepository->findAllOrderedByClientNameIncludingArchived()
+            : $this->clientRepository->findAllOrderedByClientName();
 
         $users = $this->userRepository->createQueryBuilder('u')
             ->orderBy('u.name', 'ASC')
@@ -171,7 +175,7 @@ class AiFullExportController extends AbstractController
             'id' => $c->getId(),
             'name' => $c->getName(),
             'asanaProjectGid' => $c->getAsanaProjectGid(),
-            'isArchived' => $c->isArchived(),
+            'isArchived' => method_exists($c, 'isArchived') ? $c->isArchived() : false,
             'communityManager' => $c->getCommunityManager() !== null
                 ? $this->serializeCommunityManager($c->getCommunityManager())
                 : null,

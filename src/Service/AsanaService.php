@@ -52,35 +52,45 @@ class AsanaService
         }
 
         $clientName = $client?->getName() ?? 'Sans client';
-        $title = $content->getTitle() ?? '';
-        $name = trim($clientName.' — '.$title);
-        if ($name === '—') {
-            $name = 'Vidéo';
-        }
+        $title = trim((string) ($content->getTitle() ?? ''));
+        // Titre Asana: Projet (client) + nom de la vidéo.
+        $name = trim($clientName.' — '.($title !== '' ? $title : 'Vidéo'));
 
-        $scheduled = $content->getScheduledDate();
-        $dueOn = $scheduled instanceof \DateTimeInterface ? $scheduled->format('Y-m-d') : null;
+        // Délai montage: J+2 (indépendant de la date planifiée du calendrier).
+        $dueAt = (new \DateTimeImmutable('today'))->modify('+2 days');
+        $dueOn = $dueAt->format('Y-m-d');
+        $dueLabelFr = $dueAt->format('d/m/Y');
+
+        $links = array_filter([
+            $content->getVideoRushesUrl() ? 'Rushs (KDrive) : '.$content->getVideoRushesUrl() : null,
+            $content->getVideoEditUrl() ? 'Montage (KDrive) : '.$content->getVideoEditUrl() : null,
+            $content->getVideoFinalUrl() ? 'Final (KDrive) : '.$content->getVideoFinalUrl() : null,
+            $content->getVideoThumbnailUrl() ? 'Miniature (KDrive) : '.$content->getVideoThumbnailUrl() : null,
+            $content->getVideoSubmagicUrl() ? 'SubMagic : '.$content->getVideoSubmagicUrl() : null,
+        ]);
 
         $notes = implode("\n", array_filter([
             'Vidéo créée depuis Gestion des contenus.',
             'Client : '.$clientName,
-            $title !== '' ? 'Titre : '.$title : null,
-            $dueOn ? 'Date prévue : '.$dueOn : null,
+            'Échéance (J+2) : le '.$dueLabelFr.' — due_on Asana '.$dueOn.'.',
             'Sous-titres : '.(($content->getVideoHasSubtitles() ?? false) ? 'Oui' : 'Non'),
             '',
-            'Fiche vidéo : '.$videoUrl,
+            $links !== [] ? "Liens :\n- ".implode("\n- ", $links) : null,
+            $links !== [] ? '' : null,
+            'Outil (fiche vidéo) : '.$videoUrl,
         ]));
 
-        $payload = [
-            'data' => array_filter([
-                'name' => $name,
-                'notes' => $notes,
-                'workspace' => $workspaceGid,
-                'projects' => [$projectGid],
-                'assignee' => $assigneeGid,
-                'due_on' => $dueOn,
-            ], static fn ($v) => $v !== null && $v !== ''),
+        $taskData = [
+            'name' => $name.' — échéance J+2 ('.$dueLabelFr.')',
+            'notes' => $notes,
+            'workspace' => $workspaceGid,
+            'projects' => [$projectGid],
+            'due_on' => $dueOn,
         ];
+        if ($assigneeGid !== null && trim((string) $assigneeGid) !== '') {
+            $taskData['assignee'] = trim((string) $assigneeGid);
+        }
+        $payload = ['data' => $taskData];
 
         try {
             $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
@@ -170,26 +180,42 @@ class AsanaService
             : ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '' ? trim($fallbackAssigneeGid) : null);
 
         $clientName = $client?->getName() ?? 'Sans client';
-        $title = $content->getTitle() ?? '';
-        $name = trim('Relecture sous-titres — '.$clientName.' — '.$title);
+        $title = trim((string) ($content->getTitle() ?? ''));
+        $baseName = trim('Relecture sous-titres — '.($title !== '' ? $title : $clientName));
+
+        // Délai relecture sous-titres: toujours J+1 (date calendaire serveur → due_on Asana).
+        $dueAt = (new \DateTimeImmutable('today'))->modify('+1 day');
+        $dueOn = $dueAt->format('Y-m-d');
+        $dueLabelFr = $dueAt->format('d/m/Y');
+        $name = $baseName.' — échéance J+1 ('.$dueLabelFr.')';
+
+        $links = array_filter([
+            $content->getVideoEditUrl() ? 'Montage (KDrive) : '.$content->getVideoEditUrl() : null,
+            $content->getVideoFinalUrl() ? 'Final (KDrive) : '.$content->getVideoFinalUrl() : null,
+            $content->getVideoSubmagicUrl() ? 'SubMagic : '.$content->getVideoSubmagicUrl() : null,
+        ]);
 
         $notes = implode("\n", array_filter([
-            'Relecture des sous-titres (créé via Lucy).',
+            'Relecture des sous-titres (Gestion des contenus).',
+            'Échéance impérative : J+1 — le '.$dueLabelFr.' (due_on Asana : '.$dueOn.').',
             'Client : '.$clientName,
-            $title !== '' ? 'Titre : '.$title : null,
             '',
-            'Fiche vidéo : '.$videoUrl,
+            $links !== [] ? "Liens :\n- ".implode("\n- ", $links) : null,
+            $links !== [] ? '' : null,
+            'Outil (fiche vidéo) : '.$videoUrl,
         ]));
 
-        $payload = [
-            'data' => array_filter([
-                'name' => $name,
-                'notes' => $notes,
-                'workspace' => $workspaceGid,
-                'projects' => [$projectGid],
-                'assignee' => $assigneeGid,
-            ], static fn ($v) => $v !== null && $v !== ''),
+        $taskData = [
+            'name' => $name,
+            'notes' => $notes,
+            'workspace' => $workspaceGid,
+            'projects' => [$projectGid],
+            'due_on' => $dueOn,
         ];
+        if ($assigneeGid !== null && trim($assigneeGid) !== '') {
+            $taskData['assignee'] = trim($assigneeGid);
+        }
+        $payload = ['data' => $taskData];
 
         try {
             $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [

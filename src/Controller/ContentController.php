@@ -151,7 +151,9 @@ class ContentController extends AbstractController
             $this->addFlash('success', 'Contenu supprimé.');
         }
 
-        return $this->redirectToRoute('app_calendar');
+        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request);
+
+        return $returnTo !== null ? $this->redirect($returnTo) : $this->redirectToRoute('app_calendar');
     }
 
     #[Route('/{id}/deplacer', name: 'app_content_move', requirements: ['id' => '\d+'], methods: ['POST'])]

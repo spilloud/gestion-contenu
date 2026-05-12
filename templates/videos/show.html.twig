@@ -2,70 +2,368 @@
 
 {% block title %}Vidéo — {{ content.title }}{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        .video-fiche { max-width: 920px; }
+        .video-fiche__topnav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            font-size: 0.88rem;
+        }
+        .video-fiche__topnav a { color: var(--accent, #5b21b6); }
+        .video-fiche__summary {
+            position: sticky;
+            top: 3.75rem;
+            z-index: 8;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1rem 1.1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+        }
+        body.theme-dark .video-fiche__summary {
+            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+        }
+        .video-fiche__summary-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem;
+            line-height: 1.3;
+        }
+        .video-fiche__summary-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem 1rem;
+            font-size: 0.86rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+        }
+        .video-fiche__summary-meta strong { color: var(--text); font-weight: 600; }
+        .video-fiche__anchor-nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--card-border);
+        }
+        .video-fiche__anchor-nav a {
+            color: var(--muted);
+            text-decoration: none;
+            padding: 0.2rem 0.45rem;
+            border-radius: 6px;
+        }
+        .video-fiche__anchor-nav a:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+        .video-fiche__section {
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1rem 1.1rem 1.15rem;
+            margin-bottom: 1.1rem;
+            background: var(--card-bg);
+        }
+        .video-fiche__section-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-bottom: 0.85rem;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .video-fiche__section-head h2 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+        }
+        .video-fiche__section-kicker {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .video-fiche__hint {
+            font-size: 0.86rem;
+            color: var(--muted);
+            margin: -0.35rem 0 0.85rem;
+            line-height: 1.45;
+            padding: 0.55rem 0.65rem;
+            background: var(--bg);
+            border-radius: 8px;
+            border-left: 3px solid var(--sidebar-active, #4c1d95);
+        }
+        .video-fiche__field-with-link {
+            margin-bottom: 1rem;
+        }
+        .video-fiche__field-with-link .link-open-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.35rem;
+        }
+        .video-fiche__field-with-link .link-open-row a {
+            font-size: 0.82rem;
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+            background: var(--bg);
+            color: var(--text);
+            text-decoration: none;
+        }
+        .video-fiche__field-with-link .link-open-row a:hover {
+            border-color: var(--sidebar-active);
+            color: var(--sidebar-active);
+        }
+        .video-fiche__empty-hint {
+            font-size: 0.82rem;
+            color: var(--muted);
+            font-style: italic;
+            margin-top: 0.35rem;
+        }
+        .video-fiche__save-bar {
+            position: sticky;
+            bottom: 0;
+            z-index: 8;
+            margin: 1.25rem -0.25rem 0;
+            padding: 0.75rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            align-items: center;
+            box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
+        }
+        body.theme-dark .video-fiche__save-bar {
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+        }
+        .video-fiche__comments {
+            max-width: 720px;
+        }
+        .video-fiche__comments h2 { margin-top: 0; }
+        .video-fiche__danger {
+            margin-top: 2rem;
+            padding: 1rem 1.1rem;
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            background: #fef2f2;
+            max-width: 720px;
+        }
+        body.theme-dark .video-fiche__danger {
+            border-color: #7f1d1d;
+            background: rgba(127, 29, 29, 0.2);
+        }
+        .video-fiche__danger h2 { font-size: 1rem; margin: 0 0 0.5rem; color: #b91c1c; }
+        body.theme-dark .video-fiche__danger h2 { color: #fca5a5; }
+        .video-fiche__hidden-fields {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+    </style>
+{% endblock %}
+
 {% block body %}
-<h1>Vidéo — {{ content.title }}</h1>
-<p style="color: var(--muted);">
-    Client : <strong>{{ content.client.name }}</strong> · Date publication : <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong>
-</p>
+{% set statusName = content.status ? content.status.name : '' %}
+{% set statusHints = {
+    'Brouillon (Dérush)': 'Les rushs sont à déposer ; faites avancer vers le montage lorsque le matériel est prêt.',
+    'Montage à faire': 'Le monteur réalise le montage. Gardez les liens KDrive (rush / montage) à jour pour toute l’équipe.',
+    'À valider (Prod)': 'Contrôle production : valider ou demander des retours avant diffusion.',
+    'Sous-titres à valider': 'La CM doit relire les sous-titres ; vérifier SubMagic / fichier final si besoin.',
+} %}
+{% set statusHint = statusHints[statusName]|default('Faites évoluer le statut selon l’étape réelle du projet.') %}
 
-<p>
-    <a href="{{ returnTo|default(path('app_videos_index')) }}">← Retour</a>
-    ·
-    <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Voir dans le calendrier</a>
-</p>
-
-{{ form_start(form) }}
-<input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
-{{ form_row(form.title) }}
-{{ form_row(form.scheduledDate) }}
-{{ form_row(form.client) }}
-{{ form_row(form.format) }}
-{{ form_row(form.status) }}
-{{ form_row(form.notes) }}
-<div class="subtitles-field-row">
-    <span class="field-label" id="label-video-subtitles">Sous-titres</span>
-    <label class="toggle-switch" aria-labelledby="label-video-subtitles">
-        {{ form_widget(form.videoHasSubtitles) }}
-        <span class="toggle-switch-ui" aria-hidden="true"></span>
-    </label>
-</div>
-{{ form_errors(form.videoHasSubtitles) }}
-{{ form_row(form.videoEditor) }}
-{{ form_row(form.videoRushesUrl) }}
-{{ form_row(form.videoEditUrl) }}
-{{ form_row(form.videoEditFilename) }}
-{{ form_row(form.videoSubmagicUrl) }}
-{{ form_row(form.videoFinalUrl) }}
-{{ form_row(form.videoFinalFilename) }}
-{{ form_row(form.videoThumbnailUrl) }}
-{{ form_row(form.videoCaption) }}
-{{ form_rest(form) }}
-<button type="submit" class="btn">Enregistrer</button>
-{{ form_end(form, { render_rest: false }) }}
-
-<hr style="margin: 1.5rem 0;">
-<h2>Retours / discussion</h2>
-{% if content.comments is empty %}
-    <p style="color: var(--muted);">Aucun retour pour le moment.</p>
-{% else %}
-    <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
-        {% for c in content.comments %}
-            <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--card-bg);">
-                <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
-                    <div>
-                        <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
-                    </div>
-                    <div>{{ c.createdAt|date('d/m/Y H:i') }}</div>
-                </div>
-                <div style="white-space: pre-wrap;">{{ c.message }}</div>
-            </div>
-        {% endfor %}
+<div class="video-fiche">
+    <div class="video-fiche__topnav">
+        <a href="{{ returnTo|default(path('app_videos_index')) }}">← Retour</a>
+        <span style="color: var(--card-border);">·</span>
+        <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Voir dans le calendrier</a>
+        <span style="color: var(--card-border);">·</span>
+        <a href="#retours-discussion">Retours / discussion</a>
     </div>
-{% endif %}
 
-<form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem; max-width: 780px;">
-    <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
-    <textarea name="message" rows="4" placeholder="Ajouter un retour (prod/CM)..." style="width: 100%;"></textarea>
-    <button type="submit" class="btn">Ajouter un commentaire</button>
-</form>
+    <header class="video-fiche__summary" aria-label="Résumé de la vidéo">
+        <p class="video-fiche__summary-title">{{ content.title }}</p>
+        <div class="video-fiche__summary-meta">
+            <span>Client : <strong>{{ content.client.name }}</strong></span>
+            <span>Publication : <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
+            {% if content.videoEditor %}
+                <span>Monteur : <strong>{{ content.videoEditor.name }}</strong></span>
+            {% else %}
+                <span>Monteur : <strong>—</strong></span>
+            {% endif %}
+            <span>Sous-titres : <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
+        </div>
+        <div>
+            {% if content.status %}
+                <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
+            {% else %}
+                <span class="status-badge status-gray">—</span>
+            {% endif %}
+        </div>
+        <nav class="video-fiche__anchor-nav" aria-label="Accès rapide aux sections">
+            <a href="#bloc-pilotage">Pilotage</a>
+            <a href="#bloc-fichiers">Fichiers & liens</a>
+            <a href="#bloc-texte">Notes & légende</a>
+            <a href="#retours-discussion">Retours</a>
+        </nav>
+    </header>
+
+    {{ form_start(form) }}
+    <input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
+
+    <section id="bloc-pilotage" class="video-fiche__section">
+        <div class="video-fiche__section-head">
+            <h2>Pilotage</h2>
+            <span class="video-fiche__section-kicker">Workflow</span>
+        </div>
+        <p class="video-fiche__hint"><strong>Étape actuelle :</strong> {{ statusName ?: '—' }} — {{ statusHint }}</p>
+
+        {{ form_row(form.title) }}
+        {{ form_row(form.client) }}
+        {{ form_row(form.scheduledDate) }}
+        {{ form_row(form.format) }}
+        {{ form_row(form.status) }}
+        {{ form_row(form.videoEditor) }}
+        <div class="subtitles-field-row">
+            <span class="field-label" id="label-video-subtitles">Sous-titres</span>
+            <label class="toggle-switch" aria-labelledby="label-video-subtitles">
+                {{ form_widget(form.videoHasSubtitles) }}
+                <span class="toggle-switch-ui" aria-hidden="true"></span>
+            </label>
+        </div>
+        {{ form_errors(form.videoHasSubtitles) }}
+    </section>
+
+    <section id="bloc-fichiers" class="video-fiche__section">
+        <div class="video-fiche__section-head">
+            <h2>Fichiers & liens</h2>
+            <span class="video-fiche__section-kicker">Liens</span>
+        </div>
+
+        <div class="video-fiche__field-with-link">
+            {{ form_label(form.videoRushesUrl, 'Lien des rushs') }}
+            {{ form_widget(form.videoRushesUrl) }}
+            {{ form_errors(form.videoRushesUrl) }}
+            {% if content.videoRushesUrl %}
+                <div class="link-open-row">
+                    <a href="{{ content.videoRushesUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir les rushs ↗</a>
+                </div>
+            {% else %}
+                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+            {% endif %}
+        </div>
+
+        <div class="video-fiche__field-with-link">
+            {{ form_label(form.videoSubmagicUrl, 'Lien SubMagic') }}
+            {{ form_widget(form.videoSubmagicUrl) }}
+            {{ form_errors(form.videoSubmagicUrl) }}
+            {% if content.videoSubmagicUrl %}
+                <div class="link-open-row">
+                    <a href="{{ content.videoSubmagicUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir SubMagic ↗</a>
+                </div>
+            {% else %}
+                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+            {% endif %}
+        </div>
+
+        <div class="video-fiche__field-with-link">
+            {{ form_label(form.videoFinalUrl, 'Lien final (KDrive)') }}
+            {{ form_widget(form.videoFinalUrl) }}
+            {{ form_errors(form.videoFinalUrl) }}
+            {% if content.videoFinalUrl %}
+                <div class="link-open-row">
+                    <a href="{{ content.videoFinalUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir le final ↗</a>
+                </div>
+            {% else %}
+                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+            {% endif %}
+        </div>
+
+        {# Champs conservés en base mais non affichés sur cette fiche (évite d'écraser les données à l'enregistrement) #}
+        <div class="video-fiche__hidden-fields" aria-hidden="true">
+            {{ form_widget(form.videoEditUrl) }}
+            {{ form_widget(form.videoEditFilename) }}
+            {{ form_widget(form.videoFinalFilename) }}
+            {{ form_widget(form.videoThumbnailUrl) }}
+        </div>
+    </section>
+
+    <section id="bloc-texte" class="video-fiche__section">
+        <div class="video-fiche__section-head">
+            <h2>Notes & légende</h2>
+            <span class="video-fiche__section-kicker">Texte</span>
+        </div>
+        {{ form_row(form.notes) }}
+        {{ form_row(form.videoCaption) }}
+    </section>
+
+    {{ form_rest(form) }}
+
+    <div class="video-fiche__save-bar">
+        <button type="submit" class="btn">Enregistrer les modifications</button>
+    </div>
+
+    {{ form_end(form, { render_rest: false }) }}
+
+    <section id="retours-discussion" class="video-fiche__section video-fiche__comments">
+        <div class="video-fiche__section-head">
+            <h2>Retours / discussion</h2>
+            <span class="video-fiche__section-kicker">Équipe</span>
+        </div>
+        {% if content.comments is empty %}
+            <p style="color: var(--muted); margin-top: 0;">Aucun retour pour le moment.</p>
+        {% else %}
+            <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+                {% for c in content.comments %}
+                    <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--bg);">
+                        <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
+                            <div>
+                                <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
+                            </div>
+                            <div>{{ c.createdAt|date('d/m/Y H:i') }}</div>
+                        </div>
+                        <div style="white-space: pre-wrap;">{{ c.message }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem;">
+            <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
+            <label for="video-comment-message" class="field-label" style="margin-bottom: 0;">Ajouter un retour</label>
+            <textarea id="video-comment-message" name="message" rows="4" placeholder="Message pour prod, CM ou monteur…" style="width: 100%; max-width: 100%;"></textarea>
+            <button type="submit" class="btn">Publier le commentaire</button>
+        </form>
+    </section>
+
+    <section class="video-fiche__danger" aria-labelledby="video-delete-heading">
+        <h2 id="video-delete-heading">Supprimer ce contenu</h2>
+        <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">
+            Retire définitivement cette fiche vidéo (liens, commentaires, liaisons). Action irréversible.
+        </p>
+        <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" onsubmit="return confirm('Supprimer définitivement cette vidéo et tout son historique ?\\n\\nCette action est irréversible.');">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
+            <input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
+            <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
+        </form>
+    </section>
+</div>
 {% endblock %}

@@ -12,6 +12,7 @@
             <th style="padding: 0.75rem; text-align: left;">Nom</th>
             <th style="padding: 0.75rem; text-align: left;">Community Manager</th>
             <th style="padding: 0.75rem; text-align: left;">Monteur</th>
+            <th style="padding: 0.75rem; text-align: left;">Statut</th>
             <th style="padding: 0.75rem; text-align: left;">Actions</th>
         </tr>
     </thead>
@@ -22,8 +23,26 @@
                 <td style="padding: 0.75rem;">{{ client.communityManager ? client.communityManager.name : '—' }}</td>
                 <td style="padding: 0.75rem;">{{ client.editor ? client.editor.name : '—' }}</td>
                 <td style="padding: 0.75rem;">
+                    {% if client.isArchived %}
+                        <span class="status-badge status-gray">Archivé</span>
+                    {% else %}
+                        <span class="status-badge status-lightgreen">Actif</span>
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem;">
                     <a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Voir</a>
                     <a href="{{ path('app_admin_client_edit', {id: client.id}) }}" class="btn btn-sm">Modifier</a>
+                    {% if client.isArchived %}
+                        <form method="post" action="{{ path('app_admin_client_unarchive', {id: client.id}) }}" style="display: inline;" onsubmit="return confirm('Réactiver ce client ? Il réapparaîtra partout.');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('unarchive_client_' ~ client.id) }}">
+                            <button type="submit" class="btn btn-sm" style="background:#334155;">Désarchiver</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{{ path('app_admin_client_archive', {id: client.id}) }}" style="display: inline;" onsubmit="return confirm('Archiver ce client ? Il ne sortira plus dans les listes et menus.');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('archive_client_' ~ client.id) }}">
+                            <button type="submit" class="btn btn-sm" style="background:#64748b;">Archiver</button>
+                        </form>
+                    {% endif %}
                     {% if clients|length > 1 %}
                         <a href="{{ path('app_admin_client_merge', {id: client.id}) }}" class="btn btn-sm" style="background:#0f766e;">Fusionner</a>
                     {% endif %}
@@ -34,7 +53,7 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="4" style="padding: 1rem; color: #999;">Aucun client. Créez d'abord un Community Manager.</td></tr>
+            <tr><td colspan="5" style="padding: 1rem; color: #999;">Aucun client. Créez d'abord un Community Manager.</td></tr>
         {% endfor %}
     </tbody>
 </table>

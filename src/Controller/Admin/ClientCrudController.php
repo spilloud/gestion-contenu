@@ -28,7 +28,7 @@ class ClientCrudController extends AbstractController
     public function index(): Response
     {
         $clients = $this->entityManager->getRepository(Client::class)
-            ->findAllOrderedByClientName();
+            ->findAllOrderedByClientNameIncludingArchived();
 
         return $this->render('admin/client/index.html.twig', [
             'clients' => $clients,
@@ -130,7 +130,7 @@ class ClientCrudController extends AbstractController
     #[Route('/{id}/fusionner', name: 'app_admin_client_merge', requirements: ['id' => '\\d+'], methods: ['GET', 'POST'])]
     public function merge(Client $client, Request $request, ClientRepository $clientRepository): Response
     {
-        $all = $clientRepository->findAllOrderedByClientName();
+        $all = $clientRepository->findAllOrderedByClientNameIncludingArchived();
         $targets = array_values(array_filter($all, static fn (Client $c) => $c->getId() !== $client->getId()));
         if ($targets === []) {
             $this->addFlash('error', 'Il faut au moins deux clients pour fusionner.');
@@ -183,6 +183,36 @@ class ClientCrudController extends AbstractController
             'targets' => $targets,
             'contentCount' => $contentCount,
         ]);
+    }
+
+    #[Route('/{id}/archiver', name: 'app_admin_client_archive', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function archive(Client $client, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('archive_client_'.$client->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+            return $this->redirectToRoute('app_admin_client_index');
+        }
+
+        $client->setIsArchived(true);
+        $this->entityManager->flush();
+        $this->addFlash('success', sprintf('Client « %s » archivé.', $client->getName() ?? ''));
+
+        return $this->redirectToRoute('app_admin_client_index');
+    }
+
+    #[Route('/{id}/desarchiver', name: 'app_admin_client_unarchive', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function unarchive(Client $client, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('unarchive_client_'.$client->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+            return $this->redirectToRoute('app_admin_client_index');
+        }
+
+        $client->setIsArchived(false);
+        $this->entityManager->flush();
+        $this->addFlash('success', sprintf('Client « %s » réactivé.', $client->getName() ?? ''));
+
+        return $this->redirectToRoute('app_admin_client_index');
     }
 
     private function mergeClientInto(Client $source, Client $target): void

@@ -22,6 +22,9 @@ class Client
     #[ORM\Column(length: 32, nullable: true)]
     private ?string $asanaProjectGid = null;
 
+    #[ORM\Column(options: ['default' => false])]
+    private bool $isArchived = false;
+
     #[ORM\ManyToOne(inversedBy: 'clients')]
     #[ORM\JoinColumn(nullable: false)]
     private ?CommunityManager $communityManager = null;
@@ -71,6 +74,18 @@ class Client
     public function setAsanaProjectGid(?string $asanaProjectGid): static
     {
         $this->asanaProjectGid = $asanaProjectGid === null ? null : trim($asanaProjectGid);
+
+        return $this;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->isArchived;
+    }
+
+    public function setIsArchived(bool $isArchived): static
+    {
+        $this->isArchived = $isArchived;
 
         return $this;
     }

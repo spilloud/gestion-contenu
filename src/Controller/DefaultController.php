@@ -295,10 +295,12 @@ class DefaultController extends AbstractController
         $statusMontageAFaire = $statusRepository->findOneBy(['name' => 'Montage à faire']);
         $statusMontageAControler = $statusRepository->findOneBy(['name' => 'À valider (Prod)']);
         $statusSousTitresRelire = $statusRepository->findOneBy(['name' => 'Sous-titres à valider']);
+        $statusAValiderClient = $statusRepository->findOneBy(['name' => 'À faire valider au client']);
 
         $montagesAFaire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAFaire, $visibleClientIds, 12);
         $montagesAControler = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAControler, $visibleClientIds, 12);
         $soustitresARelire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusSousTitresRelire, $visibleClientIds, 12);
+        $videosAValiderClient = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusAValiderClient, $visibleClientIds, 12);
 
         return $this->render('dashboard/index.html.twig', [
             'totalClients' => $totalClients,
@@ -327,6 +329,7 @@ class DefaultController extends AbstractController
             'montagesAFaire' => $montagesAFaire,
             'montagesAControler' => $montagesAControler,
             'soustitresARelire' => $soustitresARelire,
+            'videosAValiderClient' => $videosAValiderClient,
         ]);
     }
 

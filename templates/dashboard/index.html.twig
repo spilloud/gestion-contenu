@@ -140,7 +140,7 @@
     }
     .todo-columns {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 1rem;
         margin-bottom: 1rem;
     }
@@ -230,6 +230,24 @@
         {% else %}
             <ul class="priority-list">
                 {% for item in soustitresARelire %}
+                    <li>
+                        <strong>{{ item.title }}</strong><br>
+                        <em>{{ item.client.name }}</em> · {{ item.scheduledDate|date('d/m/Y') }}<br>
+                        <span class="badge-mini">{{ item.videoEditor ? item.videoEditor.name : 'Monteur —' }}</span>
+                        <a href="{{ path('app_video_show', {id: item.id, return_to: app.request.uri}) }}" class="badge-mini">Ouvrir</a>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="panel">
+        <h2>Validation client <span class="pill-count">{{ videosAValiderClient|length }}</span></h2>
+        {% if videosAValiderClient is empty %}
+            <p class="priority-empty">Aucune vidéo en attente côté client.</p>
+        {% else %}
+            <ul class="priority-list">
+                {% for item in videosAValiderClient %}
                     <li>
                         <strong>{{ item.title }}</strong><br>
                         <em>{{ item.client.name }}</em> · {{ item.scheduledDate|date('d/m/Y') }}<br>

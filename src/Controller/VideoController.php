@@ -10,6 +10,7 @@ use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
+use App\Service\SubtitlesReviewAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,7 @@ class VideoController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly FormatRepository $formatRepository,
         private readonly UserRepository $userRepository,
+        private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
     ) {
     }
 
@@ -89,6 +91,8 @@ class VideoController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             $content->setUpdatedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
+
+            $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
 
             $this->addFlash('success', 'Vidéo enregistrée.');
 

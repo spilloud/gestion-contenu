@@ -10,6 +10,7 @@ use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\AsanaService;
+use App\Service\SubtitlesReviewAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,6 +28,7 @@ class ContentController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly UserRepository $userRepository,
         private readonly AsanaService $asanaService,
+        private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
     ) {
     }
 
@@ -204,9 +206,9 @@ class ContentController extends AbstractController
                     $this->asanaService->addCommentToTask($content->getAsanaTaskGid(), $text);
                 }
 
-                // Si on passe en relecture sous-titres, créer une tâche dédiée pour la CM
-                if ($this->isVideoContent($content) && ($status->getName() === 'Sous-titres à valider')) {
-                    $this->ensureSubtitlesReviewTaskForCm($content);
+                // Si statut vidéo = relecture sous-titres, créer la tâche Asana dédiée (CM)
+                if ($this->isVideoContent($content)) {
+                    $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
                 }
             }
         }
@@ -217,31 +219,6 @@ class ContentController extends AbstractController
         }
 
         return $this->redirectToRoute('app_calendar');
-    }
-
-    private function ensureSubtitlesReviewTaskForCm(Content $content): void
-    {
-        if (!$this->asanaService->isEnabled()) {
-            return;
-        }
-        if ($content->getAsanaSubtitlesTaskGid()) {
-            return;
-        }
-
-        $client = $content->getClient();
-        $cmEmail = $client?->getCommunityManager()?->getEmail();
-        $cmUser = $cmEmail ? $this->userRepository->findOneByEmailCaseInsensitive($cmEmail) : null;
-        $cmAsanaGid = $cmUser?->getAsanaUserGid();
-
-        $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
-        $fallback = $fallback === false ? null : (string) $fallback;
-
-        $videoUrl = $this->generateUrl('app_video_show', ['id' => $content->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
-        $gid = $this->asanaService->createSubtitlesReviewTaskForVideo($content, $videoUrl, $cmAsanaGid, $fallback);
-        if ($gid) {
-            $content->setAsanaSubtitlesTaskGid($gid);
-            $this->entityManager->flush();
-        }
     }
 
     #[Route('/{id}/commenter', name: 'app_content_comment', requirements: ['id' => '\d+'], methods: ['POST'])]

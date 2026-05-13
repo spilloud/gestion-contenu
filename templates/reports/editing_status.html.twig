@@ -66,83 +66,84 @@
         thead th {
             background: #f8fafc;
             color: var(--text);
-            font-size: 8pt;
+            font-size: 7.5pt;
             text-align: left;
             vertical-align: top;
-            padding: 10px 10px 9px;
+            padding: 5px 7px 6px;
             border-bottom: 1px solid var(--frame);
             text-transform: uppercase;
             letter-spacing: 0.04em;
             font-weight: 600;
+            line-height: 1.15;
         }
         thead th.th-notes {
             background: linear-gradient(180deg, #f4f0ff 0%, #f8fafc 55%);
             border-left: 3px solid var(--accent);
-            padding-left: 12px;
+            padding-left: 10px;
             text-transform: none;
             letter-spacing: 0;
         }
-        .th-notes__stack {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 3px;
-            padding-top: 1px;
+        .th-notes__line {
+            display: block;
+            line-height: 1.2;
+            white-space: normal;
         }
         .th-notes__title {
-            font-size: 9pt;
+            font-size: 8.5pt;
             font-weight: 700;
             color: var(--accent-2);
-            line-height: 1.2;
             letter-spacing: 0.01em;
         }
         .th-notes__sub {
             font-size: 7pt;
             font-weight: 600;
             color: var(--muted);
-            text-transform: none;
             letter-spacing: 0.02em;
-            line-height: 1.25;
         }
         tbody td {
-            padding: 8px 10px;
+            padding: 3px 7px 4px;
             border-bottom: 1px solid var(--border);
             vertical-align: top;
             font-size: 8.5pt;
             font-weight: 400;
+            line-height: 1.2;
         }
         tbody tr:nth-child(2n) td { background: #fbfdff; }
-        .col-title { font-weight: 500; }
+        .col-title {
+            font-weight: 500;
+            line-height: 1.2;
+        }
         .col-notes {
             font-size: 8pt;
             color: var(--text);
-            line-height: 1.4;
+            line-height: 1.2;
             white-space: pre-wrap;
             word-break: break-word;
             vertical-align: top;
             min-width: 9em;
             border-left: 3px solid #ede9fe;
-            padding-left: 12px;
+            padding-left: 10px;
         }
         tbody tr:nth-child(2n) td.col-notes { background: #faf8ff; }
-        .col-notes__text { margin: 0; color: var(--text); }
+        .col-notes__text { margin: 0; padding: 0; color: var(--text); line-height: 1.2; }
         .col-notes__block { margin: 0; }
         .col-notes__sep {
-            height: 0;
+            margin: 4px 0;
             border: 0;
             border-top: 1px solid var(--border);
-            margin: 8px 0;
+            height: 0;
         }
         .col-notes__section-h {
             display: block;
-            font-size: 7pt;
+            font-size: 6.5pt;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: var(--accent);
-            margin: 0 0 4px;
+            margin: 0 0 2px;
+            line-height: 1.15;
         }
-        .col-notes__cmt { margin-top: 7px; }
+        .col-notes__cmt { margin-top: 4px; }
         .col-notes__cmt:first-child { margin-top: 0; }
         .col-notes__cmt-meta {
             display: block;
@@ -150,26 +151,42 @@
             color: var(--frame);
             margin-bottom: 2px;
         }
-        .col-notes__cmt-msg { font-size: 8pt; color: var(--text); }
+        .col-notes__cmt-msg { font-size: 8pt; color: var(--text); line-height: 1.2; }
         .badge {
             display: inline-block;
-            padding: 3px 8px;
+            padding: 1px 6px;
             border-radius: 999px;
             border: 1px solid var(--frame);
             background: #f9fafb;
-            font-size: 8pt;
+            font-size: 7.5pt;
             color: #0b1220;
             font-weight: 500;
+            line-height: 1.2;
+            vertical-align: baseline;
         }
+        .td-stat { vertical-align: top; white-space: nowrap; }
         .xcell {
             text-align: center;
-            width: 92px;
+            width: 72px;
+            max-width: 72px;
             white-space: nowrap;
             font-weight: 800;
             color: #111827;
             letter-spacing: 0.04em;
+            vertical-align: top;
         }
-        .xcell .x { display: inline-block; width: 20px; height: 20px; border-radius: 6px; border: 1px solid var(--border); line-height: 20px; font-size: 9pt; }
+        thead th.xcell { font-size: 7pt; padding-left: 4px; padding-right: 4px; }
+        td.xcell { padding-top: 3px; padding-bottom: 3px; }
+        .xcell .x {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            line-height: 15px;
+            font-size: 8pt;
+            vertical-align: top;
+        }
         .xcell .x.on { background: var(--accent); border-color: var(--accent); color: #fff; }
         .footer {
             margin-top: 12px;
@@ -260,10 +277,9 @@
             <tr>
                 <th style="width: 30%;">Vidéo</th>
                 <th class="th-notes" style="width: 26%;">
-                    <div class="th-notes__stack">
-                        <span class="th-notes__title">Note interne</span>
-                        <span class="th-notes__sub">Fiche vidéo et retours équipe</span>
-                    </div>
+                    <span class="th-notes__line">
+                        <span class="th-notes__title">Note interne</span><span class="th-notes__sub"> — fiche &amp; retours</span>
+                    </span>
                 </th>
                 <th style="width: 15%;">Statut</th>
                 {% for stage in stages %}
@@ -297,7 +313,7 @@
                             —
                         {% endif %}
                     </td>
-                    <td><span class="badge">{{ statusName ?: '—' }}</span></td>
+                    <td class="td-stat"><span class="badge">{{ statusName ?: '—' }}</span></td>
                     {% for stage in stages %}
                         {% set isOn = stage.doneIfIn is defined ? (statusName in stage.doneIfIn) : (statusName not in stage.doneIfNotIn) %}
                         <td class="xcell">

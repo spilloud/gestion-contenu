@@ -71,32 +71,32 @@
             font-size: 7.5pt;
             text-align: left;
             vertical-align: bottom;
-            padding: 2px 6px 3px;
+            padding: 5px 8px 6px;
             border-bottom: 1px solid var(--frame);
             text-transform: uppercase;
             letter-spacing: 0.04em;
             font-weight: 600;
-            line-height: 1.1;
+            line-height: 1.15;
         }
         tbody td {
-            padding: 1px 6px 2px;
+            padding: 5px 8px 6px;
             border-bottom: 1px solid var(--border);
             vertical-align: top;
             font-size: 8.5pt;
             font-weight: 400;
-            line-height: 1.12;
+            line-height: 1.22;
         }
         tbody tr:nth-child(odd) td { background: var(--row-odd); }
         tbody tr:nth-child(even) td { background: var(--row-alt); }
         .col-title {
             font-weight: 500;
-            line-height: 1.12;
+            line-height: 1.22;
         }
         /* pre-wrap sur le <td> conservait les retours à la ligne du source HTML → ligne vide en haut */
         .col-notes {
             font-size: 8.5pt;
             color: var(--text);
-            line-height: 1.12;
+            line-height: 1.22;
             white-space: normal;
             word-break: break-word;
             vertical-align: top;
@@ -106,7 +106,7 @@
             margin: 0;
             padding: 0;
             color: var(--text);
-            line-height: 1.12;
+            line-height: 1.22;
             white-space: pre-line;
             word-break: break-word;
         }
@@ -127,7 +127,7 @@
             margin: 0 0 2px;
             line-height: 1.15;
         }
-        .col-notes__cmt { margin-top: 4px; }
+        .col-notes__cmt { margin-top: 5px; }
         .col-notes__cmt:first-child { margin-top: 0; }
         .col-notes__cmt-meta {
             display: block;
@@ -138,31 +138,31 @@
         .col-notes__cmt-msg {
             font-size: 8.5pt;
             color: var(--text);
-            line-height: 1.12;
+            line-height: 1.22;
             white-space: pre-line;
             word-break: break-word;
         }
         .badge {
             display: inline-block;
-            padding: 0 5px;
+            padding: 2px 6px;
             border-radius: 999px;
             border: 1px solid var(--frame);
             background: #f9fafb;
             font-size: 7.5pt;
             color: #0b1220;
             font-weight: 500;
-            line-height: 1.1;
+            line-height: 1.2;
             vertical-align: top;
         }
         .td-stat { vertical-align: top; white-space: nowrap; }
         .xcell {
             text-align: center;
-            width: 72px;
-            max-width: 72px;
+            width: 56px;
+            max-width: 56px;
             white-space: nowrap;
-            font-weight: 800;
+            font-weight: 600;
             color: #111827;
-            letter-spacing: 0.04em;
+            letter-spacing: 0;
             vertical-align: top;
         }
         thead th.xcell {
@@ -171,18 +171,20 @@
             padding-right: 4px;
             text-align: center;
         }
-        td.xcell { padding-top: 1px; padding-bottom: 1px; line-height: 1; }
+        td.xcell { padding-top: 5px; padding-bottom: 5px; line-height: 1; }
+        /* Marqueurs sobres : noir sur blanc (meilleur rendu impression / PDF que fond violet + X blanc) */
         .xcell .x {
             display: inline-block;
-            width: 15px;
-            height: 15px;
-            border-radius: 4px;
-            border: 1px solid var(--border);
-            line-height: 15px;
-            font-size: 8pt;
-            vertical-align: top;
+            min-width: 0.55em;
+            font-size: 10pt;
+            font-weight: 800;
+            line-height: 1;
+            color: #cbd5e1;
+            vertical-align: baseline;
         }
-        .xcell .x.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .xcell .x.on {
+            color: #0f172a;
+        }
         .footer {
             margin-top: 12px;
             display: flex;
@@ -302,7 +304,7 @@
                     <td class="td-stat"><span class="badge">{{ statusName ?: '—' }}</span></td>
                     {% for stage in stages %}
                         {% set isOn = stage.doneIfIn is defined ? (statusName in stage.doneIfIn) : (statusName not in stage.doneIfNotIn) %}
-                        <td class="xcell"><span class="x {{ isOn ? 'on' : '' }}">{{ isOn ? 'X' : '' }}</span></td>
+                        <td class="xcell"><span class="x {{ isOn ? 'on' : '' }}">{{ isOn ? 'X' : '·' }}</span></td>
                     {% endfor %}
                 </tr>
             {% else %}

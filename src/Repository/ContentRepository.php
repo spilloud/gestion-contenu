@@ -43,9 +43,11 @@ class ContentRepository extends ServiceEntityRepository
             ->addSelect('s', 'f');
 
         if ($withTeamComments) {
+            // Pas de distinct() : sous PostgreSQL, DISTINCT sur une requête qui inclut
+            // l’entité User (colonne roles en json) provoque SQLSTATE[42883].
+            // L’hydratation Doctrine déduplique déjà les Content par identifiant.
             $qb->leftJoin('c.comments', 'com')->addSelect('com')
-                ->leftJoin('com.author', 'cca')->addSelect('cca')
-                ->distinct();
+                ->leftJoin('com.author', 'cca')->addSelect('cca');
         }
 
         if (!empty($clientIds)) {

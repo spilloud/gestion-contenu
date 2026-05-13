@@ -57,6 +57,7 @@
 
         table {
             width: 100%;
+            table-layout: fixed;
             border-collapse: collapse;
             overflow: hidden;
             border-radius: 12px;
@@ -82,6 +83,39 @@
         }
         tbody tr:nth-child(2n) td { background: #fbfdff; }
         .col-title { font-weight: 500; }
+        .col-notes {
+            font-size: 8pt;
+            color: var(--muted);
+            line-height: 1.35;
+            white-space: pre-wrap;
+            word-break: break-word;
+            vertical-align: top;
+            min-width: 9em;
+        }
+        .col-notes__block { margin: 0; }
+        .col-notes__sep {
+            height: 1px;
+            background: var(--border);
+            margin: 6px 0;
+        }
+        .col-notes__lbl {
+            display: block;
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--accent);
+            margin-bottom: 3px;
+        }
+        .col-notes__cmt { margin-top: 6px; }
+        .col-notes__cmt:first-child { margin-top: 0; }
+        .col-notes__cmt-meta {
+            display: block;
+            font-size: 7pt;
+            color: var(--frame);
+            margin-bottom: 2px;
+        }
+        .col-notes__cmt-msg { font-size: 8pt; color: var(--text); }
         .badge {
             display: inline-block;
             padding: 3px 8px;
@@ -111,6 +145,28 @@
             font-size: 8pt;
             border-top: 1px solid var(--border);
             padding-top: 10px;
+        }
+        .report-note {
+            margin: 12px 0 14px;
+            padding: 10px 12px;
+            border: 1px solid var(--frame);
+            border-radius: 10px;
+            background: #fafafa;
+            font-size: 8.5pt;
+            line-height: 1.45;
+            color: var(--text);
+        }
+        .report-note strong {
+            display: block;
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+        .report-note .report-note-body {
+            white-space: pre-wrap;
+            word-break: break-word;
         }
 
         @page {
@@ -148,11 +204,19 @@
             {{ items|length }} vidéo(s) — {{ periodLabel }}.
         </div>
 
+        {% if reportNote is defined and reportNote|trim != '' %}
+            <div class="report-note">
+                <strong>Note</strong>
+                <div class="report-note-body">{{ reportNote|e }}</div>
+            </div>
+        {% endif %}
+
         <table>
             <thead>
             <tr>
-                <th style="width: 54%;">Vidéo</th>
-                <th style="width: 26%;">Statut</th>
+                <th style="width: 32%;">Vidéo</th>
+                <th style="width: 24%;">Notes internes &amp; retours</th>
+                <th style="width: 16%;">Statut</th>
                 {% for stage in stages %}
                     <th class="xcell">{{ stage.label }}</th>
                 {% endfor %}
@@ -163,6 +227,30 @@
                 {% set statusName = item.status ? item.status.name : '' %}
                 <tr>
                     <td class="col-title">{{ item.title }}</td>
+                    <td class="col-notes">
+                        {% set noteText = item.notes|default('')|trim %}
+                        {% if noteText != '' %}
+                            <div class="col-notes__block">
+                                <span class="col-notes__lbl">Notes (interne)</span>
+                                {{ noteText|e }}
+                            </div>
+                        {% endif %}
+                        {% if item.comments is not empty %}
+                            {% if noteText != '' %}<div class="col-notes__sep" aria-hidden="true"></div>{% endif %}
+                            <div class="col-notes__block">
+                                <span class="col-notes__lbl">Retours équipe</span>
+                                {% for c in item.comments %}
+                                    <div class="col-notes__cmt">
+                                        <span class="col-notes__cmt-meta">{{ (c.author ? c.author.name : '—')|e }} · {{ c.createdAt|date('d/m/Y H:i') }}</span>
+                                        <div class="col-notes__cmt-msg">{{ c.message|e }}</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% if noteText == '' and item.comments is empty %}
+                            —
+                        {% endif %}
+                    </td>
                     <td><span class="badge">{{ statusName ?: '—' }}</span></td>
                     {% for stage in stages %}
                         {% set isOn = stage.doneIfIn is defined ? (statusName in stage.doneIfIn) : (statusName not in stage.doneIfNotIn) %}
@@ -173,7 +261,7 @@
                 </tr>
             {% else %}
                 <tr>
-                    <td colspan="{{ 2 + (stages|length) }}" style="padding: 14px; color: var(--muted);">
+                    <td colspan="{{ 3 + (stages|length) }}" style="padding: 14px; color: var(--muted);">
                         Aucune vidéo trouvée pour cette période.
                     </td>
                 </tr>

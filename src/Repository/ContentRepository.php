@@ -23,6 +23,7 @@ class ContentRepository extends ServiceEntityRepository
      * @param int[]|null $formatIds
      * @param \DateTimeInterface|null $monthStart
      * @param \DateTimeInterface|null $monthEnd
+     * @param bool                  $withTeamComments Si true : joint les commentaires (retours équipe) pour le rapport / évite le chargement paresseux ligne à ligne.
      * @return Content[]
      */
     public function findByFilters(
@@ -30,7 +31,8 @@ class ContentRepository extends ServiceEntityRepository
         ?array $statusIds = null,
         ?array $formatIds = null,
         ?\DateTimeInterface $monthStart = null,
-        ?\DateTimeInterface $monthEnd = null
+        ?\DateTimeInterface $monthEnd = null,
+        bool $withTeamComments = false,
     ): array {
         $qb = $this->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')
@@ -39,6 +41,12 @@ class ContentRepository extends ServiceEntityRepository
             ->leftJoin('c.status', 's')
             ->leftJoin('c.format', 'f')
             ->addSelect('s', 'f');
+
+        if ($withTeamComments) {
+            $qb->leftJoin('c.comments', 'com')->addSelect('com')
+                ->leftJoin('com.author', 'cca')->addSelect('cca')
+                ->distinct();
+        }
 
         if (!empty($clientIds)) {
             $qb->andWhere('c.client IN (:clientIds)')

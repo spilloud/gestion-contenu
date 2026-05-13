@@ -39,6 +39,7 @@ class VideoContentType extends AbstractType
                 'choice_label' => 'name',
                 'placeholder' => 'Sélectionner un client',
                 'query_builder' => fn ($repo) => $repo->createQueryBuilder('c')
+                    ->andWhere('c.isArchived = false')
                     ->leftJoin('c.communityManager', 'cm')
                     ->orderBy('c.name', 'ASC'),
             ])

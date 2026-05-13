@@ -9,7 +9,8 @@
 </p>
 
 <div style="display: grid; gap: 1rem; max-width: 720px;">
-    <form method="get" action="{{ path('app_reports_editing_status') }}" target="_blank" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 0.9rem; padding: 1rem;">
+    <form method="post" action="{{ path('app_reports_editing_status') }}" target="_blank" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 0.9rem; padding: 1rem;">
+        <input type="hidden" name="_token" value="{{ csrf_token('reports_editing_status') }}">
         <div style="display: grid; gap: 0.9rem;">
             <div>
                 <label for="client_id">Client</label>
@@ -40,6 +41,12 @@
                     <label for="to">Au</label>
                     <input id="to" name="to" type="date">
                 </div>
+            </div>
+
+            <div>
+                <label for="report_note">Note pour le PDF <span style="color: var(--muted); font-weight: normal;">(optionnel)</span></label>
+                <textarea id="report_note" name="note" rows="4" maxlength="4000" placeholder="Commentaire, consigne ou info affichée sur le rapport imprimé / PDF." style="width: 100%; max-width: 100%; font-family: inherit;"></textarea>
+                <p style="margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--muted);">Max. 4000 caractères. Les retours à la ligne sont conservés.</p>
             </div>
 
             <div style="display:flex; gap: 0.7rem; align-items:center; flex-wrap: wrap;">

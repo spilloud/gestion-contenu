@@ -33,10 +33,16 @@ class ReportsController extends AbstractController
         ]);
     }
 
-    #[Route('/montages', name: 'app_reports_editing_status', methods: ['GET'])]
+    #[Route('/montages', name: 'app_reports_editing_status', methods: ['GET', 'POST'])]
     public function editingStatus(Request $request): Response
     {
-        $clientId = $request->query->getInt('client_id');
+        if ($request->isMethod('POST')
+            && !$this->isCsrfTokenValid('reports_editing_status', $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide. Réessaie depuis la page Rapports.');
+            return $this->redirectToRoute('app_reports_index');
+        }
+
+        $clientId = $request->request->getInt('client_id') ?: $request->query->getInt('client_id');
         if ($clientId <= 0) {
             $this->addFlash('error', 'Choisis un client pour générer un rapport.');
             return $this->redirectToRoute('app_reports_index');
@@ -50,6 +56,12 @@ class ReportsController extends AbstractController
 
         [$start, $end, $periodLabel] = $this->resolvePeriod($request);
 
+        $reportNoteRaw = $request->request->getString('note');
+        if ($reportNoteRaw === '') {
+            $reportNoteRaw = $request->query->getString('note');
+        }
+        $reportNote = $this->sanitizeReportNote($reportNoteRaw);
+
         $videoFormat = $this->findVideoFormat();
         $items = $this->contentRepository->findByFilters(
             [$client->getId()],
@@ -57,6 +69,7 @@ class ReportsController extends AbstractController
             [$videoFormat->getId()],
             $start,
             $end,
+            true,
         );
 
         $generatedAt = new \DateTimeImmutable();
@@ -86,9 +99,23 @@ class ReportsController extends AbstractController
             'periodEnd' => $end,
             'generatedAt' => $generatedAt,
             'generatedBy' => $generatedByLabel,
+            'reportNote' => $reportNote,
             'stages' => $stages,
             'items' => $items,
         ]);
+    }
+
+    private function sanitizeReportNote(string $raw): string
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return '';
+        }
+        if (mb_strlen($raw) > 4000) {
+            $raw = mb_substr($raw, 0, 4000).'…';
+        }
+
+        return $raw;
     }
 
     /**
@@ -96,7 +123,7 @@ class ReportsController extends AbstractController
      */
     private function resolvePeriod(Request $request): array
     {
-        $range = trim($request->query->getString('range', 'all'));
+        $range = trim($request->request->getString('range') ?: $request->query->getString('range', 'all'));
         $today = new \DateTimeImmutable('today');
 
         if ($range === '1m') {
@@ -107,8 +134,8 @@ class ReportsController extends AbstractController
         }
 
         if ($range === 'custom') {
-            $from = trim($request->query->getString('from'));
-            $to = trim($request->query->getString('to'));
+            $from = trim($request->request->getString('from') ?: $request->query->getString('from'));
+            $to = trim($request->request->getString('to') ?: $request->query->getString('to'));
             $start = $from !== '' ? $this->safeDate($from, '00:00:00') : null;
             $end = $to !== '' ? $this->safeDate($to, '23:59:59') : null;
             $label = 'Période personnalisée';

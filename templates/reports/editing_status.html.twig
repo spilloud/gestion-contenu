@@ -79,32 +79,40 @@
             line-height: 1.1;
         }
         tbody td {
-            padding: 2px 6px 2px;
+            padding: 1px 6px 2px;
             border-bottom: 1px solid var(--border);
             vertical-align: top;
             font-size: 8.5pt;
             font-weight: 400;
-            line-height: 1.15;
+            line-height: 1.12;
         }
         tbody tr:nth-child(odd) td { background: var(--row-odd); }
         tbody tr:nth-child(even) td { background: var(--row-alt); }
         .col-title {
             font-weight: 500;
-            line-height: 1.15;
+            line-height: 1.12;
         }
+        /* pre-wrap sur le <td> conservait les retours à la ligne du source HTML → ligne vide en haut */
         .col-notes {
-            font-size: 8pt;
+            font-size: 8.5pt;
             color: var(--text);
-            line-height: 1.15;
-            white-space: pre-wrap;
+            line-height: 1.12;
+            white-space: normal;
             word-break: break-word;
             vertical-align: top;
             min-width: 9em;
         }
-        .col-notes__text { margin: 0; padding: 0; color: var(--text); line-height: 1.15; }
+        .col-notes__text {
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            line-height: 1.12;
+            white-space: pre-line;
+            word-break: break-word;
+        }
         .col-notes__block { margin: 0; }
         .col-notes__sep {
-            margin: 4px 0;
+            margin: 2px 0;
             border: 0;
             border-top: 1px solid var(--border);
             height: 0;
@@ -127,18 +135,24 @@
             color: var(--frame);
             margin-bottom: 2px;
         }
-        .col-notes__cmt-msg { font-size: 8pt; color: var(--text); line-height: 1.15; }
+        .col-notes__cmt-msg {
+            font-size: 8.5pt;
+            color: var(--text);
+            line-height: 1.12;
+            white-space: pre-line;
+            word-break: break-word;
+        }
         .badge {
             display: inline-block;
-            padding: 1px 6px;
+            padding: 0 5px;
             border-radius: 999px;
             border: 1px solid var(--frame);
             background: #f9fafb;
             font-size: 7.5pt;
             color: #0b1220;
             font-weight: 500;
-            line-height: 1.2;
-            vertical-align: baseline;
+            line-height: 1.1;
+            vertical-align: top;
         }
         .td-stat { vertical-align: top; white-space: nowrap; }
         .xcell {
@@ -157,7 +171,7 @@
             padding-right: 4px;
             text-align: center;
         }
-        td.xcell { padding-top: 2px; padding-bottom: 2px; }
+        td.xcell { padding-top: 1px; padding-bottom: 1px; line-height: 1; }
         .xcell .x {
             display: inline-block;
             width: 15px;
@@ -198,7 +212,7 @@
             margin-bottom: 3px;
         }
         .report-note .report-note-body {
-            white-space: pre-wrap;
+            white-space: pre-line;
             word-break: break-word;
         }
 
@@ -263,35 +277,32 @@
             <tbody>
             {% for item in items %}
                 {% set statusName = item.status ? item.status.name : '' %}
+                {% set noteText = item.notes|default('')|trim %}
                 <tr>
                     <td class="col-title">{{ item.title }}</td>
-                    <td class="col-notes">
-                        {% set noteText = item.notes|default('')|trim %}
-                        {% if noteText != '' %}
+                    <td class="col-notes">{%- if noteText != '' -%}
                             <div class="col-notes__text">{{ noteText|e }}</div>
-                        {% endif %}
-                        {% if item.comments is not empty %}
-                            {% if noteText != '' %}<hr class="col-notes__sep">{% endif %}
+                        {%- endif -%}
+                        {%- if item.comments is not empty -%}
+                            {%- if noteText != '' -%}<hr class="col-notes__sep">{%- endif -%}
                             <div class="col-notes__block">
                                 <span class="col-notes__section-h">Retours équipe</span>
-                                {% for c in item.comments %}
+                                {%- for c in item.comments -%}
                                     <div class="col-notes__cmt">
                                         <span class="col-notes__cmt-meta">{{ (c.author ? c.author.name : '—')|e }} · {{ c.createdAt|date('d/m/Y H:i') }}</span>
                                         <div class="col-notes__cmt-msg">{{ c.message|e }}</div>
                                     </div>
-                                {% endfor %}
+                                {%- endfor -%}
                             </div>
-                        {% endif %}
-                        {% if noteText == '' and item.comments is empty %}
+                        {%- endif -%}
+                        {%- if noteText == '' and item.comments is empty -%}
                             —
-                        {% endif %}
+                        {%- endif -%}
                     </td>
                     <td class="td-stat"><span class="badge">{{ statusName ?: '—' }}</span></td>
                     {% for stage in stages %}
                         {% set isOn = stage.doneIfIn is defined ? (statusName in stage.doneIfIn) : (statusName not in stage.doneIfNotIn) %}
-                        <td class="xcell">
-                            <span class="x {{ isOn ? 'on' : '' }}">{{ isOn ? 'X' : '' }}</span>
-                        </td>
+                        <td class="xcell"><span class="x {{ isOn ? 'on' : '' }}">{{ isOn ? 'X' : '' }}</span></td>
                     {% endfor %}
                 </tr>
             {% else %}

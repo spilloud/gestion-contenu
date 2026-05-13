@@ -54,6 +54,19 @@
 Créer un fichier `.env` à la racine du projet contenu ou définir :
 - `CONTENU_DB_PASSWORD` : mot de passe PostgreSQL pour la base contenu
 
+## Mise à jour en production (git déjà configuré sur le serveur)
+
+Sur le serveur (utilisateur typique : `debian`, dépôt cloné sous le chemin avec espace ci-dessous) :
+
+```bash
+cd '/home/debian/Systeme de formation/contenu'
+git pull origin main
+docker exec contenu_php php bin/console cache:clear --env=prod --no-interaction
+```
+
+En local, si `~/.ssh/config` définit un hôte (ex. `Contenu-Osmose` → `83.228.217.159`, user `debian`), tu peux enchaîner :  
+`ssh Contenu-Osmose 'cd '\''/home/debian/Systeme de formation/contenu'\'' && git pull origin main && docker exec contenu_php php bin/console cache:clear --env=prod --no-interaction'`
+
 ## Vérification
 
 - https://contenu.osmose-marketing.ch → doit afficher la page de connexion

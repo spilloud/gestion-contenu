@@ -1,0 +1,15 @@
+---
+description: Après une modification de code demandée, pousser le dépôt et finaliser le déploiement serveur.
+alwaysApply: true
+---
+
+# Déploiement après modification
+
+Quand l’utilisateur demande une **modification** du projet (correctif, fonctionnalité, ajustement) :
+
+1. **Implémenter** le changement dans le code.
+2. **Valider** (syntaxe PHP, lints si pertinents).
+3. **Git** : `git add` des fichiers concernés, `git commit` avec un message en français clair, puis **`git push origin main`** (ou la branche active suivie en remote).
+4. **Serveur de production** (voir `DEPLOYMENT.md`) : si l’accès SSH depuis l’environnement de l’agent n’est pas possible, indiquer à l’utilisateur les **commandes exactes** à exécuter sur le serveur après `git pull` (typiquement `docker exec contenu_php php bin/console cache:clear --env=prod` et migrations si des fichiers de migration ont été ajoutés).
+
+Ne pas s’arrêter au seul patch local lorsque la demande inclut la mise en prod ou l’habitude explicite de déployer.

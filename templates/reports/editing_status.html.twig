@@ -68,11 +68,41 @@
             color: var(--text);
             font-size: 8pt;
             text-align: left;
-            padding: 8px 10px;
+            vertical-align: top;
+            padding: 10px 10px 9px;
             border-bottom: 1px solid var(--frame);
             text-transform: uppercase;
             letter-spacing: 0.04em;
             font-weight: 600;
+        }
+        thead th.th-notes {
+            background: linear-gradient(180deg, #f4f0ff 0%, #f8fafc 55%);
+            border-left: 3px solid var(--accent);
+            padding-left: 12px;
+            text-transform: none;
+            letter-spacing: 0;
+        }
+        .th-notes__stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 3px;
+            padding-top: 1px;
+        }
+        .th-notes__title {
+            font-size: 9pt;
+            font-weight: 700;
+            color: var(--accent-2);
+            line-height: 1.2;
+            letter-spacing: 0.01em;
+        }
+        .th-notes__sub {
+            font-size: 7pt;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: none;
+            letter-spacing: 0.02em;
+            line-height: 1.25;
         }
         tbody td {
             padding: 8px 10px;
@@ -85,29 +115,34 @@
         .col-title { font-weight: 500; }
         .col-notes {
             font-size: 8pt;
-            color: var(--muted);
-            line-height: 1.35;
+            color: var(--text);
+            line-height: 1.4;
             white-space: pre-wrap;
             word-break: break-word;
             vertical-align: top;
             min-width: 9em;
+            border-left: 3px solid #ede9fe;
+            padding-left: 12px;
         }
+        tbody tr:nth-child(2n) td.col-notes { background: #faf8ff; }
+        .col-notes__text { margin: 0; color: var(--text); }
         .col-notes__block { margin: 0; }
         .col-notes__sep {
-            height: 1px;
-            background: var(--border);
-            margin: 6px 0;
+            height: 0;
+            border: 0;
+            border-top: 1px solid var(--border);
+            margin: 8px 0;
         }
-        .col-notes__lbl {
+        .col-notes__section-h {
             display: block;
             font-size: 7pt;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             color: var(--accent);
-            margin-bottom: 3px;
+            margin: 0 0 4px;
         }
-        .col-notes__cmt { margin-top: 6px; }
+        .col-notes__cmt { margin-top: 7px; }
         .col-notes__cmt:first-child { margin-top: 0; }
         .col-notes__cmt-meta {
             display: block;
@@ -180,6 +215,15 @@
             .header { box-shadow: none; border-radius: 0; border: 1px solid #6b7280; }
             .card { border: 0; padding: 0; }
             .footer { display: none; }
+            thead { display: table-header-group; }
+            thead th.th-notes {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody tr:nth-child(2n) td.col-notes {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
@@ -214,9 +258,14 @@
         <table>
             <thead>
             <tr>
-                <th style="width: 32%;">Vidéo</th>
-                <th style="width: 24%;">Notes internes &amp; retours</th>
-                <th style="width: 16%;">Statut</th>
+                <th style="width: 30%;">Vidéo</th>
+                <th class="th-notes" style="width: 26%;">
+                    <div class="th-notes__stack">
+                        <span class="th-notes__title">Note interne</span>
+                        <span class="th-notes__sub">Fiche vidéo et retours équipe</span>
+                    </div>
+                </th>
+                <th style="width: 15%;">Statut</th>
                 {% for stage in stages %}
                     <th class="xcell">{{ stage.label }}</th>
                 {% endfor %}
@@ -230,15 +279,12 @@
                     <td class="col-notes">
                         {% set noteText = item.notes|default('')|trim %}
                         {% if noteText != '' %}
-                            <div class="col-notes__block">
-                                <span class="col-notes__lbl">Notes (interne)</span>
-                                {{ noteText|e }}
-                            </div>
+                            <div class="col-notes__text">{{ noteText|e }}</div>
                         {% endif %}
                         {% if item.comments is not empty %}
-                            {% if noteText != '' %}<div class="col-notes__sep" aria-hidden="true"></div>{% endif %}
+                            {% if noteText != '' %}<hr class="col-notes__sep">{% endif %}
                             <div class="col-notes__block">
-                                <span class="col-notes__lbl">Retours équipe</span>
+                                <span class="col-notes__section-h">Retours équipe</span>
                                 {% for c in item.comments %}
                                     <div class="col-notes__cmt">
                                         <span class="col-notes__cmt-meta">{{ (c.author ? c.author.name : '—')|e }} · {{ c.createdAt|date('d/m/Y H:i') }}</span>

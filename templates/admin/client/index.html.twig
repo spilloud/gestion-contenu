@@ -6,9 +6,9 @@
 <h1>Clients</h1>
 <p><a href="{{ path('app_admin_client_new') }}" class="btn">+ Nouveau</a></p>
 
-<table style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse;">
+<table class="data-sheet">
     <thead>
-        <tr style="background: #f8f9fa;">
+        <tr>
             <th style="padding: 0.75rem; text-align: left;">Nom</th>
             <th style="padding: 0.75rem; text-align: left;">Community Manager</th>
             <th style="padding: 0.75rem; text-align: left;">Monteur</th>
@@ -18,7 +18,7 @@
     </thead>
     <tbody>
         {% for client in clients %}
-            <tr style="border-bottom: 1px solid #eee;">
+            <tr>
                 <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}">{{ client.name }}</a></td>
                 <td style="padding: 0.75rem;">{{ client.communityManager ? client.communityManager.name : '—' }}</td>
                 <td style="padding: 0.75rem;">{{ client.editor ? client.editor.name : '—' }}</td>
@@ -53,7 +53,7 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="5" style="padding: 1rem; color: #999;">Aucun client. Créez d'abord un Community Manager.</td></tr>
+            <tr><td colspan="5" style="padding: 1rem; color: var(--muted);">Aucun client. Créez d'abord un Community Manager.</td></tr>
         {% endfor %}
     </tbody>
 </table>

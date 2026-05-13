@@ -34,6 +34,11 @@
                 --flash-error-bg: #fef2f2;
                 --flash-error-text: #991b1b;
                 --flash-error-border: #fecaca;
+                --surface-inset: #eef2f7;
+                --surface-inset-2: #e2e8f0;
+                --table-head-bg: #1c1040;
+                --table-head-text: #f8fafc;
+                --table-border: #e2e8f0;
             }
             body.theme-dark {
                 --bg: #090f18;
@@ -42,7 +47,7 @@
                 --topbar-border: #1e293b;
                 --card-bg: #131c2e;
                 --card-border: #273449;
-                --muted: #94a3b8;
+                --muted: #b8c9dc;
                 --label: #cbd5e1;
                 --input-bg: #0c1424;
                 --input-border: #334155;
@@ -59,6 +64,11 @@
                 --flash-error-bg: #450a0a;
                 --flash-error-text: #fecaca;
                 --flash-error-border: #991b1b;
+                --surface-inset: #1a2438;
+                --surface-inset-2: #151d30;
+                --table-head-bg: #2d1b69;
+                --table-head-text: #f1f5f9;
+                --table-border: #334155;
             }
             * { box-sizing: border-box; }
             body {
@@ -188,12 +198,35 @@
             .btn-danger:hover { background: #b91c1c; }
             .btn-sm { padding: 0.34rem 0.62rem; font-size: 0.78rem; }
             form label { display: block; margin-bottom: 0.3rem; font-weight: 500; color: var(--label); }
-            .page-content a:not(.btn):not(.btn-danger) {
+            .page-content a:not(.btn):not(.btn-danger):not(.badge-mini) {
                 color: var(--link);
             }
-            .page-content a:not(.btn):not(.btn-danger):hover {
+            .page-content a:not(.btn):not(.btn-danger):not(.badge-mini):hover {
                 color: var(--link-hover);
                 text-decoration: underline;
+            }
+            a.badge-mini {
+                text-decoration: none;
+            }
+            a.badge-mini:hover {
+                filter: brightness(1.06);
+            }
+            .badge-mini {
+                display: inline-block;
+                margin-top: 0.25rem;
+                margin-right: 0.25rem;
+                padding: 0.15rem 0.45rem;
+                border-radius: 999px;
+                font-size: 0.74rem;
+                font-weight: 600;
+                border: 1px solid transparent;
+                background: rgba(91, 33, 182, 0.12);
+                color: #4338ca;
+            }
+            body.theme-dark .badge-mini {
+                background: rgba(139, 92, 246, 0.22);
+                color: #f5f3ff;
+                border-color: rgba(167, 139, 250, 0.35);
             }
             form input[type="text"], form input[type="email"], form input[type="password"], form input[type="number"], form select, form textarea {
                 width: 100%;
@@ -226,6 +259,39 @@
             .status-fuchsia { background: #d946ef; color: #fff; }
             h1 { margin-top: 0; margin-bottom: 1rem; font-size: 1.45rem; }
             table { background: var(--card-bg); border-radius: 0.75rem; }
+            .page-content table { color: var(--text); }
+            .page-content .data-sheet {
+                width: 100%;
+                background: var(--card-bg);
+                color: var(--text);
+                border-radius: 8px;
+                border-collapse: collapse;
+                overflow: hidden;
+                border: 1px solid var(--card-border);
+            }
+            .page-content .data-sheet thead tr {
+                background: var(--table-head-bg);
+                color: var(--table-head-text);
+            }
+            .page-content .data-sheet thead th,
+            .page-content .data-sheet thead th a {
+                color: inherit;
+            }
+            .page-content .data-sheet tbody tr {
+                border-bottom: 1px solid var(--table-border);
+            }
+            .page-content .data-sheet tbody td {
+                color: var(--text);
+            }
+            .page-content .data-sheet tbody tr.data-sheet__group td {
+                background: var(--surface-inset);
+                color: var(--text);
+                font-weight: 700;
+                border-color: var(--table-border);
+            }
+            .page-content .data-sheet tbody tr.data-sheet__group small {
+                color: var(--muted);
+            }
             /* Interrupteur (sous-titres, etc.) */
             .toggle-switch {
                 position: relative;

@@ -50,7 +50,7 @@
         background: rgba(148, 163, 184, 0.16);
     }
     .day-past .day-head {
-        color: #64748b;
+        color: var(--muted);
     }
     .day-event {
         background: rgba(91, 33, 182, 0.14);
@@ -59,6 +59,7 @@
         padding: 0.4rem;
         margin-bottom: 0.45rem;
         font-size: 0.82rem;
+        color: var(--text);
     }
     .day-event.past-post {
         background: rgba(148, 163, 184, 0.22);
@@ -213,6 +214,51 @@
     }
     @media (max-width: 980px) {
         .filters-grid { grid-template-columns: 1fr; }
+    }
+    .calendar-list-view {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        overflow: hidden;
+        color: var(--text);
+    }
+    .calendar-list-view table { width: 100%; border-collapse: collapse; background: transparent; }
+    .calendar-list-view thead tr {
+        background: var(--surface-inset);
+        color: var(--text);
+    }
+    .calendar-list-view thead th {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--card-border);
+    }
+    .calendar-list-view tbody tr {
+        border-bottom: 1px solid var(--table-border);
+    }
+    .calendar-list-view tbody td {
+        padding: 0.75rem;
+        color: var(--text);
+    }
+    body.theme-dark .day-event.past-post {
+        background: rgba(15, 23, 42, 0.55);
+        border-color: rgba(148, 163, 184, 0.35);
+        color: var(--text);
+    }
+    body.theme-dark .day-event.past-post a {
+        color: var(--link);
+    }
+    body.theme-dark .day-past {
+        background: rgba(2, 6, 23, 0.42);
+    }
+    body.theme-dark .day-out-month {
+        opacity: 0.45;
+    }
+    body.theme-dark .week-calendar td {
+        border-right-color: var(--card-border);
+        border-bottom-color: var(--card-border);
+    }
+    body.theme-dark .week-calendar tr td:first-child {
+        border-left-color: var(--card-border);
     }
 </style>
 
@@ -384,10 +430,10 @@
     </table>
 </div>
 {% else %}
-<div class="list-view" style="background: white; border-radius: 8px; overflow: hidden;">
-    <table style="width: 100%; border-collapse: collapse;">
+<div class="calendar-list-view">
+    <table>
         <thead>
-            <tr style="background: #f8f9fa;">
+            <tr>
                 <th style="padding: 0.75rem; text-align: left;">Date</th>
                 <th style="padding: 0.75rem; text-align: left;">Titre</th>
                 <th style="padding: 0.75rem; text-align: left;">Client</th>
@@ -398,7 +444,7 @@
         </thead>
         <tbody>
             {% for content in contents %}
-                <tr style="border-bottom: 1px solid #eee;">
+                <tr>
                     <td style="padding: 0.75rem;">{{ content.scheduledDate|date('d/m/Y') }}</td>
                     <td style="padding: 0.75rem;">
                         {% set fmt = content.format.name|lower %}
@@ -441,7 +487,7 @@
                     </td>
                 </tr>
             {% else %}
-                <tr><td colspan="6" style="padding: 1rem; color: #999;">Aucun contenu pour ce mois.</td></tr>
+                <tr><td colspan="6" style="padding: 1rem; color: var(--muted);">Aucun contenu pour ce mois.</td></tr>
             {% endfor %}
         </tbody>
     </table>

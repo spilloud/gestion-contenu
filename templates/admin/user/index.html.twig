@@ -10,9 +10,9 @@
 </p>
 <p><a href="{{ path('app_admin_user_new') }}" class="btn">+ Nouveau</a></p>
 
-<table style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse;">
+<table class="data-sheet">
     <thead>
-        <tr style="background: #f8f9fa;">
+        <tr>
             <th style="padding: 0.75rem; text-align: left;">Nom</th>
             <th style="padding: 0.75rem; text-align: left;">Email</th>
             <th style="padding: 0.75rem; text-align: left;">Rôles</th>
@@ -21,16 +21,16 @@
     </thead>
     <tbody>
         {% for u in users %}
-            <tr style="border-bottom: 1px solid #eee;">
+            <tr>
                 <td style="padding: 0.75rem;">{{ u.name }}</td>
                 <td style="padding: 0.75rem;">{{ u.email }}</td>
-                <td style="padding: 0.75rem; font-size: 0.9rem; color: #475569;">
+                <td style="padding: 0.75rem; font-size: 0.9rem; color: var(--muted);">
                     {% set roles = u.roles %}
                     {% if 'ROLE_ADMIN' in roles %}<span class="status-badge status-violet">Admin</span>{% endif %}
                     {% if 'ROLE_CM' in roles %}<span class="status-badge status-canard">CM</span>{% endif %}
                     {% if 'ROLE_EDITOR' in roles %}<span class="status-badge status-orange">Monteur</span>{% endif %}
                     {% if roles|length <= 1 %}
-                        <span style="color:#999;">—</span>
+                        <span style="color: var(--muted);">—</span>
                     {% endif %}
                 </td>
                 <td style="padding: 0.75rem; vertical-align: middle;">
@@ -48,7 +48,7 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="4" style="padding: 1rem; color: #999;">Aucun utilisateur.</td></tr>
+            <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun utilisateur.</td></tr>
         {% endfor %}
     </tbody>
 </table>

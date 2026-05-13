@@ -17,27 +17,16 @@
     .clients-table-sort th a:hover { text-decoration: underline; }
     .clients-table-sort .sort-arrows { font-size: 0.75em; opacity: 0.85; letter-spacing: -0.05em; }
     .clients-table-sort .sort-inactive { opacity: 0.45; font-weight: 400; }
-    .clients-table-sort .group-row td {
-        background: #f3f4f6;
-        color: #0f172a;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        border-top: 1px solid #d1d5db;
-        border-bottom: 1px solid #d1d5db;
+    .clients-table-sort .data-sheet__group td {
         padding: 0.55rem 0.75rem;
-    }
-    .clients-table-sort .group-row small {
-        font-weight: 600;
-        color: #64748b;
-        margin-right: 0.5rem;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        border-top: 1px solid var(--table-border);
+        border-bottom: 1px solid var(--table-border);
     }
 </style>
 
-<table class="clients-table-sort" style="width: 100%; background: white; border-radius: 8px; border-collapse: collapse; overflow: hidden;">
+<table class="clients-table-sort data-sheet">
     <thead>
-        <tr style="background: #1c1040; color: white;">
+        <tr>
             <th style="padding: 0.75rem; text-align: left;">
                 <a href="{{ path('app_clients_table', {sort: 'client', dir: sort == 'client' and dir == 'asc' ? 'desc' : 'asc'}) }}">
                     Client
@@ -70,7 +59,7 @@
             {% endif %}
 
             {% if groupValue is not null and groupValue != lastGroup %}
-                <tr class="group-row">
+                <tr class="data-sheet__group">
                     <td colspan="4">
                         <small>{{ sort == 'cm' ? 'CM' : 'Monteur' }}</small>
                         {{ groupValue }}
@@ -79,14 +68,14 @@
                 {% set lastGroup = groupValue %}
             {% endif %}
 
-            <tr style="border-bottom: 1px solid #eee;">
+            <tr>
                 <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}">{{ client.name }}</a></td>
                 <td style="padding: 0.75rem;">{{ client.communityManager ? client.communityManager.name : '—' }}</td>
                 <td style="padding: 0.75rem;">{{ client.editor ? client.editor.name : '—' }}</td>
                 <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Voir</a></td>
             </tr>
         {% else %}
-            <tr><td colspan="4" style="padding: 1rem; color: #999;">Aucun client. <a href="{{ path('app_admin_client_new') }}">Ajouter un client</a></td></tr>
+            <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun client. <a href="{{ path('app_admin_client_new') }}">Ajouter un client</a></td></tr>
         {% endfor %}
     </tbody>
 </table>

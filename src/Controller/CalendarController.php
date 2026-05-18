@@ -37,12 +37,20 @@ class CalendarController extends AbstractController
         $monthStart = new \DateTimeImmutable(sprintf('%d-%02d-01', $year, $month));
         $monthEnd = $monthStart->modify('last day of this month');
 
+        $rangeStart = $monthStart;
+        $rangeEnd = $monthEnd;
+        if ($view === 'calendar') {
+            $gridStart = $monthStart->modify('monday this week');
+            $rangeStart = $gridStart;
+            $rangeEnd = $gridStart->modify('+41 days');
+        }
+
         $contents = $this->contentRepository->findByFilters(
             $clientIds,
             $statusIds,
             $formatIds,
-            $monthStart,
-            $monthEnd
+            $rangeStart,
+            $rangeEnd
         );
 
         return $this->render('calendar/index.html.twig', [

@@ -31,6 +31,8 @@ class ClientController extends AbstractController
         $calendarYear = $request->query->getInt('cyear', (int) date('Y'));
         $calendarMonthStart = new \DateTimeImmutable(sprintf('%d-%02d-01', $calendarYear, $calendarMonth));
         $calendarMonthEnd = $calendarMonthStart->modify('last day of this month');
+        $calendarGridStart = $calendarMonthStart->modify('monday this week');
+        $calendarGridEnd = $calendarGridStart->modify('+41 days');
 
         $clientPage = $client->getClientPage();
         if ($clientPage === null) {
@@ -66,8 +68,8 @@ class ClientController extends AbstractController
             [$client->getId()],
             null,
             null,
-            $calendarMonthStart,
-            $calendarMonthEnd
+            $calendarGridStart,
+            $calendarGridEnd
         );
 
         return $this->render('client/show.html.twig', [

@@ -56,6 +56,26 @@
         font-size: 0.82rem;
         color: var(--text);
     }
+    .day-out-month .day-event {
+        background: rgba(148, 163, 184, 0.22);
+        border-color: rgba(100, 116, 139, 0.45);
+        color: #64748b;
+    }
+    .day-out-month .day-event a {
+        color: #64748b;
+    }
+    .day-out-month .day-event .status-badge {
+        filter: grayscale(0.55);
+        opacity: 0.85;
+    }
+    body.theme-dark .day-out-month .day-event {
+        background: rgba(15, 23, 42, 0.55);
+        border-color: rgba(148, 163, 184, 0.35);
+        color: var(--muted);
+    }
+    body.theme-dark .day-out-month .day-event a {
+        color: var(--muted);
+    }
     .day-event strong { display: block; margin-bottom: 0.25rem; }
     .status-inline-form { display: inline-block; margin-top: 0.25rem; }
     .status-inline-select {

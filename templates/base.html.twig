@@ -353,6 +353,30 @@
             }
             body.theme-dark .subtitles-field-row label.field-label { color: #e2e8f0; }
 
+            .theme-switch-wrap {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.4rem;
+            }
+            .theme-switch__mascot {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #64748b;
+                flex-shrink: 0;
+            }
+            body.theme-dark .theme-switch__mascot {
+                color: #c4b5fd;
+            }
+            .theme-switch__mascot svg {
+                width: 22px;
+                height: 22px;
+                display: block;
+                opacity: 0.72;
+            }
+            body.theme-dark .theme-switch__mascot svg {
+                opacity: 0.95;
+            }
             /* Thème : interrupteur (soleil / Dark Vador) */
             .theme-switch {
                 position: relative;
@@ -459,6 +483,7 @@
             <header class="topbar">
                 <div class="title">Dashboard Contenu</div>
                 <div class="topbar-actions">
+                    <span class="theme-switch-wrap">
                     <button type="button" id="themeToggle" class="theme-switch" role="switch" aria-checked="false" title="Thème clair">
                         <span class="theme-switch__thumb">
                             <span class="theme-switch__icon theme-switch__icon--sun" aria-hidden="true">
@@ -475,6 +500,12 @@
                         </span>
                         <span class="theme-switch__sr">Basculer entre thème clair et thème sombre</span>
                     </button>
+                    <span class="theme-switch__mascot" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" focusable="false">
+                            <path fill="currentColor" d="M12 2.5L7.2 8.2c-.3.4-.5.9-.5 1.4V11H5l1.3 11h11.4L19 11h-1.7V9.6c0-.5-.2-1-.5-1.4L12 2.5zm0 2.2l3.6 4.8H8.4L12 4.7zM8.5 13h7l-.6 3h-5.8l-.6-3z"/>
+                        </svg>
+                    </span>
+                    </span>
                     {% if app.user %}
                         <div class="user-dropdown" id="userDropdown">
                             <button type="button" class="topbar-btn">{{ app.user.userIdentifier }}</button>

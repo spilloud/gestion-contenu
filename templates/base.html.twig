@@ -84,6 +84,8 @@
                 color: var(--sidebar-text);
                 padding: 1rem 0.75rem;
                 box-shadow: 2px 0 18px rgba(20, 11, 46, 0.28);
+                display: flex;
+                flex-direction: column;
             }
             .brand {
                 display: flex;
@@ -95,28 +97,81 @@
             }
             .brand img { width: 150px; height: auto; object-fit: contain; }
             .brand strong { font-size: 1rem; color: #fff; }
-            .sidebar a {
-                display: block;
-                padding: 0.65rem 0.8rem;
+            .sidebar-nav {
+                display: flex;
+                flex: 1;
+                flex-direction: column;
+                gap: 0.15rem;
+                min-height: 0;
+            }
+            .sidebar-link {
+                display: flex;
+                align-items: center;
+                gap: 0.65rem;
+                padding: 0.62rem 0.75rem;
                 color: var(--sidebar-text);
                 text-decoration: none;
                 border-radius: 0.55rem;
-                margin-bottom: 0.2rem;
+                font-size: 0.9rem;
+                line-height: 1.25;
             }
-            .sidebar a:hover { background: var(--sidebar-hover); color: #fff; }
-            .sidebar a.active { background: var(--sidebar-active); color: #fff; }
+            .sidebar-link:hover {
+                background: var(--sidebar-hover);
+                color: #fff;
+            }
+            .sidebar-link.active {
+                background: var(--sidebar-active);
+                color: #fff;
+            }
+            .sidebar-link__icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 1.15rem;
+                height: 1.15rem;
+                flex-shrink: 0;
+                opacity: 0.92;
+            }
+            .sidebar-link__icon svg {
+                display: block;
+                width: 100%;
+                height: 100%;
+            }
+            .sidebar-link.active .sidebar-link__icon,
+            .sidebar-link:hover .sidebar-link__icon {
+                opacity: 1;
+            }
+            .sidebar-link__label {
+                flex: 1;
+                min-width: 0;
+            }
+            .sidebar-section {
+                margin-bottom: 0.35rem;
+            }
+            .sidebar-section--dashboard {
+                padding-bottom: 0.65rem;
+                margin-bottom: 0.5rem;
+                border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+            }
+            .sidebar-section--admin {
+                margin-top: auto;
+                padding: 0.85rem 0.55rem 0.55rem;
+                background: rgba(0, 0, 0, 0.22);
+                border: 1px solid rgba(148, 163, 184, 0.18);
+                border-radius: 0.65rem;
+            }
+            body.theme-dark .sidebar-section--admin {
+                background: rgba(0, 0, 0, 0.45);
+                border-color: rgba(148, 163, 184, 0.12);
+            }
             .sidebar h3 {
-                padding: 0 0.8rem;
-                font-size: 0.74rem;
-                letter-spacing: 0.04em;
+                padding: 0 0.55rem;
+                font-size: 0.7rem;
+                font-weight: 600;
+                letter-spacing: 0.06em;
                 text-transform: uppercase;
                 color: #94a3b8;
-                margin: 1rem 0 0.5rem;
-            }
-            .sidebar .divider {
-                border: 0;
-                border-top: 1px solid rgba(148, 163, 184, 0.2);
-                margin: 0.9rem 0.8rem;
+                margin: 0 0 0.55rem;
             }
             .main { flex: 1; min-width: 0; }
             .topbar {
@@ -462,23 +517,96 @@
             <div class="brand">
                 <img src="{{ asset('logo-site-blanc.svg') }}" alt="Logo Osmose Marketing">
             </div>
-            <h3>Navigation</h3>
-            <a href="{{ path('app_dashboard') }}" class="{{ app.request.attributes.get('_route') in ['app_dashboard', 'app_home'] ? 'active' : '' }}">Dashboard</a>
-            <a href="{{ path('app_calendar') }}" class="{{ app.request.attributes.get('_route') == 'app_calendar' ? 'active' : '' }}">Calendrier des contenus</a>
-            <a href="{{ path('app_calendar_events_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_calendar_event' ? 'active' : '' }}">Événements</a>
-            <a href="{{ path('app_videos_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_videos_' ? 'active' : '' }}">Vidéos</a>
-            <a href="{{ path('app_derush_index') }}" class="{{ app.request.attributes.get('_route') == 'app_derush_index' ? 'active' : '' }}">Dérush vidéo</a>
-            <a href="{{ path('app_reports_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_reports_' ? 'active' : '' }}">Rapports</a>
-            <a href="{{ path('app_clients_table') }}" class="{{ app.request.attributes.get('_route') == 'app_clients_table' ? 'active' : '' }}">Clients sous gestion</a>
-            <h3>Admin</h3>
-            <a href="{{ path('app_admin_cm_index') }}">Community Managers</a>
-            <a href="{{ path('app_admin_client_index') }}">Clients</a>
-            {% if 'ROLE_ADMIN' in app.user.roles %}
-                <a href="{{ path('app_admin_user_index') }}">Utilisateurs</a>
-                <a href="{{ path('app_admin_integration_api') }}" class="{{ app.request.attributes.get('_route') in ['app_admin_integration_api', 'app_admin_integration_luc'] ? 'active' : '' }}">Intégration API</a>
-            {% endif %}
-            <a href="{{ path('app_admin_status_format_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_admin_status_' or app.request.attributes.get('_route') starts with 'app_admin_format_' or app.request.attributes.get('_route') == 'app_admin_status_format_index' ? 'active' : '' }}">Statuts et formats</a>
-            <hr class="divider">
+            {% set currentRoute = app.request.attributes.get('_route') %}
+
+            <div class="sidebar-nav">
+                <div class="sidebar-section sidebar-section--dashboard">
+                    <a href="{{ path('app_dashboard') }}" class="sidebar-link {{ currentRoute in ['app_dashboard', 'app_home'] ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Dashboard</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section">
+                    <h3>Menu</h3>
+                    <a href="{{ path('app_calendar') }}" class="sidebar-link {{ currentRoute == 'app_calendar' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Calendrier des contenus</span>
+                    </a>
+                    <a href="{{ path('app_clients_table') }}" class="sidebar-link {{ currentRoute == 'app_clients_table' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="3"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Clients sous gestion</span>
+                    </a>
+                    <a href="{{ path('app_derush_index') }}" class="sidebar-link {{ currentRoute == 'app_derush_index' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Dérush vidéo</span>
+                    </a>
+                    <a href="{{ path('app_calendar_events_index') }}" class="sidebar-link {{ currentRoute starts with 'app_calendar_event' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Événements</span>
+                    </a>
+                    <a href="{{ path('app_reports_index') }}" class="sidebar-link {{ currentRoute starts with 'app_reports_' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-6M22 20H2"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Rapports</span>
+                    </a>
+                    <a href="{{ path('app_videos_index') }}" class="sidebar-link {{ currentRoute starts with 'app_videos_' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="m10 9 6 4-6 4V9z"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Vidéos</span>
+                    </a>
+                </div>
+
+                <div class="sidebar-section sidebar-section--admin">
+                    <h3>Administration</h3>
+                    <a href="{{ path('app_admin_client_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_client' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="8" width="20" height="14" rx="2"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Clients</span>
+                    </a>
+                    <a href="{{ path('app_admin_cm_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_cm' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11v2a4 4 0 0 1-4 4h-1"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Community Managers</span>
+                    </a>
+                    {% if 'ROLE_ADMIN' in app.user.roles %}
+                        <a href="{{ path('app_admin_integration_api') }}" class="sidebar-link {{ currentRoute in ['app_admin_integration_api', 'app_admin_integration_luc'] ? 'active' : '' }}">
+                            <span class="sidebar-link__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            </span>
+                            <span class="sidebar-link__label">Intégration API</span>
+                        </a>
+                    {% endif %}
+                    <a href="{{ path('app_admin_status_format_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_status_' or currentRoute starts with 'app_admin_format_' or currentRoute == 'app_admin_status_format_index' ? 'active' : '' }}">
+                        <span class="sidebar-link__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h10M4 17h16"/></svg>
+                        </span>
+                        <span class="sidebar-link__label">Statuts et formats</span>
+                    </a>
+                    {% if 'ROLE_ADMIN' in app.user.roles %}
+                        <a href="{{ path('app_admin_user_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_user' ? 'active' : '' }}">
+                            <span class="sidebar-link__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.4-3.1 8.5-7 9-3.9-.5-7-4.6-7-9V7l7-4z"/><circle cx="12" cy="11" r="2"/></svg>
+                            </span>
+                            <span class="sidebar-link__label">Utilisateurs</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
         </nav>
         <main class="main">
             <header class="topbar">

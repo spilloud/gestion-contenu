@@ -162,51 +162,27 @@ class ContentController extends AbstractController
     #[Route('/{id}/deplacer', name: 'app_content_move', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function move(Content $content, Request $request): Response
     {
-        $wantsJson = $request->isXmlHttpRequest()
-            || str_contains($request->headers->get('Accept', ''), 'application/json');
-
         if (!$this->isCsrfTokenValid('move'.$content->getId(), $request->request->getString('_token'))) {
-            if ($wantsJson) {
-                return new JsonResponse(['ok' => false, 'error' => 'Jeton CSRF invalide.'], 403);
-            }
-            $this->addFlash('error', 'Jeton CSRF invalide.');
-
-            return $this->redirectBackFromMove($request, $content);
+            return new JsonResponse(['ok' => false, 'error' => 'Jeton CSRF invalide. Rechargez la page.'], 403);
         }
 
         $dateStr = $request->request->getString('date');
         if ($dateStr === '') {
-            if ($wantsJson) {
-                return new JsonResponse(['ok' => false, 'error' => 'Date manquante.'], 400);
-            }
-            $this->addFlash('error', 'Date manquante.');
-
-            return $this->redirectBackFromMove($request, $content);
+            return new JsonResponse(['ok' => false, 'error' => 'Date manquante.'], 400);
         }
 
         try {
-            $content->setScheduledDate(new \DateTimeImmutable($dateStr));
+            $content->setScheduledDate(new \DateTime($dateStr));
             $content->setUpdatedAt(new \DateTimeImmutable());
             $this->entityManager->flush();
-        } catch (\Exception) {
-            if ($wantsJson) {
-                return new JsonResponse(['ok' => false, 'error' => 'Date invalide.'], 400);
-            }
-            $this->addFlash('error', 'Date invalide.');
-
-            return $this->redirectBackFromMove($request, $content);
+        } catch (\Throwable $e) {
+            return new JsonResponse(['ok' => false, 'error' => 'Impossible d\'enregistrer la date.'], 400);
         }
 
-        if ($wantsJson) {
-            return new JsonResponse([
-                'ok' => true,
-                'date' => $content->getScheduledDate()?->format('Y-m-d'),
-            ]);
-        }
-
-        $this->addFlash('success', 'Contenu déplacé.');
-
-        return $this->redirectBackFromMove($request, $content);
+        return new JsonResponse([
+            'ok' => true,
+            'date' => $content->getScheduledDate()?->format('Y-m-d'),
+        ]);
     }
 
     #[Route('/{id}/statut', name: 'app_content_change_status', requirements: ['id' => '\d+'], methods: ['POST'])]

@@ -448,6 +448,7 @@
 
                 fetch(dragged.dataset.moveUrl, {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json'
@@ -455,13 +456,19 @@
                     body: body
                 })
                     .then(function (response) {
-                        return response.json().then(function (data) {
+                        return response.text().then(function (text) {
+                            var data = null;
+                            try {
+                                data = text ? JSON.parse(text) : null;
+                            } catch (parseError) {
+                                throw new Error('Réponse serveur invalide (' + response.status + ').');
+                            }
                             return { ok: response.ok, data: data };
                         });
                     })
                     .then(function (result) {
-                        if (!result.ok || !result.data.ok) {
-                            window.alert(result.data.error || 'Impossible de déplacer ce contenu.');
+                        if (!result.ok || !result.data || !result.data.ok) {
+                            window.alert((result.data && result.data.error) || 'Impossible de déplacer ce contenu.');
                             return;
                         }
                         var events = cell.querySelector('.day-events');
@@ -481,8 +488,8 @@
                             }
                         }
                     })
-                    .catch(function () {
-                        window.alert('Erreur réseau lors du déplacement.');
+                    .catch(function (err) {
+                        window.alert(err && err.message ? err.message : 'Erreur réseau lors du déplacement.');
                     });
             });
         });

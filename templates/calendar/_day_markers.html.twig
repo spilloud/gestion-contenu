@@ -1,0 +1,22 @@
+{# dayDate: Y-m-d, calendarEvents: CalendarEvent[] #}
+{% if calendarEvents is defined and calendarEvents|length > 0 %}
+<div class="day-bars">
+    {% for event in calendarEvents %}
+        {% set evStart = event.startDate|date('Y-m-d') %}
+        {% set evEnd = event.endDate|date('Y-m-d') %}
+        {% if dayDate >= evStart and dayDate <= evEnd %}
+            {% set isStart = dayDate == evStart %}
+            {% set isEnd = dayDate == evEnd %}
+            {% set segmentClass = isStart and isEnd
+                ? 'cal-event-bar--segment-single'
+                : (isStart ? 'cal-event-bar--segment-start' : (isEnd ? 'cal-event-bar--segment-end' : 'cal-event-bar--segment-mid')) %}
+            <a href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}"
+               class="cal-event-bar {{ segmentClass }}"
+               style="background-color: {{ event.color }};"
+               title="{{ event.title }}{% if event.client %} ({{ event.client.name }}){% else %} (tous les clients){% endif %} — {{ event.startDate|date('d/m/Y') }} → {{ event.endDate|date('d/m/Y') }}">
+                {% if isStart %}<span class="cal-event-bar__label">{{ event.title }}</span>{% endif %}
+            </a>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}

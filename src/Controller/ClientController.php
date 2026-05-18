@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Client;
 use App\Entity\ClientPage;
 use App\Form\ClientPageType;
+use App\Repository\CalendarEventRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -18,6 +19,7 @@ class ClientController extends AbstractController
 {
     public function __construct(
         private readonly ContentRepository $contentRepository,
+        private readonly CalendarEventRepository $calendarEventRepository,
         private readonly StatusRepository $statusRepository,
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -71,12 +73,19 @@ class ClientController extends AbstractController
             $calendarGridStart,
             $calendarGridEnd
         );
+        $calendarEvents = $this->calendarEventRepository->findForCalendarRange(
+            $calendarGridStart,
+            $calendarGridEnd,
+            null,
+            $client->getId()
+        );
 
         return $this->render('client/show.html.twig', [
             'client' => $client,
             'clientPage' => $clientPage,
             'contents' => $contents,
             'calendarContents' => $calendarContents,
+            'calendarEvents' => $calendarEvents,
             'form' => $form,
             'showArchives' => $showArchives,
             'calendarMonth' => $calendarMonth,

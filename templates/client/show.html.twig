@@ -33,7 +33,29 @@
         width: 14.285%;
         min-height: 165px;
         height: 165px;
+        overflow: visible;
     }
+    .day-bars { margin-bottom: 0.4rem; }
+    .cal-event-bar {
+        display: block;
+        height: 1.35rem;
+        line-height: 1.35rem;
+        font-size: 0.72rem;
+        padding: 0 0.4rem;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #0f172a;
+        font-weight: 600;
+        text-decoration: none;
+        box-sizing: border-box;
+    }
+    .cal-event-bar:hover { filter: brightness(0.95); text-decoration: none; }
+    .cal-event-bar--segment-start { border-radius: 6px 0 0 6px; margin-right: -9px; }
+    .cal-event-bar--segment-mid { border-radius: 0; margin-left: -9px; margin-right: -9px; min-height: 1.35rem; }
+    .cal-event-bar--segment-end { border-radius: 0 6px 6px 0; margin-left: -9px; }
+    .cal-event-bar--segment-single { border-radius: 6px; margin: 0; }
     .client-calendar tr td:first-child { border-left: 1px solid var(--card-border); }
     .day-head {
         display: flex;
@@ -274,7 +296,10 @@
         <a href="{{ path('app_client_show', baseParams|merge({cmonth: nextMonth|date('n'), cyear: nextMonth|date('Y')})) }}" title="Mois suivant">›</a>
     </div>
     <div class="client-calendar">
-        <h2>Calendrier {{ client.name }}</h2>
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+            <h2 style="margin:0;">Calendrier {{ client.name }}</h2>
+            <a href="{{ path('app_calendar_event_new', {client: client.id, return_to: app.request.requestUri}) }}" class="btn btn-sm" style="background:#64748b;">+ Événement</a>
+        </div>
         {% set gridStart = calendarMonthStart|date_modify('monday this week') %}
         <table>
             <thead>
@@ -302,6 +327,7 @@
                                 <strong>{{ dayObj|date('d') }}</strong>
                                 <span>{{ dayObj|date('d/m') }}</span>
                             </div>
+                            {% include 'calendar/_day_markers.html.twig' with {dayDate: dayDate, calendarEvents: calendarEvents} %}
                             <div class="day-events">
                             {% for content in dayContents %}
                                 <div class="day-event {{ content.scheduledDate|date('Y-m-d') < todayDate ? 'past-post' : '' }}"

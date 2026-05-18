@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Content;
+use App\Repository\CalendarEventRepository;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
@@ -20,6 +21,7 @@ class CalendarController extends AbstractController
         private readonly ContentRepository $contentRepository,
         private readonly StatusRepository $statusRepository,
         private readonly FormatRepository $formatRepository,
+        private readonly CalendarEventRepository $calendarEventRepository,
     ) {
     }
 
@@ -53,8 +55,24 @@ class CalendarController extends AbstractController
             $rangeEnd
         );
 
+        $hasClientFilter = $request->query->has('clients');
+        $showEvents = $request->query->getInt('show_events', 1) === 1;
+        $calendarEvents = [];
+        if ($showEvents) {
+            $filterClientIds = $hasClientFilter
+                ? array_map('intval', $clientIds ?? [])
+                : null;
+            $calendarEvents = $this->calendarEventRepository->findForCalendarRange(
+                $rangeStart,
+                $rangeEnd,
+                $filterClientIds
+            );
+        }
+
         return $this->render('calendar/index.html.twig', [
             'contents' => $contents,
+            'calendarEvents' => $calendarEvents,
+            'showEvents' => $showEvents,
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
             'statuses' => $this->statusRepository->findAllOrdered(),
             'formats' => $this->formatRepository->findAllOrdered(),

@@ -1,0 +1,141 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ isNew ? 'Nouvel événement' : 'Modifier l\'événement' }}{% endblock %}
+
+{% block body %}
+<h1>{{ isNew ? 'Nouvel événement calendrier' : 'Modifier l\'événement' }}</h1>
+<p><a href="{{ returnTo }}">← Retour au calendrier</a></p>
+
+<style>
+    .calendar-event-form {
+        max-width: 520px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+    .calendar-event-form .form-row {
+        margin-bottom: 1rem;
+    }
+    .calendar-event-form label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.35rem;
+        color: var(--text);
+    }
+    .calendar-event-form input[type="text"],
+    .calendar-event-form input[type="date"],
+    .calendar-event-form select {
+        width: 100%;
+        max-width: 100%;
+        padding: 0.55rem 0.65rem;
+        border: 1px solid var(--input-border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        color: var(--text);
+    }
+    .calendar-event-form input[type="color"] {
+        width: 72px;
+        height: 42px;
+        padding: 2px;
+        border: 1px solid var(--input-border);
+        border-radius: 8px;
+        cursor: pointer;
+        background: var(--input-bg);
+    }
+    .calendar-event-form .form-help {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 0.3rem;
+    }
+    .calendar-event-form .client-row.is-hidden {
+        display: none;
+    }
+    .form-actions {
+        display: flex;
+        gap: 0.6rem;
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: 1.25rem;
+    }
+</style>
+
+<div class="calendar-event-form">
+    {{ form_start(form) }}
+    <input type="hidden" name="_return_to" value="{{ returnTo }}">
+
+    <div class="form-row">
+        {{ form_label(form.title) }}
+        {{ form_widget(form.title) }}
+        {{ form_errors(form.title) }}
+    </div>
+
+    <div class="form-row">
+        {{ form_label(form.startDate) }}
+        {{ form_widget(form.startDate) }}
+        {{ form_errors(form.startDate) }}
+    </div>
+
+    <div class="form-row">
+        {{ form_label(form.endDate) }}
+        {{ form_widget(form.endDate) }}
+        {% if form.endDate.vars.help %}
+            <div class="form-help">{{ form.endDate.vars.help }}</div>
+        {% endif %}
+        {{ form_errors(form.endDate) }}
+    </div>
+
+    <div class="form-row">
+        {{ form_label(form.color) }}
+        {{ form_widget(form.color) }}
+        {{ form_errors(form.color) }}
+    </div>
+
+    <div class="form-row">
+        <label>
+            {{ form_widget(form.forAllClients, {attr: {id: 'calendar_event_for_all'}}) }}
+            {{ form.forAllClients.vars.label }}
+        </label>
+        {% if form.forAllClients.vars.help %}
+            <div class="form-help">{{ form.forAllClients.vars.help }}</div>
+        {% endif %}
+        {{ form_errors(form.forAllClients) }}
+    </div>
+
+    <div class="form-row client-row" id="calendar_event_client_row">
+        {{ form_label(form.client) }}
+        {{ form_widget(form.client) }}
+        {{ form_errors(form.client) }}
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn">{{ isNew ? 'Créer' : 'Enregistrer' }}</button>
+        <a href="{{ returnTo }}" class="btn" style="background:#64748b;">Annuler</a>
+    </div>
+
+    {{ form_end(form) }}
+
+    {% if not isNew %}
+        <form method="post" action="{{ path('app_calendar_event_delete', {id: event.id}) }}" style="margin-top:0.75rem;" onsubmit="return confirm('Supprimer cet événement ?');">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete_calendar_event' ~ event.id) }}">
+            <input type="hidden" name="_return_to" value="{{ returnTo }}">
+            <button type="submit" class="btn btn-danger">Supprimer</button>
+        </form>
+    {% endif %}
+</div>
+
+<script>
+    (function () {
+        var globalCheck = document.getElementById('calendar_event_for_all');
+        var clientRow = document.getElementById('calendar_event_client_row');
+        if (!globalCheck || !clientRow) {
+            return;
+        }
+        function sync() {
+            clientRow.classList.toggle('is-hidden', globalCheck.checked);
+        }
+        globalCheck.addEventListener('change', sync);
+        sync();
+    })();
+</script>
+{% endblock %}

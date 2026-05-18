@@ -13,6 +13,7 @@ use App\Service\AsanaService;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -161,21 +162,51 @@ class ContentController extends AbstractController
     #[Route('/{id}/deplacer', name: 'app_content_move', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function move(Content $content, Request $request): Response
     {
-        $dateStr = $request->request->getString('date');
-        if ($dateStr && $this->isCsrfTokenValid('move'.$content->getId(), $request->request->getString('_token'))) {
-            try {
-                $content->setScheduledDate(new \DateTimeImmutable($dateStr));
-                $this->entityManager->flush();
-                $this->addFlash('success', 'Contenu déplacé.');
-            } catch (\Exception) {
-                $this->addFlash('error', 'Date invalide.');
+        $wantsJson = $request->isXmlHttpRequest()
+            || str_contains($request->headers->get('Accept', ''), 'application/json');
+
+        if (!$this->isCsrfTokenValid('move'.$content->getId(), $request->request->getString('_token'))) {
+            if ($wantsJson) {
+                return new JsonResponse(['ok' => false, 'error' => 'Jeton CSRF invalide.'], 403);
             }
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectBackFromMove($request, $content);
         }
 
-        return $this->redirectToRoute('app_calendar', [
-            'month' => $content->getScheduledDate()?->format('n'),
-            'year' => $content->getScheduledDate()?->format('Y'),
-        ]);
+        $dateStr = $request->request->getString('date');
+        if ($dateStr === '') {
+            if ($wantsJson) {
+                return new JsonResponse(['ok' => false, 'error' => 'Date manquante.'], 400);
+            }
+            $this->addFlash('error', 'Date manquante.');
+
+            return $this->redirectBackFromMove($request, $content);
+        }
+
+        try {
+            $content->setScheduledDate(new \DateTimeImmutable($dateStr));
+            $content->setUpdatedAt(new \DateTimeImmutable());
+            $this->entityManager->flush();
+        } catch (\Exception) {
+            if ($wantsJson) {
+                return new JsonResponse(['ok' => false, 'error' => 'Date invalide.'], 400);
+            }
+            $this->addFlash('error', 'Date invalide.');
+
+            return $this->redirectBackFromMove($request, $content);
+        }
+
+        if ($wantsJson) {
+            return new JsonResponse([
+                'ok' => true,
+                'date' => $content->getScheduledDate()?->format('Y-m-d'),
+            ]);
+        }
+
+        $this->addFlash('success', 'Contenu déplacé.');
+
+        return $this->redirectBackFromMove($request, $content);
     }
 
     #[Route('/{id}/statut', name: 'app_content_change_status', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -271,6 +302,19 @@ class ContentController extends AbstractController
         }
 
         return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);
+    }
+
+    private function redirectBackFromMove(Request $request, Content $content): Response
+    {
+        $referer = $this->normalizeReturnTo($request->headers->get('referer'), $request);
+        if ($referer !== null) {
+            return $this->redirect($referer);
+        }
+
+        return $this->redirectToRoute('app_calendar', [
+            'month' => $content->getScheduledDate()?->format('n'),
+            'year' => $content->getScheduledDate()?->format('Y'),
+        ]);
     }
 
     private function resolveReturnTo(Request $request): string

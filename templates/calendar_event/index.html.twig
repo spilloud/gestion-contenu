@@ -60,6 +60,24 @@
         border-color: var(--sidebar-active);
         color: #fff;
     }
+    .th-sort {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .th-sort:hover {
+        color: var(--sidebar-active);
+    }
+    .th-sort.active {
+        color: var(--sidebar-active);
+        font-weight: 700;
+    }
+    .th-sort__dir {
+        font-size: 0.75rem;
+        opacity: 0.85;
+    }
 </style>
 
 <h1>Événements</h1>
@@ -72,6 +90,28 @@
         <a href="{{ path('app_calendar_events_index', {sort: 'title'}) }}" class="{{ sort == 'title' ? 'active' : '' }}">Titre</a>
     </div>
 </div>
+
+{% macro table_head(sort) %}
+    <thead>
+        <tr>
+            <th style="padding: 0.75rem; text-align: left;">Aperçu</th>
+            <th style="padding: 0.75rem; text-align: left;">
+                <a href="{{ path('app_calendar_events_index', {sort: 'title'}) }}" class="th-sort {{ sort == 'title' ? 'active' : '' }}">
+                    Titre
+                    {% if sort == 'title' %}<span class="th-sort__dir" aria-hidden="true">A→Z</span>{% endif %}
+                </a>
+            </th>
+            <th style="padding: 0.75rem; text-align: left;">
+                <a href="{{ path('app_calendar_events_index', {sort: 'date'}) }}" class="th-sort {{ sort == 'date' ? 'active' : '' }}">
+                    Dates
+                    {% if sort == 'date' %}<span class="th-sort__dir" aria-hidden="true">↓</span>{% endif %}
+                </a>
+            </th>
+            <th style="padding: 0.75rem; text-align: left;">Couleurs</th>
+            <th style="padding: 0.75rem; text-align: left;">Actions</th>
+        </tr>
+    </thead>
+{% endmacro %}
 
 {% macro event_rows(events) %}
     {% for event in events %}
@@ -111,15 +151,7 @@
     <h2>Tous les clients</h2>
     <p class="section-meta">Événements visibles sur le calendrier de chaque client (fêtes, Paléo, etc.).</p>
     <table class="data-sheet">
-        <thead>
-            <tr>
-                <th style="padding: 0.75rem; text-align: left;">Aperçu</th>
-                <th style="padding: 0.75rem; text-align: left;">Titre</th>
-                <th style="padding: 0.75rem; text-align: left;">Dates</th>
-                <th style="padding: 0.75rem; text-align: left;">Couleurs</th>
-                <th style="padding: 0.75rem; text-align: left;">Actions</th>
-            </tr>
-        </thead>
+        {{ events.table_head(sort) }}
         <tbody>
             {{ events.event_rows(globalEvents) }}
             {% if globalEvents is empty %}
@@ -134,15 +166,7 @@
         <h2>{{ group.client.name }}</h2>
         <p class="section-meta">Événements réservés à ce client (+ les événements globaux sur son calendrier).</p>
         <table class="data-sheet">
-            <thead>
-                <tr>
-                    <th style="padding: 0.75rem; text-align: left;">Aperçu</th>
-                    <th style="padding: 0.75rem; text-align: left;">Titre</th>
-                    <th style="padding: 0.75rem; text-align: left;">Dates</th>
-                    <th style="padding: 0.75rem; text-align: left;">Couleurs</th>
-                    <th style="padding: 0.75rem; text-align: left;">Actions</th>
-                </tr>
-            </thead>
+            {{ events.table_head(sort) }}
             <tbody>
                 {{ events.event_rows(group.events) }}
             </tbody>

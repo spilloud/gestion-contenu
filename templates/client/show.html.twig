@@ -241,9 +241,10 @@
 
 <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; color: var(--text);">
     <h2>{{ showArchives ? 'Contenus archivés' : 'Contenus prévus' }}</h2>
-    <p style="display: flex; align-items: center; gap: 0.5rem;">
+    <p style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
         <a href="{{ path('app_client_show', {id: client.id, archives: 1}) }}" class="btn btn-sm" style="background: #64748b;">Archives</a>
         <a href="{{ path('app_calendar', {clients: [client.id]}) }}" class="btn btn-sm" style="background: #64748b;">Calendrier {{ client.name }}</a>
+        <a href="{{ path('app_client_year_planning', {id: client.id, year: calendarYear}) }}" class="btn btn-sm" style="background: #64748b;">Vue annuelle {{ calendarYear }}</a>
         {% if showArchives %}
             <a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Contenus à venir</a>
         {% endif %}
@@ -289,7 +290,7 @@
 </div>
 
 <div style="margin-bottom: 1.5rem;">
-    <div class="month-nav">
+    <div class="month-nav" style="display: inline-flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
         <a href="{{ path('app_client_show', baseParams|merge({cmonth: prevMonth|date('n'), cyear: prevMonth|date('Y')})) }}" title="Mois précédent">‹</a>
         <span class="month-label">{{ calendarMonthStart|date('F Y')|capitalize }}</span>
         <a href="{{ path('app_client_show', baseParams|merge({cmonth: nextMonth|date('n'), cyear: nextMonth|date('Y')})) }}" title="Mois suivant">›</a>

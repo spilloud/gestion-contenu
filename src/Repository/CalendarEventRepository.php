@@ -54,16 +54,44 @@ class CalendarEventRepository extends ServiceEntityRepository
     }
 
     /**
+     * @param 'date'|'title' $sort
+     *
      * @return CalendarEvent[]
      */
-    public function findAllForManagement(): array
+    public function findAllForManagement(string $sort = 'date'): array
     {
-        return $this->createQueryBuilder('e')
+        $qb = $this->createQueryBuilder('e')
             ->leftJoin('e.client', 'cl')
-            ->addSelect('cl')
-            ->orderBy('e.startDate', 'DESC')
-            ->addOrderBy('e.title', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->addSelect('cl');
+
+        if ($sort === 'title') {
+            $qb->orderBy('e.title', 'ASC')
+                ->addOrderBy('e.startDate', 'DESC');
+        } else {
+            $qb->orderBy('e.startDate', 'DESC')
+                ->addOrderBy('e.title', 'ASC');
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param 'date'|'title' $sort
+     */
+    public static function compareForManagement(CalendarEvent $a, CalendarEvent $b, string $sort): int
+    {
+        if ($sort === 'title') {
+            $titleCompare = strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
+            if ($titleCompare !== 0) {
+                return $titleCompare;
+            }
+        } else {
+            $dateCompare = ($b->getStartDate()?->format('Y-m-d') ?? '') <=> ($a->getStartDate()?->format('Y-m-d') ?? '');
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+        }
+
+        return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
     }
 }

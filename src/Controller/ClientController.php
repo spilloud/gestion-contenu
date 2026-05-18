@@ -8,6 +8,7 @@ use App\Form\ClientPageType;
 use App\Repository\CalendarEventRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
+use App\Service\YearPlanningGridBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,7 +23,44 @@ class ClientController extends AbstractController
         private readonly CalendarEventRepository $calendarEventRepository,
         private readonly StatusRepository $statusRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly YearPlanningGridBuilder $yearPlanningGridBuilder,
     ) {
+    }
+
+    #[Route('/{id}/planning/{year}', name: 'app_client_year_planning', requirements: ['id' => '\d+', 'year' => '\d{4}'], methods: ['GET'])]
+    public function yearPlanning(Client $client, int $year): Response
+    {
+        $currentYear = (int) date('Y');
+        if ($year < 2000 || $year > $currentYear + 5) {
+            throw $this->createNotFoundException('Année invalide.');
+        }
+
+        $yearStart = new \DateTimeImmutable(sprintf('%d-01-01', $year));
+        $yearEnd = new \DateTimeImmutable(sprintf('%d-12-31', $year));
+
+        $contents = $this->contentRepository->findByFilters(
+            [$client->getId()],
+            null,
+            null,
+            $yearStart,
+            $yearEnd
+        );
+        $events = $this->calendarEventRepository->findForCalendarRange(
+            $yearStart,
+            $yearEnd,
+            null,
+            $client->getId()
+        );
+
+        $grid = $this->yearPlanningGridBuilder->build($year, $contents, $events);
+
+        return $this->render('client/year_planning.html.twig', [
+            'client' => $client,
+            'year' => $year,
+            'prevYear' => $year - 1,
+            'nextYear' => $year + 1,
+            'grid' => $grid,
+        ]);
     }
 
     #[Route('/{id}', name: 'app_client_show', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]

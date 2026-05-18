@@ -1,0 +1,309 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Planning {{ year }} — {{ client.name }}{% endblock %}
+
+{% block body %}
+<style>
+    .year-planning-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .year-planning-toolbar h1 {
+        margin: 0;
+        font-size: 1.35rem;
+    }
+    .year-planning-toolbar .subtitle {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 0.2rem;
+    }
+    .year-planning-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .year-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 0.25rem 0.55rem;
+    }
+    .year-nav a {
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--input-bg);
+        font-weight: 700;
+    }
+    .year-nav a:hover {
+        background: var(--sidebar-active);
+        color: #fff;
+    }
+    .year-label {
+        font-weight: 700;
+        min-width: 3.5rem;
+        text-align: center;
+    }
+    .year-planning-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-bottom: 0.75rem;
+    }
+    .year-planning-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .legend-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 2px;
+        background: #64748b;
+        flex-shrink: 0;
+    }
+    .legend-event {
+        width: 0.85rem;
+        height: 0.55rem;
+        border-radius: 2px;
+        background: #cbd5e1;
+        border: 1px solid #94a3b8;
+    }
+    .year-planning-wrap {
+        overflow-x: auto;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 0.5rem;
+    }
+    .year-planning-table {
+        width: 100%;
+        min-width: 1100px;
+        border-collapse: collapse;
+        font-size: 0.78rem;
+        line-height: 1.3;
+    }
+    .year-planning-table th,
+    .year-planning-table td {
+        border: 1px solid var(--card-border);
+        vertical-align: top;
+        padding: 0.28rem 0.35rem;
+    }
+    .year-planning-table thead th {
+        background: var(--surface-inset);
+        font-weight: 700;
+        text-align: center;
+        padding: 0.45rem 0.25rem;
+        font-size: 0.8rem;
+    }
+    .year-planning-table .week-col {
+        width: 7.5rem;
+        min-width: 7.5rem;
+        max-width: 7.5rem;
+        background: var(--surface-inset);
+        font-weight: 600;
+        font-size: 0.72rem;
+        color: var(--muted);
+        white-space: nowrap;
+    }
+    .year-planning-table .month-col {
+        width: 8.5%;
+    }
+    .year-planning-cell ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+    .year-planning-cell li {
+        margin-bottom: 0.2rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .year-planning-cell li:last-child {
+        margin-bottom: 0;
+    }
+    .year-planning-item {
+        display: flex;
+        align-items: baseline;
+        gap: 0.25rem;
+        min-width: 0;
+    }
+    .year-planning-item__marker {
+        flex-shrink: 0;
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 1px;
+        margin-top: 0.15rem;
+        background: #64748b;
+    }
+    .year-planning-item--event .year-planning-item__marker {
+        width: 0.65rem;
+        height: 0.45rem;
+        border-radius: 2px;
+    }
+    .year-planning-item a {
+        color: inherit;
+        text-decoration: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .year-planning-item a:hover {
+        text-decoration: underline;
+    }
+    .year-planning-table tbody tr:nth-child(even) td.month-col {
+        background: rgba(148, 163, 184, 0.06);
+    }
+    body.theme-dark .year-planning-table tbody tr:nth-child(even) td.month-col {
+        background: rgba(15, 23, 42, 0.35);
+    }
+
+    @page {
+        size: A4 landscape;
+        margin: 8mm 10mm;
+    }
+
+    @media print {
+        .sidebar,
+        .topbar,
+        .year-planning-actions .btn,
+        .year-planning-actions .year-nav a,
+        .no-print {
+            display: none !important;
+        }
+        .layout {
+            display: block;
+        }
+        .main {
+            margin: 0;
+            padding: 0;
+        }
+        .page-content {
+            padding: 0;
+        }
+        body {
+            background: #fff;
+            color: #111;
+        }
+        .year-planning-wrap {
+            border: 0;
+            padding: 0;
+            overflow: visible;
+        }
+        .year-planning-table {
+            font-size: 7.5pt;
+            min-width: 0;
+        }
+        .year-planning-table th,
+        .year-planning-table td {
+            border-color: #9ca3af;
+            padding: 0.15rem 0.2rem;
+        }
+        .year-planning-table thead {
+            display: table-header-group;
+        }
+        .year-planning-table thead th,
+        .year-planning-table .week-col {
+            background: #f3f4f6 !important;
+            color: #111 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .year-planning-table tbody tr:nth-child(even) td.month-col {
+            background: #f9fafb !important;
+        }
+        .year-planning-item a {
+            color: #111;
+            text-decoration: none;
+        }
+        .year-planning-toolbar h1 {
+            font-size: 14pt;
+        }
+    }
+</style>
+
+<div class="year-planning-toolbar">
+    <div>
+        <h1>{{ client.name }}</h1>
+        <div class="subtitle">Planning annuel {{ year }} — contenus et événements</div>
+    </div>
+    <div class="year-planning-actions">
+        <div class="year-nav no-print">
+            <a href="{{ path('app_client_year_planning', {id: client.id, year: prevYear}) }}" title="Année précédente">‹</a>
+            <span class="year-label">{{ year }}</span>
+            <a href="{{ path('app_client_year_planning', {id: client.id, year: nextYear}) }}" title="Année suivante">›</a>
+        </div>
+        <a href="{{ path('app_client_show', {id: client.id, cyear: year}) }}" class="btn btn-sm no-print">Fiche client</a>
+        <button type="button" class="btn btn-sm no-print" onclick="window.print()">Imprimer / PDF</button>
+    </div>
+</div>
+
+<div class="year-planning-legend no-print">
+    <span><span class="legend-dot" aria-hidden="true"></span> Contenu (titre)</span>
+    <span><span class="legend-event" aria-hidden="true"></span> Événement</span>
+</div>
+
+<div class="year-planning-wrap">
+    <table class="year-planning-table">
+        <thead>
+            <tr>
+                <th class="week-col">Semaine</th>
+                {% for monthNum, monthLabel in grid.months %}
+                    <th class="month-col">{{ monthLabel }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in grid.weeks %}
+                <tr>
+                    <th scope="row" class="week-col">{{ week.label }}</th>
+                    {% for monthNum, monthLabel in grid.months %}
+                        {% set items = week.cells[monthNum] %}
+                        <td class="month-col year-planning-cell">
+                            {% if items is not empty %}
+                                <ul>
+                                    {% for item in items %}
+                                        <li>
+                                            <span class="year-planning-item year-planning-item--{{ item.type }}">
+                                                <span
+                                                    class="year-planning-item__marker"
+                                                    {% if item.type == 'event' %}
+                                                        style="background: {{ item.color }}; border: 1px solid rgba(0,0,0,0.12);"
+                                                    {% endif %}
+                                                    aria-hidden="true"
+                                                ></span>
+                                                {% if item.type == 'content' %}
+                                                    <a href="{{ path('app_content_edit', {id: item.id}) }}" title="{{ item.title }}">{{ item.title }}</a>
+                                                {% else %}
+                                                    <a href="{{ path('app_calendar_event_edit', {id: item.id, return_to: app.request.requestUri}) }}" title="{{ item.title }}">{{ item.title }}</a>
+                                                {% endif %}
+                                            </span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

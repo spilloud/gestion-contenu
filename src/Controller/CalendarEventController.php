@@ -35,7 +35,7 @@ class CalendarEventController extends AbstractController
         /** @var array<int, array{client: Client, events: CalendarEvent[]}> $eventsByClient */
         $eventsByClient = [];
 
-        foreach ($this->calendarEventRepository->findAllForManagement() as $event) {
+        foreach ($this->calendarEventRepository->findAllForManagement($sort) as $event) {
             if ($event->isGlobal()) {
                 $globalEvents[] = $event;
                 continue;
@@ -175,7 +175,7 @@ class CalendarEventController extends AbstractController
             }
         }
 
-        return $this->generateUrl('app_calendar_events_index');
+        return $this->generateUrl('app_calendar_events_index', ['sort' => 'date']);
     }
 
     private function normalizeReturnTo(string $value, Request $request): ?string

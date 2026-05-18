@@ -42,6 +42,7 @@ class CalendarEventType extends AbstractType
                 'label' => 'Visible pour tous les clients',
                 'mapped' => false,
                 'required' => false,
+                'data' => $options['global_event'],
                 'help' => 'Coché : fêtes, événements nationaux, Paléo pour tout le monde. Décoché : réservé à un client (ex. Slow-up pour le Maréchal).',
             ])
             ->add('client', EntityType::class, [
@@ -55,14 +56,6 @@ class CalendarEventType extends AbstractType
                     ->orderBy('c.name', 'ASC'),
             ])
         ;
-
-        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $formEvent): void {
-            $calendarEvent = $formEvent->getData();
-            if (!$calendarEvent instanceof CalendarEvent) {
-                return;
-            }
-            $formEvent->getForm()->get('forAllClients')->setData($calendarEvent->isGlobal());
-        });
 
         $builder->addEventListener(FormEvents::SUBMIT, function (FormEvent $formEvent): void {
             $calendarEvent = $formEvent->getData();
@@ -93,6 +86,8 @@ class CalendarEventType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => CalendarEvent::class,
+            'global_event' => false,
         ]);
+        $resolver->setAllowedTypes('global_event', 'bool');
     }
 }

@@ -24,8 +24,13 @@ class CalendarEventController extends AbstractController
     }
 
     #[Route('', name: 'app_calendar_events_index', methods: ['GET'])]
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $sort = $request->query->getString('sort', 'date');
+        if (!\in_array($sort, ['date', 'title'], true)) {
+            $sort = 'date';
+        }
+
         $globalEvents = [];
         /** @var array<int, array{client: Client, events: CalendarEvent[]}> $eventsByClient */
         $eventsByClient = [];
@@ -54,9 +59,28 @@ class CalendarEventController extends AbstractController
             (string) $b['client']->getName()
         ));
 
+        $sortFn = static function (CalendarEvent $a, CalendarEvent $b) use ($sort): int {
+            if ($sort === 'title') {
+                return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
+            }
+
+            $dateCompare = ($b->getStartDate()?->format('Y-m-d') ?? '') <=> ($a->getStartDate()?->format('Y-m-d') ?? '');
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+
+            return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
+        };
+        usort($globalEvents, $sortFn);
+        foreach ($eventsByClient as &$group) {
+            usort($group['events'], $sortFn);
+        }
+        unset($group);
+
         return $this->render('calendar_event/index.html.twig', [
             'globalEvents' => $globalEvents,
             'eventsByClient' => $eventsByClient,
+            'sort' => $sort,
         ]);
     }
 
@@ -100,7 +124,9 @@ class CalendarEventController extends AbstractController
     {
         $returnTo = $this->resolveReturnTo($request);
 
-        $form = $this->createForm(CalendarEventType::class, $event);
+        $form = $this->createForm(CalendarEventType::class, $event, [
+            'global_event' => $event->isGlobal(),
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -111,7 +137,7 @@ class CalendarEventController extends AbstractController
 
             $this->addFlash('success', $isNew ? 'Événement créé.' : 'Événement modifié.');
 
-            return $this->redirect($returnTo);
+            return $this->redirect($this->resolveReturnTo($request));
         }
 
         return $this->render('calendar_event/form.html.twig', [
@@ -124,25 +150,56 @@ class CalendarEventController extends AbstractController
 
     private function resolveReturnTo(Request $request): string
     {
-        $fromRequest = trim($request->request->getString('_return_to'));
-        if ($fromRequest === '') {
-            $fromRequest = trim($request->query->getString('return_to'));
-        }
-        if ($fromRequest !== '' && str_starts_with($fromRequest, '/') && !str_starts_with($fromRequest, '//')) {
-            return $fromRequest;
+        $candidates = [
+            trim($request->request->getString('_return_to')),
+            trim($request->query->getString('return_to')),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $normalized = $this->normalizeReturnTo($candidate, $request);
+            if ($normalized !== null) {
+                return $normalized;
+            }
         }
 
         $referer = $request->headers->get('referer');
         if (is_string($referer) && $referer !== '') {
             $parts = parse_url($referer);
-            if (isset($parts['path']) && str_starts_with((string) $parts['path'], '/')) {
-                $host = $parts['host'] ?? '';
-                if ($host === $request->getHost()) {
-                    return (string) $parts['path'].(isset($parts['query']) ? '?'.$parts['query'] : '');
+            if (\is_array($parts) && isset($parts['path'])) {
+                $path = (string) $parts['path'];
+                $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+                $normalized = $this->normalizeReturnTo($path.$query, $request);
+                if ($normalized !== null) {
+                    return $normalized;
                 }
             }
         }
 
         return $this->generateUrl('app_calendar_events_index');
+    }
+
+    private function normalizeReturnTo(string $value, Request $request): ?string
+    {
+        if ($value === '' || !str_starts_with($value, '/') || str_starts_with($value, '//')) {
+            return null;
+        }
+
+        $parts = parse_url($value);
+        if ($parts === false || !isset($parts['path'])) {
+            return null;
+        }
+
+        $path = (string) $parts['path'];
+        if ($path === '' || str_starts_with($path, '//')) {
+            return null;
+        }
+
+        if (str_starts_with($path, '/evenements/') && (str_contains($path, '/modifier') || str_ends_with($path, '/nouveau'))) {
+            return null;
+        }
+
+        $query = isset($parts['query']) ? '?'.$parts['query'] : '';
+
+        return $path.$query;
     }
 }

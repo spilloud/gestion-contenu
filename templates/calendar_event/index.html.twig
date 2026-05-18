@@ -33,13 +33,45 @@
         text-align: center;
         overflow: hidden;
     }
+    .events-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.75rem 1rem;
+        margin-bottom: 1.25rem;
+    }
+    .events-sort {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+    }
+    .events-sort a {
+        padding: 0.35rem 0.65rem;
+        border-radius: 999px;
+        border: 1px solid var(--card-border);
+        text-decoration: none;
+        color: var(--text);
+        background: var(--card-bg);
+    }
+    .events-sort a.active {
+        background: var(--sidebar-active);
+        border-color: var(--sidebar-active);
+        color: #fff;
+    }
 </style>
 
 <h1>Événements</h1>
-<p>
+<div class="events-toolbar">
     <a href="{{ path('app_calendar_event_new', {return_to: app.request.requestUri}) }}" class="btn">+ Nouvel événement</a>
     <a href="{{ path('app_calendar') }}" class="btn" style="background:#64748b;">Calendrier</a>
-</p>
+    <div class="events-sort">
+        <span>Trier par</span>
+        <a href="{{ path('app_calendar_events_index', {sort: 'date'}) }}" class="{{ sort == 'date' ? 'active' : '' }}">Date (récent)</a>
+        <a href="{{ path('app_calendar_events_index', {sort: 'title'}) }}" class="{{ sort == 'title' ? 'active' : '' }}">Titre</a>
+    </div>
+</div>
 
 {% macro event_rows(events) %}
     {% for event in events %}

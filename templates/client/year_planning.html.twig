@@ -111,8 +111,8 @@
         border: 1px solid var(--card-border);
         vertical-align: top;
         padding: 0;
-        height: 5.5rem;
-        min-height: 5.5rem;
+        height: 7.75rem;
+        min-height: 7.75rem;
         width: 8.33%;
         background: var(--card-bg);
         position: relative;
@@ -126,7 +126,7 @@
     .year-week-cell__inner {
         position: relative;
         height: 100%;
-        min-height: 5.5rem;
+        min-height: 7.75rem;
         padding: 1.35rem 0.3rem 0.3rem;
         box-sizing: border-box;
         display: flex;
@@ -172,9 +172,10 @@
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: flex-start;
-        gap: 0.15rem;
-        max-height: 2.2rem;
-        overflow: hidden;
+        gap: 0.25rem;
+        min-height: 3.5rem;
+        max-height: 4.25rem;
+        overflow: visible;
         flex-shrink: 0;
     }
     .year-event {
@@ -201,12 +202,18 @@
         writing-mode: vertical-rl;
         text-orientation: mixed;
         transform: rotate(180deg);
-        padding: 0.2rem 0.12rem;
-        max-height: 2rem;
+        padding: 0.35rem 0.28rem;
+        min-width: 1.35rem;
+        max-width: 1.65rem;
+        min-height: calc(1.75rem + var(--event-span, 2) * 0.65rem);
+        max-height: 4rem;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
         flex-shrink: 0;
+        font-size: 0.72rem;
+        line-height: 1.2;
+        letter-spacing: 0.02em;
     }
 
     .year-print-header {
@@ -284,12 +291,21 @@
             min-width: 0;
         }
         .year-week-cell {
-            height: 4.2rem;
-            min-height: 4.2rem;
+            height: 6.5rem;
+            min-height: 6.5rem;
         }
         .year-week-cell__inner {
-            min-height: 4.2rem;
+            min-height: 6.5rem;
             padding-top: 1.1rem;
+        }
+        .year-week-events {
+            min-height: 2.8rem;
+            max-height: 3.4rem;
+        }
+        .year-event--vertical {
+            font-size: 6.5pt;
+            min-width: 1.1rem;
+            max-height: 3.2rem;
         }
         .year-week-num {
             color: #374151;
@@ -369,7 +385,7 @@
                                             <a
                                                 href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}"
                                                 class="year-event {{ event.vertical ? 'year-event--vertical' : 'year-event--inline' }}"
-                                                style="background: {{ event.color }};"
+                                                style="background: {{ event.color }};{% if event.vertical %} --event-span: {{ event.daySpan }};{% endif %}"
                                                 title="{{ event.title }} ({{ event.daySpan }} j)"
                                             >{{ event.title }}</a>
                                         {% endfor %}

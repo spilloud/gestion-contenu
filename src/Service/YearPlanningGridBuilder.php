@@ -9,6 +9,17 @@ final class YearPlanningGridBuilder
 {
     private const MAX_WEEK_ROWS = 6;
 
+    /** @var list<array{label: string, color: string}> */
+    private const FORMAT_LEGEND = [
+        ['label' => 'Vidéo', 'color' => '#6d28d9'],
+        ['label' => 'Carrousel', 'color' => '#2563eb'],
+        ['label' => 'Story', 'color' => '#db2777'],
+        ['label' => 'Reel', 'color' => '#ea580c'],
+        ['label' => 'Photo', 'color' => '#0891b2'],
+        ['label' => 'Article / post', 'color' => '#0d9488'],
+        ['label' => 'Autre', 'color' => '#64748b'],
+    ];
+
     /** @var array<int, string> */
     private const MONTH_LABELS = [
         1 => 'Janv.',
@@ -36,6 +47,14 @@ final class YearPlanningGridBuilder
      *     grid: array<int, list<array<string, mixed>|null>>
      * }
      */
+    /**
+     * @return list<array{label: string, color: string}>
+     */
+    public static function getFormatLegend(): array
+    {
+        return self::FORMAT_LEGEND;
+    }
+
     public function build(int $year, array $contents, array $events): array
     {
         $yearStart = new \DateTimeImmutable(sprintf('%d-01-01', $year));

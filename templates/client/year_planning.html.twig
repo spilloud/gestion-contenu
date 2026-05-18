@@ -111,8 +111,8 @@
         border: 1px solid var(--card-border);
         vertical-align: top;
         padding: 0;
-        height: 7.75rem;
-        min-height: 7.75rem;
+        height: 9rem;
+        min-height: 9rem;
         width: 8.33%;
         background: var(--card-bg);
         position: relative;
@@ -126,12 +126,15 @@
     .year-week-cell__inner {
         position: relative;
         height: 100%;
-        min-height: 7.75rem;
-        padding: 1.35rem 0.3rem 0.3rem;
+        min-height: 9rem;
+        padding: 1.2rem 0.28rem 0.35rem;
         box-sizing: border-box;
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        grid-template-areas:
+            "events"
+            "contents";
+        gap: 0.15rem;
         overflow: hidden;
     }
     .year-week-num {
@@ -145,9 +148,11 @@
         z-index: 2;
     }
     .year-week-contents {
-        flex: 1 1 auto;
+        grid-area: contents;
         min-height: 0;
-        overflow: hidden;
+        overflow-x: hidden;
+        overflow-y: auto;
+        align-self: stretch;
     }
     .year-week-contents ul {
         margin: 0;
@@ -188,15 +193,19 @@
         word-break: break-word;
     }
     .year-week-events {
+        grid-area: events;
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
         align-items: flex-start;
         gap: 0.25rem;
-        min-height: 3.5rem;
-        max-height: 4.25rem;
-        overflow: visible;
+        min-height: 0;
+        max-height: 2.6rem;
+        overflow: hidden;
         flex-shrink: 0;
+    }
+    .year-week-events--empty {
+        display: none;
     }
     .year-event {
         display: block;
@@ -242,6 +251,35 @@
     .year-print-header {
         display: none;
     }
+    .year-format-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem 0.65rem;
+        margin-top: 0.45rem;
+        font-size: 0.68rem;
+        color: var(--muted);
+        line-height: 1.2;
+    }
+    .year-format-legend__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        white-space: nowrap;
+    }
+    .year-format-legend__swatch {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 2px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        flex-shrink: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .year-print-header__left {
+        flex: 1 1 14rem;
+        min-width: 0;
+    }
 
     @page {
         size: A4 landscape;
@@ -263,11 +301,16 @@
             flex-wrap: wrap;
             align-items: flex-start;
             justify-content: space-between;
-            gap: 4mm 8mm;
+            gap: 3mm 8mm;
             border: 1px solid #6b7280;
             border-radius: 4px;
             padding: 3mm 5mm;
             background: #fff;
+        }
+        .year-format-legend {
+            color: #374151;
+            font-size: 6pt;
+            margin-top: 1.5mm;
         }
         .year-print-header__title {
             font-size: 12pt;
@@ -313,7 +356,7 @@
             border: 0;
             padding: 0;
             overflow: hidden;
-            zoom: 0.88;
+            zoom: 0.84;
         }
         .year-planning-table {
             font-size: 6pt;
@@ -338,18 +381,20 @@
         }
         .year-week-cell {
             height: auto;
-            min-height: 4.6rem;
-            max-height: 5rem;
+            min-height: 6rem;
+            max-height: 6.2rem;
         }
         .year-week-cell__inner {
-            min-height: 4.6rem;
-            max-height: 5rem;
-            padding-top: 0.95rem;
+            min-height: 6rem;
+            max-height: 6.2rem;
+            padding-top: 0.9rem;
             overflow: hidden;
         }
         .year-week-events {
-            min-height: 2rem;
-            max-height: 2.35rem;
+            max-height: 1.75rem;
+            overflow: hidden;
+        }
+        .year-week-contents {
             overflow: hidden;
         }
         .year-event--vertical {
@@ -404,16 +449,33 @@
 </div>
 
 <div class="year-planning-legend no-print">
-    <span><span class="legend-content" aria-hidden="true"></span> Contenu — carré = format</span>
     <span><span class="legend-event-v" aria-hidden="true"></span> Événement multi-jours (vertical)</span>
+</div>
+<div class="year-format-legend no-print" style="margin-bottom: 0.75rem;">
+    {% for item in formatLegend %}
+        <span class="year-format-legend__item">
+            <span class="year-format-legend__swatch" style="background: {{ item.color }};" aria-hidden="true"></span>
+            {{ item.label }}
+        </span>
+    {% endfor %}
 </div>
 
 <div class="year-planning-print-page">
 <header class="year-print-header" aria-label="En-tête document imprimable">
     <div class="year-print-header__box">
-        <div class="year-print-header__title">
-            {{ client.name }}
-            <span>— Planning annuel {{ year }}</span>
+        <div class="year-print-header__left">
+            <div class="year-print-header__title">
+                {{ client.name }}
+                <span>— Planning annuel {{ year }}</span>
+            </div>
+            <div class="year-format-legend" aria-label="Légende des formats de contenu">
+                {% for item in formatLegend %}
+                    <span class="year-format-legend__item">
+                        <span class="year-format-legend__swatch" style="background: {{ item.color }};" aria-hidden="true"></span>
+                        {{ item.label }}
+                    </span>
+                {% endfor %}
+            </div>
         </div>
         <dl class="year-print-header__meta">
             <div>
@@ -446,7 +508,7 @@
                             {% if cell %}
                                 <div class="year-week-cell__inner">
                                     <span class="year-week-num" title="Semaine {{ cell.isoWeek }}">S{{ '%02d'|format(cell.isoWeek) }}</span>
-                                    <div class="year-week-events">
+                                    <div class="year-week-events{{ cell.events is empty ? ' year-week-events--empty' : '' }}">
                                         {% for event in cell.events %}
                                             <a
                                                 href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}"

@@ -58,6 +58,7 @@ class ClientController extends AbstractController
             'prevYear' => $year - 1,
             'nextYear' => $year + 1,
             'grid' => $grid,
+            'formatLegend' => YearPlanningGridBuilder::getFormatLegend(),
         ]);
     }
 

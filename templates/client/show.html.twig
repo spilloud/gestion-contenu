@@ -55,6 +55,32 @@
         margin-bottom: 0.45rem;
         font-size: 0.82rem;
         color: var(--text);
+        cursor: grab;
+    }
+    .day-event:active {
+        cursor: grabbing;
+    }
+    .day-event.is-dragging {
+        opacity: 0.45;
+    }
+    .calendar-drop-day.drag-over {
+        outline: 2px dashed var(--sidebar-active);
+        outline-offset: -3px;
+        background: rgba(91, 33, 182, 0.08);
+    }
+    .day-events {
+        min-height: 1.25rem;
+    }
+    .day-empty {
+        color: var(--muted);
+    }
+    .day-past {
+        background: rgba(148, 163, 184, 0.16);
+    }
+    .day-event.past-post {
+        background: rgba(148, 163, 184, 0.22);
+        border-color: rgba(100, 116, 139, 0.45);
+        color: #475569;
     }
     .day-out-month .day-event {
         background: rgba(148, 163, 184, 0.22);
@@ -171,6 +197,7 @@
 {% endif %}
 {% set prevMonth = calendarMonthStart|date_modify('-1 month') %}
 {% set nextMonth = calendarMonthStart|date_modify('+1 month') %}
+{% set todayDate = 'now'|date('Y-m-d') %}
 
 {{ form_start(form) }}
 {% if form.todoItems is defined %}
@@ -270,18 +297,24 @@
                         {% set dayDate = dayObj|date('Y-m-d') %}
                         {% set inCurrentMonth = dayObj|date('m') == calendarMonthStart|date('m') %}
                         {% set dayContents = calendarContents|filter(c => c.scheduledDate|date('Y-m-d') == dayDate) %}
-                        <td class="{{ inCurrentMonth ? '' : 'day-out-month' }}">
+                        <td class="calendar-drop-day {{ inCurrentMonth ? '' : 'day-out-month' }} {{ dayDate < todayDate ? 'day-past' : '' }}" data-date="{{ dayDate }}">
                             <div class="day-head">
                                 <strong>{{ dayObj|date('d') }}</strong>
                                 <span>{{ dayObj|date('d/m') }}</span>
                             </div>
+                            <div class="day-events">
                             {% for content in dayContents %}
-                                <div class="day-event">
+                                <div class="day-event {{ content.scheduledDate|date('Y-m-d') < todayDate ? 'past-post' : '' }}"
+                                     draggable="true"
+                                     data-content-id="{{ content.id }}"
+                                     data-move-url="{{ path('app_content_move', {id: content.id}) }}"
+                                     data-move-token="{{ csrf_token('move' ~ content.id) }}"
+                                     title="Glisser pour changer la date de publication">
                                     {% set fmt = content.format.name|lower %}
                                     {% if fmt == 'vidéo' or fmt == 'video' %}
-                                        <strong><a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
+                                        <strong><a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}" draggable="false" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
                                     {% else %}
-                                        <strong><a href="{{ path('app_content_edit', {id: content.id}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
+                                        <strong><a href="{{ path('app_content_edit', {id: content.id, return_to: app.request.requestUri}) }}" draggable="false" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
                                     {% endif %}
                                     <div>{{ content.format.name }}</div>
                                     <div style="margin-top:0.25rem;">
@@ -291,22 +324,23 @@
                                             {% else %}
                                                 <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
                                             {% endif %}
-                                            <button type="button" class="status-edit-btn" title="Modifier le statut" onclick="toggleStatusEditor({{ content.id }}, true)">✎</button>
+                                            <button type="button" class="status-edit-btn" draggable="false" title="Modifier le statut" onclick="toggleStatusEditor({{ content.id }}, true)">✎</button>
                                         </div>
                                         <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor" style="display: none;">
                                             <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
-                                            <select name="statusId" class="status-inline-select">
+                                            <select name="statusId" class="status-inline-select" draggable="false">
                                                 {% for status in statuses %}
                                                     <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                                 {% endfor %}
                                             </select>
-                                            <button type="submit" class="status-save-btn" title="Valider">✓</button>
+                                            <button type="submit" class="status-save-btn" draggable="false" title="Valider">✓</button>
                                         </form>
                                     </div>
                                 </div>
                             {% else %}
-                                <span style="color: var(--muted);">—</span>
+                                <span class="day-empty">—</span>
                             {% endfor %}
+                            </div>
                         </td>
                     {% endfor %}
                 </tr>
@@ -325,5 +359,107 @@
         display.style.display = showEditor ? 'none' : 'inline-flex';
         editor.style.display = showEditor ? 'inline-flex' : 'none';
     }
+
+    (function initClientCalendarDragDrop() {
+        var calendar = document.querySelector('.client-calendar');
+        if (!calendar) {
+            return;
+        }
+        var todayDate = '{{ todayDate }}';
+        var dragged = null;
+
+        calendar.querySelectorAll('.day-event[draggable="true"]').forEach(function (el) {
+            el.addEventListener('dragstart', function (e) {
+                if (e.target.closest('a, button, select, input, textarea, form')) {
+                    e.preventDefault();
+                    return;
+                }
+                dragged = el;
+                el.classList.add('is-dragging');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', el.dataset.contentId || '');
+            });
+            el.addEventListener('dragend', function () {
+                el.classList.remove('is-dragging');
+                dragged = null;
+                calendar.querySelectorAll('.calendar-drop-day.drag-over').forEach(function (cell) {
+                    cell.classList.remove('drag-over');
+                });
+            });
+        });
+
+        calendar.querySelectorAll('.calendar-drop-day').forEach(function (cell) {
+            cell.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+            cell.addEventListener('dragenter', function () {
+                cell.classList.add('drag-over');
+            });
+            cell.addEventListener('dragleave', function (e) {
+                if (!cell.contains(e.relatedTarget)) {
+                    cell.classList.remove('drag-over');
+                }
+            });
+            cell.addEventListener('drop', function (e) {
+                e.preventDefault();
+                cell.classList.remove('drag-over');
+                if (!dragged) {
+                    return;
+                }
+                var newDate = cell.dataset.date;
+                if (!newDate) {
+                    return;
+                }
+                var sourceCell = dragged.closest('.calendar-drop-day');
+                if (sourceCell === cell) {
+                    return;
+                }
+
+                var body = new FormData();
+                body.append('date', newDate);
+                body.append('_token', dragged.dataset.moveToken || '');
+
+                fetch(dragged.dataset.moveUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: body
+                })
+                    .then(function (response) {
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, data: data };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.data.ok) {
+                            window.alert(result.data.error || 'Impossible de déplacer ce contenu.');
+                            return;
+                        }
+                        var events = cell.querySelector('.day-events');
+                        var empty = events.querySelector('.day-empty');
+                        if (empty) {
+                            empty.remove();
+                        }
+                        events.appendChild(dragged);
+                        dragged.classList.toggle('past-post', newDate < todayDate);
+                        if (sourceCell) {
+                            var sourceEvents = sourceCell.querySelector('.day-events');
+                            if (sourceEvents && !sourceEvents.querySelector('.day-event')) {
+                                var placeholder = document.createElement('span');
+                                placeholder.className = 'day-empty';
+                                placeholder.textContent = '—';
+                                sourceEvents.appendChild(placeholder);
+                            }
+                        }
+                    })
+                    .catch(function () {
+                        window.alert('Erreur réseau lors du déplacement.');
+                    });
+            });
+        });
+    })();
 </script>
 {% endblock %}

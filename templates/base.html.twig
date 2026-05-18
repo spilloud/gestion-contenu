@@ -344,8 +344,27 @@
                 color: var(--table-head-text);
             }
             .page-content .data-sheet thead th,
-            .page-content .data-sheet thead th a {
-                color: inherit;
+            .page-content .data-sheet thead th a,
+            .page-content .data-sheet thead th a:hover,
+            .page-content .data-sheet thead th a.th-sort,
+            .page-content .data-sheet thead th a.th-sort:hover,
+            .page-content .data-sheet thead th a.th-sort.active {
+                color: var(--table-head-text) !important;
+                text-decoration: none;
+            }
+            .page-content .data-sheet thead th a.th-sort.active,
+            .page-content .data-sheet thead th a.th-sort:hover {
+                text-decoration: underline;
+            }
+            /* Libellés sur barres / pastilles d'événements (fond coloré) */
+            .cal-event-bar,
+            .cal-event-bar__label,
+            .year-event,
+            .event-color-swatch {
+                color: #fff !important;
+            }
+            h1, h2, h3, .page-content .data-sheet tbody strong {
+                color: var(--text);
             }
             .page-content .data-sheet tbody tr {
                 border-bottom: 1px solid var(--table-border);

@@ -59,18 +59,7 @@ class CalendarEventController extends AbstractController
             (string) $b['client']->getName()
         ));
 
-        $sortFn = static function (CalendarEvent $a, CalendarEvent $b) use ($sort): int {
-            if ($sort === 'title') {
-                return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
-            }
-
-            $dateCompare = ($b->getStartDate()?->format('Y-m-d') ?? '') <=> ($a->getStartDate()?->format('Y-m-d') ?? '');
-            if ($dateCompare !== 0) {
-                return $dateCompare;
-            }
-
-            return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());
-        };
+        $sortFn = static fn (CalendarEvent $a, CalendarEvent $b): int => CalendarEventRepository::compareForManagement($a, $b, $sort);
         usort($globalEvents, $sortFn);
         foreach ($eventsByClient as &$group) {
             usort($group['events'], $sortFn);

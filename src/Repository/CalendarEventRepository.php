@@ -66,9 +66,9 @@ class CalendarEventRepository extends ServiceEntityRepository
 
         if ($sort === 'title') {
             $qb->orderBy('e.title', 'ASC')
-                ->addOrderBy('e.startDate', 'DESC');
+                ->addOrderBy('e.startDate', 'ASC');
         } else {
-            $qb->orderBy('e.startDate', 'DESC')
+            $qb->orderBy('e.startDate', 'ASC')
                 ->addOrderBy('e.title', 'ASC');
         }
 
@@ -85,11 +85,11 @@ class CalendarEventRepository extends ServiceEntityRepository
             if ($titleCompare !== 0) {
                 return $titleCompare;
             }
-        } else {
-            $dateCompare = ($b->getStartDate()?->format('Y-m-d') ?? '') <=> ($a->getStartDate()?->format('Y-m-d') ?? '');
-            if ($dateCompare !== 0) {
-                return $dateCompare;
-            }
+        }
+
+        $dateCompare = ($a->getStartDate()?->format('Y-m-d') ?? '') <=> ($b->getStartDate()?->format('Y-m-d') ?? '');
+        if ($dateCompare !== 0) {
+            return $dateCompare;
         }
 
         return strcasecmp((string) $a->getTitle(), (string) $b->getTitle());

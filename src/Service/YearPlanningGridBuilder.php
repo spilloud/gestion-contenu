@@ -7,6 +7,8 @@ use App\Entity\Content;
 
 final class YearPlanningGridBuilder
 {
+    private const MAX_WEEK_ROWS = 6;
+
     /** @var array<int, string> */
     private const MONTH_LABELS = [
         1 => 'Janv.',
@@ -30,14 +32,8 @@ final class YearPlanningGridBuilder
      * @return array{
      *     year: int,
      *     months: array<int, string>,
-     *     weeks: list<array{
-     *         key: string,
-     *         isoWeek: int,
-     *         label: string,
-     *         start: \DateTimeImmutable,
-     *         end: \DateTimeImmutable,
-     *         cells: array<int, list<array<string, mixed>>>
-     *     }>
+     *     rowCount: int,
+     *     grid: array<int, list<array<string, mixed>|null>>
      * }
      */
     public function build(int $year, array $contents, array $events): array
@@ -45,12 +41,43 @@ final class YearPlanningGridBuilder
         $yearStart = new \DateTimeImmutable(sprintf('%d-01-01', $year));
         $yearEnd = new \DateTimeImmutable(sprintf('%d-12-31', $year));
         $monthBounds = $this->buildMonthBounds($year);
+        $yearWeeks = $this->buildYearWeeks($yearStart, $yearEnd);
 
-        $weeks = $this->buildWeekRows($yearStart, $yearEnd);
-        foreach ($weeks as &$week) {
-            $week['cells'] = array_fill(1, 12, []);
+        /** @var array<int, list<array<string, mixed>|null>> $grid */
+        $grid = [];
+        $maxRows = 0;
+
+        for ($month = 1; $month <= 12; ++$month) {
+            [$monthStart, $monthEnd] = $monthBounds[$month];
+            $monthWeeks = [];
+
+            foreach ($yearWeeks as $week) {
+                if ($week['end'] < $monthStart || $week['start'] > $monthEnd) {
+                    continue;
+                }
+
+                $cellStart = max($week['start'], $monthStart);
+                $cellEnd = min($week['end'], $monthEnd);
+
+                $monthWeeks[] = [
+                    'isoWeek' => $week['isoWeek'],
+                    'start' => $cellStart,
+                    'end' => $cellEnd,
+                    'contents' => [],
+                    'events' => [],
+                ];
+            }
+
+            $maxRows = max($maxRows, \count($monthWeeks));
+
+            while (\count($monthWeeks) < self::MAX_WEEK_ROWS) {
+                $monthWeeks[] = null;
+            }
+
+            $grid[$month] = $monthWeeks;
         }
-        unset($week);
+
+        $rowCount = max($maxRows, 1);
 
         foreach ($contents as $content) {
             $scheduled = $content->getScheduledDate();
@@ -63,18 +90,11 @@ final class YearPlanningGridBuilder
                 continue;
             }
 
-            $this->placeInGrid(
-                $weeks,
-                $monthBounds,
-                $date,
-                $date,
-                [
-                    'type' => 'content',
-                    'id' => $content->getId(),
-                    'title' => $content->getTitle() ?? '',
-                    'sortDate' => $date->format('Y-m-d'),
-                ]
-            );
+            $this->placeContent($grid, $monthBounds, $date, [
+                'id' => $content->getId(),
+                'title' => $content->getTitle() ?? '',
+                'sortDate' => $date->format('Y-m-d'),
+            ]);
         }
 
         foreach ($events as $event) {
@@ -85,40 +105,21 @@ final class YearPlanningGridBuilder
                 continue;
             }
 
-            if ($start < $yearStart) {
-                $start = $yearStart;
-            }
-            if ($end > $yearEnd) {
-                $end = $yearEnd;
-            }
-
-            $this->placeInGrid(
-                $weeks,
-                $monthBounds,
-                $start,
-                $end,
-                [
-                    'type' => 'event',
-                    'id' => $event->getId(),
-                    'title' => $event->getTitle() ?? '',
-                    'color' => $event->getColor(),
-                    'textColor' => $event->getTextColor(),
-                    'sortDate' => $start->format('Y-m-d'),
-                ]
-            );
+            $this->placeEvent($grid, $monthBounds, max($start, $yearStart), min($end, $yearEnd), [
+                'id' => $event->getId(),
+                'title' => $event->getTitle() ?? '',
+                'color' => $event->getColor(),
+                'textColor' => $event->getTextColor(),
+            ]);
         }
 
-        foreach ($weeks as &$week) {
-            for ($month = 1; $month <= 12; ++$month) {
-                $week['cells'][$month] = $this->sortAndDedupeCell($week['cells'][$month]);
-            }
-        }
-        unset($week);
+        $this->sortCells($grid);
 
         return [
             'year' => $year,
             'months' => self::MONTH_LABELS,
-            'weeks' => $weeks,
+            'rowCount' => $rowCount,
+            'grid' => $grid,
         ];
     }
 
@@ -137,16 +138,9 @@ final class YearPlanningGridBuilder
     }
 
     /**
-     * @return list<array{
-     *     key: string,
-     *     isoWeek: int,
-     *     label: string,
-     *     start: \DateTimeImmutable,
-     *     end: \DateTimeImmutable,
-     *     cells: array<int, list<array<string, mixed>>>
-     * }>
+     * @return list<array{isoWeek: int, start: \DateTimeImmutable, end: \DateTimeImmutable}>
      */
-    private function buildWeekRows(\DateTimeImmutable $yearStart, \DateTimeImmutable $yearEnd): array
+    private function buildYearWeeks(\DateTimeImmutable $yearStart, \DateTimeImmutable $yearEnd): array
     {
         $cursor = $yearStart->modify('monday this week');
         if ($cursor > $yearStart) {
@@ -157,25 +151,12 @@ final class YearPlanningGridBuilder
         while ($cursor <= $yearEnd) {
             $weekEnd = $cursor->modify('+6 days');
             if ($weekEnd >= $yearStart) {
-                $displayStart = $cursor < $yearStart ? $yearStart : $cursor;
-                $displayEnd = $weekEnd > $yearEnd ? $yearEnd : $weekEnd;
-                $isoWeek = (int) $cursor->format('W');
-
                 $weeks[] = [
-                    'key' => $cursor->format('Y-m-d'),
-                    'isoWeek' => $isoWeek,
-                    'label' => sprintf(
-                        'S%02d · %s – %s',
-                        $isoWeek,
-                        $this->formatShortDate($displayStart),
-                        $this->formatShortDate($displayEnd)
-                    ),
+                    'isoWeek' => (int) $cursor->format('W'),
                     'start' => $cursor,
                     'end' => $weekEnd,
-                    'cells' => [],
                 ];
             }
-
             $cursor = $cursor->modify('+7 days');
         }
 
@@ -183,84 +164,114 @@ final class YearPlanningGridBuilder
     }
 
     /**
-     * @param list<array{cells: array<int, list<array<string, mixed>>>}> $weeks
+     * @param array<int, list<array<string, mixed>|null>> $grid
      * @param array<int, array{0: \DateTimeImmutable, 1: \DateTimeImmutable}> $monthBounds
-     * @param array<string, mixed> $item
+     * @param array{id: int|null, title: string, sortDate: string} $item
      */
-    private function placeInGrid(
-        array &$weeks,
-        array $monthBounds,
-        \DateTimeImmutable $itemStart,
-        \DateTimeImmutable $itemEnd,
-        array $item,
-    ): void {
-        foreach ($weeks as &$week) {
-            if ($itemEnd < $week['start'] || $itemStart > $week['end']) {
+    private function placeContent(array &$grid, array $monthBounds, \DateTimeImmutable $date, array $item): void
+    {
+        for ($month = 1; $month <= 12; ++$month) {
+            [$monthStart, $monthEnd] = $monthBounds[$month];
+            if ($date < $monthStart || $date > $monthEnd) {
                 continue;
             }
 
-            for ($month = 1; $month <= 12; ++$month) {
-                [$monthStart, $monthEnd] = $monthBounds[$month];
-
-                $overlapStart = max($itemStart, $week['start'], $monthStart);
-                $overlapEnd = min($itemEnd, $week['end'], $monthEnd);
-
-                if ($overlapStart <= $overlapEnd) {
-                    $week['cells'][$month][] = $item;
+            foreach ($grid[$month] as &$cell) {
+                if ($cell === null) {
+                    continue;
+                }
+                if ($date >= $cell['start'] && $date <= $cell['end']) {
+                    $cell['contents'][] = $item;
+                    break;
                 }
             }
+            unset($cell);
         }
-        unset($week);
     }
 
     /**
-     * @param list<array<string, mixed>> $items
-     *
-     * @return list<array<string, mixed>>
+     * @param array<int, list<array<string, mixed>|null>> $grid
+     * @param array<int, array{0: \DateTimeImmutable, 1: \DateTimeImmutable}> $monthBounds
+     * @param array{id: int|null, title: string, color: string, textColor: string} $item
      */
-    private function sortAndDedupeCell(array $items): array
-    {
-        usort(
-            $items,
-            static fn (array $a, array $b): int => [$a['sortDate'], $a['title'], $a['type'], $a['id']]
-                <=> [$b['sortDate'], $b['title'], $b['type'], $b['id']]
-        );
-
-        $seen = [];
-        $deduped = [];
-        foreach ($items as $item) {
-            $key = $item['type'].'-'.$item['id'];
-            if (isset($seen[$key])) {
+    private function placeEvent(
+        array &$grid,
+        array $monthBounds,
+        \DateTimeImmutable $eventStart,
+        \DateTimeImmutable $eventEnd,
+        array $item,
+    ): void {
+        for ($month = 1; $month <= 12; ++$month) {
+            [$monthStart, $monthEnd] = $monthBounds[$month];
+            if ($eventEnd < $monthStart || $eventStart > $monthEnd) {
                 continue;
             }
-            $seen[$key] = true;
-            $deduped[] = $item;
-        }
 
-        return $deduped;
+            foreach ($grid[$month] as &$cell) {
+                if ($cell === null) {
+                    continue;
+                }
+
+                $overlapStart = max($eventStart, $cell['start']);
+                $overlapEnd = min($eventEnd, $cell['end']);
+                if ($overlapStart > $overlapEnd) {
+                    continue;
+                }
+
+                $daySpan = (int) $overlapStart->diff($overlapEnd)->days + 1;
+                $found = false;
+                foreach ($cell['events'] as &$existing) {
+                    if ($existing['id'] === $item['id']) {
+                        $existing['daySpan'] = max($existing['daySpan'], $daySpan);
+                        $existing['vertical'] = $existing['daySpan'] > 1;
+                        $found = true;
+                        break;
+                    }
+                }
+                unset($existing);
+
+                if (!$found) {
+                    $cell['events'][] = $item + [
+                        'vertical' => $daySpan > 1,
+                        'daySpan' => $daySpan,
+                        'sortDate' => $overlapStart->format('Y-m-d'),
+                    ];
+                }
+            }
+            unset($cell);
+        }
+    }
+
+    /**
+     * @param array<int, list<array<string, mixed>|null>> $grid
+     */
+    private function sortCells(array &$grid): void
+    {
+        foreach ($grid as &$monthCells) {
+            foreach ($monthCells as &$cell) {
+                if ($cell === null) {
+                    continue;
+                }
+
+                usort(
+                    $cell['contents'],
+                    static fn (array $a, array $b): int => [$a['sortDate'], $a['title']]
+                        <=> [$b['sortDate'], $b['title']]
+                );
+
+                usort(
+                    $cell['events'],
+                    static fn (array $a, array $b): int => [$a['sortDate'], $a['title']]
+                        <=> [$b['sortDate'], $b['title']]
+                );
+            }
+            unset($cell);
+        }
+        unset($monthCells);
     }
 
     private function toDateImmutable(\DateTimeInterface $date): \DateTimeImmutable
     {
         return \DateTimeImmutable::createFromInterface($date)->setTime(0, 0);
-    }
-
-    private function formatShortDate(\DateTimeImmutable $date): string
-    {
-        static $formatter = null;
-        if ($formatter === null) {
-            $formatter = new \IntlDateFormatter(
-                'fr_FR',
-                \IntlDateFormatter::NONE,
-                \IntlDateFormatter::NONE,
-                null,
-                null,
-                'd MMM'
-            );
-        }
-
-        $formatted = $formatter->format($date);
-
-        return is_string($formatted) ? $formatted : $date->format('d/m');
     }
 }

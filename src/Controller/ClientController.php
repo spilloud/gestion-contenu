@@ -38,10 +38,8 @@ class ClientController extends AbstractController
         $yearStart = new \DateTimeImmutable(sprintf('%d-01-01', $year));
         $yearEnd = new \DateTimeImmutable(sprintf('%d-12-31', $year));
 
-        $contents = $this->contentRepository->findByFilters(
-            [$client->getId()],
-            null,
-            null,
+        $contents = $this->contentRepository->findByClientForYearPlanning(
+            $client,
             $yearStart,
             $yearEnd
         );

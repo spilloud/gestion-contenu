@@ -84,6 +84,31 @@ class ContentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Tous les contenus planifiés du client sur une année (passés, brouillons, tous statuts).
+     *
+     * @return Content[]
+     */
+    public function findByClientForYearPlanning(
+        Client $client,
+        \DateTimeInterface $yearStart,
+        \DateTimeInterface $yearEnd,
+    ): array {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->andWhere('c.client = :client')
+            ->andWhere('c.scheduledDate >= :yearStart')
+            ->andWhere('c.scheduledDate <= :yearEnd')
+            ->setParameter('client', $client)
+            ->setParameter('yearStart', $yearStart)
+            ->setParameter('yearEnd', $yearEnd)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Content[]
      */
     public function findByClientAndArchiveState(Client $client, bool $archives): array

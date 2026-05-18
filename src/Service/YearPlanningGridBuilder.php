@@ -90,10 +90,16 @@ final class YearPlanningGridBuilder
                 continue;
             }
 
+            $formatName = $content->getFormat()?->getName() ?? '';
+            $formatKey = mb_strtolower($formatName);
+
             $this->placeContent($grid, $monthBounds, $date, [
                 'id' => $content->getId(),
                 'title' => $content->getTitle() ?? '',
                 'sortDate' => $date->format('Y-m-d'),
+                'formatName' => $formatName,
+                'formatColor' => $this->resolveFormatColor($formatKey, $content),
+                'isVideo' => str_contains($formatKey, 'vidéo') || str_contains($formatKey, 'video'),
             ]);
         }
 
@@ -273,5 +279,37 @@ final class YearPlanningGridBuilder
     private function toDateImmutable(\DateTimeInterface $date): \DateTimeImmutable
     {
         return \DateTimeImmutable::createFromInterface($date)->setTime(0, 0);
+    }
+
+    private function resolveFormatColor(string $formatKey, Content $content): string
+    {
+        if (str_contains($formatKey, 'vidéo') || str_contains($formatKey, 'video')) {
+            return '#6d28d9';
+        }
+        if (str_contains($formatKey, 'carrousel') || str_contains($formatKey, 'carousel')) {
+            return '#2563eb';
+        }
+        if (str_contains($formatKey, 'story') || str_contains($formatKey, 'stories')) {
+            return '#db2777';
+        }
+        if (str_contains($formatKey, 'reel')) {
+            return '#ea580c';
+        }
+        if (str_contains($formatKey, 'photo') || str_contains($formatKey, 'image')) {
+            return '#0891b2';
+        }
+        if (str_contains($formatKey, 'article') || str_contains($formatKey, 'post') || str_contains($formatKey, 'linkedin')) {
+            return '#0d9488';
+        }
+
+        $status = $content->getStatus();
+        if ($status !== null) {
+            $statusColor = $status->getColor();
+            if (is_string($statusColor) && str_starts_with($statusColor, '#')) {
+                return $statusColor;
+            }
+        }
+
+        return '#64748b';
     }
 }

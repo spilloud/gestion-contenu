@@ -155,17 +155,37 @@
         list-style: none;
     }
     .year-week-contents li {
-        margin-bottom: 0.12rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        margin-bottom: 0.2rem;
     }
-    .year-week-contents a {
+    .year-content-link {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.3rem;
         color: var(--text);
         text-decoration: none;
+        min-width: 0;
     }
-    .year-week-contents a:hover {
+    .year-content-link:hover {
         text-decoration: underline;
+    }
+    .year-content-format {
+        flex-shrink: 0;
+        width: 0.5rem;
+        height: 0.5rem;
+        margin-top: 0.12rem;
+        border-radius: 2px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+    .year-content-title {
+        flex: 1;
+        min-width: 0;
+        line-height: 1.2;
+        white-space: normal;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: break-word;
     }
     .year-week-events {
         display: flex;
@@ -187,6 +207,9 @@
         line-height: 1.15;
         box-sizing: border-box;
         border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #fff;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     .year-event:hover {
         filter: brightness(0.95);
@@ -339,9 +362,22 @@
         .year-week-num {
             color: #374151;
         }
-        .year-week-contents a,
-        .year-event {
-            color: inherit;
+        .year-week-contents a {
+            color: #111;
+        }
+        .year-event,
+        .year-event--vertical,
+        .year-event--inline {
+            color: #fff !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .year-content-format {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .year-content-title {
+            -webkit-line-clamp: 2;
         }
         .year-planning-table thead th {
             background: #f3f4f6 !important;
@@ -368,7 +404,7 @@
 </div>
 
 <div class="year-planning-legend no-print">
-    <span><span class="legend-content" aria-hidden="true"></span> Contenu (titre)</span>
+    <span><span class="legend-content" aria-hidden="true"></span> Contenu — carré = format</span>
     <span><span class="legend-event-v" aria-hidden="true"></span> Événement multi-jours (vertical)</span>
 </div>
 
@@ -425,7 +461,14 @@
                                             <ul>
                                                 {% for content in cell.contents %}
                                                     <li>
-                                                        <a href="{{ path('app_content_edit', {id: content.id}) }}" title="{{ content.title }}">{{ content.title }}</a>
+                                                        <a
+                                                            href="{{ content.isVideo ? path('app_video_show', {id: content.id, return_to: app.request.requestUri}) : path('app_content_edit', {id: content.id}) }}"
+                                                            class="year-content-link"
+                                                            title="{{ content.title }}{% if content.formatName %} ({{ content.formatName }}){% endif %}"
+                                                        >
+                                                            <span class="year-content-format" style="background: {{ content.formatColor }};" aria-hidden="true"></span>
+                                                            <span class="year-content-title">{{ content.title }}</span>
+                                                        </a>
                                                     </li>
                                                 {% endfor %}
                                             </ul>

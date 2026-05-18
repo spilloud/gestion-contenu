@@ -391,7 +391,13 @@
             return;
         }
         var todayDate = '{{ todayDate }}';
-        var dragged = null;
+
+        function findDraggedCard(contentId) {
+            if (!contentId) {
+                return null;
+            }
+            return calendar.querySelector('.day-event[data-content-id="' + contentId + '"]');
+        }
 
         calendar.querySelectorAll('.day-event[draggable="true"]').forEach(function (el) {
             el.addEventListener('dragstart', function (e) {
@@ -399,16 +405,14 @@
                     e.preventDefault();
                     return;
                 }
-                dragged = el;
                 el.classList.add('is-dragging');
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', el.dataset.contentId || '');
             });
             el.addEventListener('dragend', function () {
                 el.classList.remove('is-dragging');
-                dragged = null;
-                calendar.querySelectorAll('.calendar-drop-day.drag-over').forEach(function (cell) {
-                    cell.classList.remove('drag-over');
+                calendar.querySelectorAll('.calendar-drop-day.drag-over').forEach(function (dropCell) {
+                    dropCell.classList.remove('drag-over');
                 });
             });
         });
@@ -429,23 +433,34 @@
             cell.addEventListener('drop', function (e) {
                 e.preventDefault();
                 cell.classList.remove('drag-over');
-                if (!dragged) {
+
+                var contentId = e.dataTransfer.getData('text/plain');
+                var draggedEl = findDraggedCard(contentId);
+                if (!draggedEl) {
                     return;
                 }
+
                 var newDate = cell.dataset.date;
                 if (!newDate) {
                     return;
                 }
-                var sourceCell = dragged.closest('.calendar-drop-day');
+
+                var sourceCell = draggedEl.closest('.calendar-drop-day');
                 if (sourceCell === cell) {
+                    return;
+                }
+
+                var moveUrl = draggedEl.dataset.moveUrl;
+                var moveToken = draggedEl.dataset.moveToken || '';
+                if (!moveUrl) {
                     return;
                 }
 
                 var body = new FormData();
                 body.append('date', newDate);
-                body.append('_token', dragged.dataset.moveToken || '');
+                body.append('_token', moveToken);
 
-                fetch(dragged.dataset.moveUrl, {
+                fetch(moveUrl, {
                     method: 'POST',
                     credentials: 'same-origin',
                     headers: {
@@ -470,13 +485,19 @@
                             window.alert((result.data && result.data.error) || 'Impossible de déplacer ce contenu.');
                             return;
                         }
-                        var events = cell.querySelector('.day-events');
-                        var empty = events.querySelector('.day-empty');
+
+                        var targetEvents = cell.querySelector('.day-events');
+                        if (!targetEvents) {
+                            return;
+                        }
+
+                        var empty = targetEvents.querySelector('.day-empty');
                         if (empty) {
                             empty.remove();
                         }
-                        events.appendChild(dragged);
-                        dragged.classList.toggle('past-post', newDate < todayDate);
+                        targetEvents.appendChild(draggedEl);
+                        draggedEl.classList.toggle('past-post', newDate < todayDate);
+
                         if (sourceCell) {
                             var sourceEvents = sourceCell.querySelector('.day-events');
                             if (sourceEvents && !sourceEvents.querySelector('.day-event')) {

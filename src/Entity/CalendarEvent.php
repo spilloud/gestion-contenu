@@ -11,6 +11,7 @@ use Doctrine\ORM\Mapping as ORM;
 class CalendarEvent
 {
     public const DEFAULT_COLOR = '#cbd5e1';
+    public const DEFAULT_TEXT_COLOR = '#0f172a';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -28,6 +29,9 @@ class CalendarEvent
 
     #[ORM\Column(length: 7, options: ['default' => self::DEFAULT_COLOR])]
     private string $color = self::DEFAULT_COLOR;
+
+    #[ORM\Column(length: 7, options: ['default' => self::DEFAULT_TEXT_COLOR])]
+    private string $textColor = self::DEFAULT_TEXT_COLOR;
 
     /** null = visible pour tous les clients */
     #[ORM\ManyToOne]
@@ -83,6 +87,18 @@ class CalendarEvent
     public function setColor(string $color): static
     {
         $this->color = $color;
+
+        return $this;
+    }
+
+    public function getTextColor(): string
+    {
+        return $this->textColor;
+    }
+
+    public function setTextColor(string $textColor): static
+    {
+        $this->textColor = $textColor;
 
         return $this;
     }

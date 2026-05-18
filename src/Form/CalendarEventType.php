@@ -33,7 +33,10 @@ class CalendarEventType extends AbstractType
                 'help' => 'Pour un seul jour, indiquez la même date de début et de fin.',
             ])
             ->add('color', ColorType::class, [
-                'label' => 'Couleur de la barre',
+                'label' => 'Couleur de fond (barre)',
+            ])
+            ->add('textColor', ColorType::class, [
+                'label' => 'Couleur du texte',
             ])
             ->add('forAllClients', CheckboxType::class, [
                 'label' => 'Visible pour tous les clients',

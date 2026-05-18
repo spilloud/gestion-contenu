@@ -52,4 +52,18 @@ class CalendarEventRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * @return CalendarEvent[]
+     */
+    public function findAllForManagement(): array
+    {
+        return $this->createQueryBuilder('e')
+            ->leftJoin('e.client', 'cl')
+            ->addSelect('cl')
+            ->orderBy('e.startDate', 'DESC')
+            ->addOrderBy('e.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

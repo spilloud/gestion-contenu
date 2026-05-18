@@ -465,6 +465,7 @@
             <h3>Navigation</h3>
             <a href="{{ path('app_dashboard') }}" class="{{ app.request.attributes.get('_route') in ['app_dashboard', 'app_home'] ? 'active' : '' }}">Dashboard</a>
             <a href="{{ path('app_calendar') }}" class="{{ app.request.attributes.get('_route') == 'app_calendar' ? 'active' : '' }}">Calendrier des contenus</a>
+            <a href="{{ path('app_calendar_events_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_calendar_event' ? 'active' : '' }}">Événements</a>
             <a href="{{ path('app_videos_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_videos_' ? 'active' : '' }}">Vidéos</a>
             <a href="{{ path('app_derush_index') }}" class="{{ app.request.attributes.get('_route') == 'app_derush_index' ? 'active' : '' }}">Dérush vidéo</a>
             <a href="{{ path('app_reports_index') }}" class="{{ app.request.attributes.get('_route') starts with 'app_reports_' ? 'active' : '' }}">Rapports</a>

@@ -12,7 +12,7 @@
                 : (isStart ? 'cal-event-bar--segment-start' : (isEnd ? 'cal-event-bar--segment-end' : 'cal-event-bar--segment-mid')) %}
             <a href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}"
                class="cal-event-bar {{ segmentClass }}"
-               style="background-color: {{ event.color }};"
+               style="background-color: {{ event.color }}; color: {{ event.textColor }};"
                title="{{ event.title }}{% if event.client %} ({{ event.client.name }}){% else %} (tous les clients){% endif %} — {{ event.startDate|date('d/m/Y') }} → {{ event.endDate|date('d/m/Y') }}">
                 {% if isStart %}<span class="cal-event-bar__label">{{ event.title }}</span>{% endif %}
             </a>

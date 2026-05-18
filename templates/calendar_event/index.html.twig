@@ -1,0 +1,124 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Événements calendrier{% endblock %}
+
+{% block body %}
+<style>
+    .events-section {
+        margin-bottom: 2rem;
+    }
+    .events-section h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.15rem;
+    }
+    .events-section .section-meta {
+        color: var(--muted);
+        font-size: 0.88rem;
+        margin-bottom: 0.75rem;
+    }
+    .event-color-preview {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+    .event-color-swatch {
+        display: inline-block;
+        width: 28px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid var(--card-border);
+        font-size: 0.65rem;
+        font-weight: 700;
+        line-height: 18px;
+        text-align: center;
+        overflow: hidden;
+    }
+</style>
+
+<h1>Événements</h1>
+<p>
+    <a href="{{ path('app_calendar_event_new', {return_to: app.request.requestUri}) }}" class="btn">+ Nouvel événement</a>
+    <a href="{{ path('app_calendar') }}" class="btn" style="background:#64748b;">Calendrier</a>
+</p>
+
+{% macro event_rows(events) %}
+    {% for event in events %}
+        <tr>
+            <td style="padding: 0.75rem;">
+                <span class="event-color-preview">
+                    <span class="event-color-swatch" style="background:{{ event.color }}; color:{{ event.textColor }};" title="Aperçu">Aa</span>
+                </span>
+            </td>
+            <td style="padding: 0.75rem;"><strong>{{ event.title }}</strong></td>
+            <td style="padding: 0.75rem;">
+                {% if event.startDate|date('Y-m-d') == event.endDate|date('Y-m-d') %}
+                    {{ event.startDate|date('d/m/Y') }}
+                {% else %}
+                    {{ event.startDate|date('d/m/Y') }} → {{ event.endDate|date('d/m/Y') }}
+                {% endif %}
+            </td>
+            <td style="padding: 0.75rem;">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ event.color }};vertical-align:middle;border:1px solid var(--card-border);"></span>
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:{{ event.textColor }};vertical-align:middle;border:1px solid var(--card-border);margin-left:4px;"></span>
+            </td>
+            <td style="padding: 0.75rem;">
+                <a href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}" class="btn btn-sm">Modifier</a>
+                <form method="post" action="{{ path('app_calendar_event_delete', {id: event.id}) }}" style="display:inline;" onsubmit="return confirm('Supprimer cet événement ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete_calendar_event' ~ event.id) }}">
+                    <input type="hidden" name="_return_to" value="{{ app.request.requestUri }}">
+                    <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+{% endmacro %}
+
+{% import _self as events %}
+
+<div class="events-section">
+    <h2>Tous les clients</h2>
+    <p class="section-meta">Événements visibles sur le calendrier de chaque client (fêtes, Paléo, etc.).</p>
+    <table class="data-sheet">
+        <thead>
+            <tr>
+                <th style="padding: 0.75rem; text-align: left;">Aperçu</th>
+                <th style="padding: 0.75rem; text-align: left;">Titre</th>
+                <th style="padding: 0.75rem; text-align: left;">Dates</th>
+                <th style="padding: 0.75rem; text-align: left;">Couleurs</th>
+                <th style="padding: 0.75rem; text-align: left;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ events.event_rows(globalEvents) }}
+            {% if globalEvents is empty %}
+                <tr><td colspan="5" style="padding: 1rem; color: var(--muted);">Aucun événement global.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+{% for group in eventsByClient %}
+    <div class="events-section">
+        <h2>{{ group.client.name }}</h2>
+        <p class="section-meta">Événements réservés à ce client (+ les événements globaux sur son calendrier).</p>
+        <table class="data-sheet">
+            <thead>
+                <tr>
+                    <th style="padding: 0.75rem; text-align: left;">Aperçu</th>
+                    <th style="padding: 0.75rem; text-align: left;">Titre</th>
+                    <th style="padding: 0.75rem; text-align: left;">Dates</th>
+                    <th style="padding: 0.75rem; text-align: left;">Couleurs</th>
+                    <th style="padding: 0.75rem; text-align: left;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ events.event_rows(group.events) }}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    {% if globalEvents is empty %}
+        <p style="color: var(--muted);">Aucun événement pour l'instant. <a href="{{ path('app_calendar_event_new') }}">Créer un événement</a>.</p>
+    {% endif %}
+{% endfor %}
+{% endblock %}

@@ -25,9 +25,9 @@ class Client
     #[ORM\Column(options: ['default' => false])]
     private bool $isArchived = false;
 
-    #[ORM\ManyToOne(inversedBy: 'clients')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?CommunityManager $communityManager = null;
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'community_manager_user_id', nullable: false, onDelete: 'RESTRICT')]
+    private ?User $communityManager = null;
 
     // 1 monteur par client (modifiable plus tard si besoin)
     #[ORM\ManyToOne]
@@ -90,12 +90,12 @@ class Client
         return $this;
     }
 
-    public function getCommunityManager(): ?CommunityManager
+    public function getCommunityManager(): ?User
     {
         return $this->communityManager;
     }
 
-    public function setCommunityManager(?CommunityManager $communityManager): static
+    public function setCommunityManager(?User $communityManager): static
     {
         $this->communityManager = $communityManager;
 

@@ -39,4 +39,38 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * @return User[]
+     */
+    public function findCommunityManagersOrdered(): array
+    {
+        return $this->filterByRole($this->findBy([], ['name' => 'ASC']), User::ROLE_CM);
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findEditorsOrdered(): array
+    {
+        return $this->filterByRole($this->findBy([], ['name' => 'ASC']), User::ROLE_EDITOR);
+    }
+
+    public function countCommunityManagers(): int
+    {
+        return count($this->findCommunityManagersOrdered());
+    }
+
+    /**
+     * @param User[] $users
+     *
+     * @return User[]
+     */
+    private function filterByRole(array $users, string $role): array
+    {
+        return array_values(array_filter(
+            $users,
+            static fn (User $user): bool => in_array($role, $user->getRoles(), true),
+        ));
+    }
 }

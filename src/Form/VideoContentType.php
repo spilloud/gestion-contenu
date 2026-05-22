@@ -3,13 +3,12 @@
 namespace App\Form;
 
 use App\Entity\Client;
-use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\User;
-use App\Repository\CommunityManagerRepository;
 use App\Repository\StatusRepository;
+use App\Repository\UserRepository;
 use App\Service\VideoAssigneeResolver;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -27,7 +26,7 @@ class VideoContentType extends AbstractType
 {
     public function __construct(
         private readonly StatusRepository $statusRepository,
-        private readonly CommunityManagerRepository $communityManagerRepository,
+        private readonly UserRepository $userRepository,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
@@ -145,12 +144,11 @@ class VideoContentType extends AbstractType
             }
             $form->add('videoCommunityManager', EntityType::class, [
                 'label' => 'Community manager',
-                'class' => CommunityManager::class,
+                'class' => User::class,
+                'choices' => $this->userRepository->findCommunityManagersOrdered(),
                 'choice_label' => 'name',
                 'required' => false,
                 'placeholder' => $content->getVideoCommunityManager() !== null ? false : '—',
-                'query_builder' => fn () => $this->communityManagerRepository->createQueryBuilder('cm')
-                    ->orderBy('cm.name', 'ASC'),
             ]);
         });
     }

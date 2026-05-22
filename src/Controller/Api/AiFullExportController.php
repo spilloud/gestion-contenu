@@ -4,7 +4,6 @@ namespace App\Controller\Api;
 
 use App\Entity\Client;
 use App\Entity\ClientPage;
-use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\ContentComment;
 use App\Entity\Format;
@@ -13,7 +12,6 @@ use App\Entity\TodoItem;
 use App\Entity\User;
 use App\Repository\ClientPageRepository;
 use App\Repository\ClientRepository;
-use App\Repository\CommunityManagerRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
@@ -34,7 +32,6 @@ class AiFullExportController extends AbstractController
         private readonly AiApiAccessChecker $aiApiAccessChecker,
         private readonly UserRepository $userRepository,
         private readonly ClientRepository $clientRepository,
-        private readonly CommunityManagerRepository $communityManagerRepository,
         private readonly FormatRepository $formatRepository,
         private readonly StatusRepository $statusRepository,
         private readonly ContentRepository $contentRepository,
@@ -55,7 +52,7 @@ class AiFullExportController extends AbstractController
 
         $formats = $this->formatRepository->findAllOrdered();
         $statuses = $this->statusRepository->findAllOrdered();
-        $communityManagers = $this->communityManagerRepository->findAllOrderedByName();
+        $communityManagers = $this->userRepository->findCommunityManagersOrdered();
         // Sur main distant, findAllOrderedByClientNameIncludingArchived / Client::isArchived peuvent être absents ;
         // on reste compatible avec les deux versions du dépôt.
         $clients = method_exists($this->clientRepository, 'findAllOrderedByClientNameIncludingArchived')
@@ -121,7 +118,7 @@ class AiFullExportController extends AbstractController
             'reference' => [
                 'formats' => array_map(fn (Format $f) => $this->serializeFormat($f), $formats),
                 'statuses' => array_map(fn (Status $s) => $this->serializeStatus($s), $statuses),
-                'communityManagers' => array_map(fn (CommunityManager $cm) => $this->serializeCommunityManager($cm), $communityManagers),
+                'communityManagers' => array_map(fn (User $cm) => $this->serializeUser($cm), $communityManagers),
                 'users' => array_map(fn (User $u) => $this->serializeUser($u), $users),
                 'clients' => array_map(fn (Client $cl) => $this->serializeClient($cl), $clients),
                 'clientPages' => array_map(fn (ClientPage $cp) => $this->serializeClientPage($cp), $clientPages),
@@ -157,18 +154,6 @@ class AiFullExportController extends AbstractController
     /**
      * @return array<string, mixed>
      */
-    private function serializeCommunityManager(CommunityManager $cm): array
-    {
-        return [
-            'id' => $cm->getId(),
-            'name' => $cm->getName(),
-            'email' => $cm->getEmail(),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     private function serializeClient(Client $c): array
     {
         return [
@@ -176,9 +161,7 @@ class AiFullExportController extends AbstractController
             'name' => $c->getName(),
             'asanaProjectGid' => $c->getAsanaProjectGid(),
             'isArchived' => method_exists($c, 'isArchived') ? $c->isArchived() : false,
-            'communityManager' => $c->getCommunityManager() !== null
-                ? $this->serializeCommunityManager($c->getCommunityManager())
-                : null,
+            'communityManager' => $this->userSnapshot($c->getCommunityManager()),
             'editor' => $this->userSnapshot($c->getEditor()),
         ];
     }
@@ -280,6 +263,7 @@ class AiFullExportController extends AbstractController
             'video' => [
                 'hasSubtitles' => $c->getVideoHasSubtitles(),
                 'editor' => $this->userSnapshot($c->getVideoEditor()),
+                'communityManager' => $this->userSnapshot($c->getVideoCommunityManager()),
                 'rushesUrl' => $c->getVideoRushesUrl(),
                 'editUrl' => $c->getVideoEditUrl(),
                 'editFilename' => $c->getVideoEditFilename(),

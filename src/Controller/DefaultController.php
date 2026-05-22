@@ -3,13 +3,13 @@
 namespace App\Controller;
 
 use App\Entity\Client;
-use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\User;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -33,7 +33,7 @@ class DefaultController extends AbstractController
         // KPIs : on scope par utilisateur (admin = tout).
         $totalClients = $hasClientScope ? count($visibleClientIds) : $entityManager->getRepository(Client::class)->count([]);
         $totalPosts = $this->countPosts($contentRepository, $visibleClientIds);
-        $totalCommunityManagers = $entityManager->getRepository(CommunityManager::class)->count([]);
+        $totalCommunityManagers = $userRepository->countCommunityManagers();
         $totalStatuses = $entityManager->getRepository(Status::class)->count([]);
         $totalFormats = $entityManager->getRepository(Format::class)->count([]);
 
@@ -361,24 +361,20 @@ class DefaultController extends AbstractController
             return array_map(static fn (array $r): int => (int) $r['id'], $rows);
         }
 
-        // CM : match via email (User.email == CommunityManager.email)
-        $cm = $entityManager->getRepository(CommunityManager::class)->findOneBy([
-            'email' => $user->getUserIdentifier(),
-        ]);
-        if (!$cm instanceof CommunityManager) {
-            return [];
+        if (in_array(User::ROLE_CM, $roles, true)) {
+            $rows = $entityManager->createQueryBuilder()
+                ->select('c.id')
+                ->from(Client::class, 'c')
+                ->andWhere('c.communityManager = :cm')
+                ->setParameter('cm', $user)
+                ->orderBy('c.name', 'ASC')
+                ->getQuery()
+                ->getArrayResult();
+
+            return array_map(static fn (array $r): int => (int) $r['id'], $rows);
         }
 
-        $rows = $entityManager->createQueryBuilder()
-            ->select('c.id')
-            ->from(Client::class, 'c')
-            ->andWhere('c.communityManager = :cm')
-            ->setParameter('cm', $cm)
-            ->orderBy('c.name', 'ASC')
-            ->getQuery()
-            ->getArrayResult();
-
-        return array_map(static fn (array $r): int => (int) $r['id'], $rows);
+        return [];
     }
 
     private function countPosts(ContentRepository $repo, ?array $clientIds): int

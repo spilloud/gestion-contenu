@@ -13,7 +13,7 @@
     <select id="communityManager" name="communityManager" required>
         <option value="">Sélectionner</option>
         {% for cm in communityManagers %}
-            <option value="{{ cm.id }}" {{ client.communityManager and client.communityManager.id == cm.id ? 'selected' : '' }}>{{ cm.name }}</option>
+            <option value="{{ cm.id }}" {{ client.communityManager and client.communityManager.id == cm.id ? 'selected' : '' }}>{{ cm.name }} ({{ cm.email }})</option>
         {% endfor %}
     </select>
     <label for="editor">Monteur</label>

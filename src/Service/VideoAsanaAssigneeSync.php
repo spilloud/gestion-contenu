@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\User;
 
@@ -48,13 +47,13 @@ final class VideoAsanaAssigneeSync
 
     public function syncSubtitlesAfterCommunityManagerChange(
         Content $content,
-        ?CommunityManager $previous,
-        ?CommunityManager $next,
+        ?User $previous,
+        ?User $next,
     ): void {
         if (!$this->formatHelper->isVideoContent($content)) {
             return;
         }
-        if ($this->sameCommunityManager($previous, $next)) {
+        if ($this->sameUser($previous, $next)) {
             return;
         }
 
@@ -78,18 +77,6 @@ final class VideoAsanaAssigneeSync
     }
 
     private function sameUser(?User $a, ?User $b): bool
-    {
-        if ($a === null && $b === null) {
-            return true;
-        }
-        if ($a === null || $b === null) {
-            return false;
-        }
-
-        return $a->getId() === $b->getId();
-    }
-
-    private function sameCommunityManager(?CommunityManager $a, ?CommunityManager $b): bool
     {
         if ($a === null && $b === null) {
             return true;

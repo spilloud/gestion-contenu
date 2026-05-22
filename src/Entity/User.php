@@ -204,6 +204,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    public function isCommunityManager(): bool
+    {
+        return in_array(self::ROLE_CM, $this->getRoles(), true);
+    }
+
+    public function isEditor(): bool
+    {
+        return in_array(self::ROLE_EDITOR, $this->getRoles(), true);
+    }
+
     public function getAsanaUserGid(): ?string
     {
         return $this->asanaUserGid;

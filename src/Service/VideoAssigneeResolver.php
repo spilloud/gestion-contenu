@@ -2,23 +2,14 @@
 
 namespace App\Service;
 
-use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\User;
-use App\Repository\CommunityManagerRepository;
-use App\Repository\UserRepository;
 
 /**
  * Résout les gid Asana pour montage et relecture sous-titres.
  */
 final class VideoAssigneeResolver
 {
-    public function __construct(
-        private readonly UserRepository $userRepository,
-        private readonly CommunityManagerRepository $communityManagerRepository,
-    ) {
-    }
-
     public function asanaGidForMontage(Content $content): ?string
     {
         $gid = $content->getVideoEditor()?->getAsanaUserGid();
@@ -32,7 +23,7 @@ final class VideoAssigneeResolver
     }
 
     /**
-     * Préremplit monteur et CM depuis le client (comme le monteur sur la fiche vidéo).
+     * Préremplit monteur et CM depuis le client lorsque la fiche n'a pas de délégation explicite.
      */
     public function applyClientTeamDefaultsForForm(Content $content): void
     {
@@ -46,34 +37,17 @@ final class VideoAssigneeResolver
         }
 
         $clientCm = $client->getCommunityManager();
-        if ($clientCm !== null) {
-            if ($this->shouldAlignCommunityManagerWithClient($content, $clientCm)) {
-                $content->setVideoCommunityManager($clientCm);
-            }
-
-            return;
-        }
-
-        if ($content->getVideoCommunityManager() === null) {
-            $fromLegacy = $this->communityManagerFromLegacyUser($content->getVideoCmUser());
-            if ($fromLegacy !== null) {
-                $content->setVideoCommunityManager($fromLegacy);
-            }
+        if ($clientCm !== null && $this->shouldAlignCommunityManagerWithClient($content, $clientCm)) {
+            $content->setVideoCommunityManager($clientCm);
         }
     }
 
-    public function resolveCommunityManagerForDisplay(Content $content): ?CommunityManager
+    public function resolveCommunityManagerForDisplay(Content $content): ?User
     {
-        $clientCm = $content->getClient()?->getCommunityManager();
-        if ($clientCm !== null) {
-            return $clientCm;
-        }
-
-        return $content->getVideoCommunityManager()
-            ?? $this->communityManagerFromLegacyUser($content->getVideoCmUser());
+        return $content->getVideoCommunityManager() ?? $content->getClient()?->getCommunityManager();
     }
 
-    private function shouldAlignCommunityManagerWithClient(Content $content, CommunityManager $clientCm): bool
+    private function shouldAlignCommunityManagerWithClient(Content $content, User $clientCm): bool
     {
         $current = $content->getVideoCommunityManager();
         if ($current === null) {
@@ -83,30 +57,11 @@ final class VideoAssigneeResolver
         return $current->getId() !== $clientCm->getId();
     }
 
-    private function communityManagerFromLegacyUser(?User $user): ?CommunityManager
-    {
-        if ($user === null) {
-            return null;
-        }
-
-        $email = $user->getEmail();
-        if ($email === null || trim($email) === '') {
-            return null;
-        }
-
-        return $this->communityManagerRepository->findOneByEmailCaseInsensitive(trim($email));
-    }
-
     public function asanaGidForSubtitlesReview(Content $content): ?string
     {
-        $fromCm = $this->asanaGidFromCommunityManager($this->resolveCommunityManagerForDisplay($content));
-        if ($fromCm !== null) {
-            return $fromCm;
-        }
-
-        $cmGid = $content->getVideoCmUser()?->getAsanaUserGid();
-        if ($cmGid !== null && trim($cmGid) !== '') {
-            return trim($cmGid);
+        $gid = $this->resolveCommunityManagerForDisplay($content)?->getAsanaUserGid();
+        if ($gid !== null && trim($gid) !== '') {
+            return trim($gid);
         }
 
         $reviewerGid = $content->getVideoSubtitlesReviewer()?->getAsanaUserGid();
@@ -122,22 +77,5 @@ final class VideoAssigneeResolver
     public function displayNameForCm(Content $content): string
     {
         return $this->resolveCommunityManagerForDisplay($content)?->getName() ?? '—';
-    }
-
-    private function asanaGidFromCommunityManager(?CommunityManager $cm): ?string
-    {
-        if ($cm === null) {
-            return null;
-        }
-
-        $email = $cm->getEmail();
-        if ($email === null || trim($email) === '') {
-            return null;
-        }
-
-        $user = $this->userRepository->findOneByEmailCaseInsensitive(trim($email));
-        $gid = $user?->getAsanaUserGid();
-
-        return $gid !== null && trim($gid) !== '' ? trim($gid) : null;
     }
 }

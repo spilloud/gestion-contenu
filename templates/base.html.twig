@@ -623,12 +623,6 @@
                         </span>
                         <span class="sidebar-link__label">Clients</span>
                     </a>
-                    <a href="{{ path('app_admin_cm_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_cm' ? 'active' : '' }}">
-                        <span class="sidebar-link__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11v2a4 4 0 0 1-4 4h-1"/></svg>
-                        </span>
-                        <span class="sidebar-link__label">Community Managers</span>
-                    </a>
                     {% if 'ROLE_ADMIN' in app.user.roles %}
                         <a href="{{ path('app_admin_integration_api') }}" class="sidebar-link {{ currentRoute in ['app_admin_integration_api', 'app_admin_integration_luc'] ? 'active' : '' }}">
                             <span class="sidebar-link__icon" aria-hidden="true">

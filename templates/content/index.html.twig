@@ -68,7 +68,7 @@
                 </td>
                 <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
                     <strong>{{ c.client.name }}</strong><br>
-                    <span style="color: var(--muted); font-size: 0.85rem;">{{ c.client.communityManager.name }}</span>
+                    <span style="color: var(--muted); font-size: 0.85rem;">{{ c.client.communityManager ? c.client.communityManager.name : '—' }}</span>
                 </td>
                 <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
                     {{ c.format.name }}

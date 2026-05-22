@@ -4,12 +4,12 @@ namespace App\Controller\Admin;
 
 use App\Entity\Client;
 use App\Entity\ClientPage;
-use App\Entity\CommunityManager;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\Content;
 use App\Entity\User;
 use App\Repository\ClientRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +21,7 @@ class ClientCrudController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly UserRepository $userRepository,
     ) {
     }
 
@@ -41,12 +42,12 @@ class ClientCrudController extends AbstractController
         $client = new Client();
         if ($request->isMethod('POST')) {
             $cmId = $request->request->getInt('communityManager');
-            $cm = $this->entityManager->getRepository(CommunityManager::class)->find($cmId);
-            if ($cm) {
+            $cm = $cmId > 0 ? $this->userRepository->find($cmId) : null;
+            if ($cm !== null && $cm->isCommunityManager()) {
                 $client->setName($request->request->getString('name'));
                 $client->setCommunityManager($cm);
                 $editorId = $request->request->getInt('editor');
-                $editor = $editorId > 0 ? $this->entityManager->getRepository(User::class)->find($editorId) : null;
+                $editor = $editorId > 0 ? $this->userRepository->find($editorId) : null;
                 $client->setEditor($editor);
                 $client->setAsanaProjectGid(trim($request->request->getString('asanaProjectGid')) ?: null);
                 $this->entityManager->persist($client);
@@ -54,16 +55,13 @@ class ClientCrudController extends AbstractController
                 $this->addFlash('success', 'Client créé.');
                 return $this->redirectToRoute('app_admin_client_index');
             }
+            $this->addFlash('error', 'Sélectionnez un utilisateur avec le rôle Community manager.');
         }
-
-        $cms = $this->entityManager->getRepository(CommunityManager::class)
-            ->findBy([], ['name' => 'ASC']);
-        $editors = $this->entityManager->getRepository(User::class)->findBy([], ['name' => 'ASC']);
 
         return $this->render('admin/client/form.html.twig', [
             'client' => $client,
-            'communityManagers' => $cms,
-            'editors' => $editors,
+            'communityManagers' => $this->userRepository->findCommunityManagersOrdered(),
+            'editors' => $this->userRepository->findEditorsOrdered(),
         ]);
     }
 
@@ -72,28 +70,25 @@ class ClientCrudController extends AbstractController
     {
         if ($request->isMethod('POST')) {
             $cmId = $request->request->getInt('communityManager');
-            $cm = $this->entityManager->getRepository(CommunityManager::class)->find($cmId);
-            if ($cm) {
+            $cm = $cmId > 0 ? $this->userRepository->find($cmId) : null;
+            if ($cm !== null && $cm->isCommunityManager()) {
                 $client->setName($request->request->getString('name'));
                 $client->setCommunityManager($cm);
                 $editorId = $request->request->getInt('editor');
-                $editor = $editorId > 0 ? $this->entityManager->getRepository(User::class)->find($editorId) : null;
+                $editor = $editorId > 0 ? $this->userRepository->find($editorId) : null;
                 $client->setEditor($editor);
                 $client->setAsanaProjectGid(trim($request->request->getString('asanaProjectGid')) ?: null);
                 $this->entityManager->flush();
                 $this->addFlash('success', 'Client modifié.');
                 return $this->redirectToRoute('app_admin_client_index');
             }
+            $this->addFlash('error', 'Sélectionnez un utilisateur avec le rôle Community manager.');
         }
-
-        $cms = $this->entityManager->getRepository(CommunityManager::class)
-            ->findBy([], ['name' => 'ASC']);
-        $editors = $this->entityManager->getRepository(User::class)->findBy([], ['name' => 'ASC']);
 
         return $this->render('admin/client/form.html.twig', [
             'client' => $client,
-            'communityManagers' => $cms,
-            'editors' => $editors,
+            'communityManagers' => $this->userRepository->findCommunityManagersOrdered(),
+            'editors' => $this->userRepository->findEditorsOrdered(),
         ]);
     }
 

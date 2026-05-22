@@ -2,7 +2,7 @@
 
 namespace App\Controller;
 
-use App\Entity\CommunityManager;
+use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,22 +30,13 @@ class SecurityController extends AbstractController
     }
 
     #[Route(path: '/profil', name: 'app_profile_redirect', methods: ['GET'])]
-    public function profileRedirect(EntityManagerInterface $entityManager): Response
+    public function profileRedirect(): Response
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->redirectToRoute('app_login');
         }
 
-        $cm = $entityManager->getRepository(CommunityManager::class)->findOneBy([
-            'email' => $user->getUserIdentifier(),
-        ]);
-
-        if ($cm) {
-            return $this->redirectToRoute('app_admin_cm_edit', ['id' => $cm->getId()]);
-        }
-
-        $this->addFlash('error', 'Aucun profil editable associe a ce compte.');
-        return $this->redirectToRoute('app_dashboard');
+        return $this->redirectToRoute('app_admin_user_edit', ['id' => $user->getId()]);
     }
 }

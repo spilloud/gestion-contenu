@@ -46,17 +46,12 @@ class Content
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $videoEditor = null;
 
-    /** CM pour cette vidéo (sinon CM du client) — tâche Asana relecture sous-titres. */
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(name: 'video_community_manager_id', nullable: true, onDelete: 'SET NULL')]
-    private ?CommunityManager $videoCommunityManager = null;
-
-    /** @deprecated Utiliser videoCommunityManager — conservé en base pour compatibilité. */
+    /** CM pour cette vidéo (sinon CM du client) — utilisateur ROLE_CM. */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'video_cm_user_id', nullable: true, onDelete: 'SET NULL')]
-    private ?User $videoCmUser = null;
+    private ?User $videoCommunityManager = null;
 
-    /** @deprecated Fusionné dans videoCommunityManager — conservé en base. */
+    /** @deprecated Conservé en base — utiliser videoCommunityManager. */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(name: 'video_subtitles_reviewer_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $videoSubtitlesReviewer = null;
@@ -220,26 +215,14 @@ class Content
         return $this;
     }
 
-    public function getVideoCommunityManager(): ?CommunityManager
+    public function getVideoCommunityManager(): ?User
     {
         return $this->videoCommunityManager;
     }
 
-    public function setVideoCommunityManager(?CommunityManager $videoCommunityManager): static
+    public function setVideoCommunityManager(?User $videoCommunityManager): static
     {
         $this->videoCommunityManager = $videoCommunityManager;
-
-        return $this;
-    }
-
-    public function getVideoCmUser(): ?User
-    {
-        return $this->videoCmUser;
-    }
-
-    public function setVideoCmUser(?User $videoCmUser): static
-    {
-        $this->videoCmUser = $videoCmUser;
 
         return $this;
     }

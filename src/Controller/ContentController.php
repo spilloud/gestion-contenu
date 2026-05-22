@@ -5,8 +5,10 @@ namespace App\Controller;
 use App\Entity\Content;
 use App\Entity\ContentComment;
 use App\Form\ContentType;
+use App\Entity\Format;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
+use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Repository\ContentActionLogRepository;
@@ -38,7 +40,56 @@ class ContentController extends AbstractController
         private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
         private readonly ContentActionLogRepository $contentActionLogRepository,
         private readonly ContentFormatHelper $contentFormatHelper,
+        private readonly FormatRepository $formatRepository,
     ) {
+    }
+
+    #[Route('', name: 'app_contents_index', methods: ['GET'])]
+    public function index(Request $request): Response
+    {
+        $videoFormat = $this->findVideoFormat();
+
+        $clientIds = $request->query->all('clients') ?: null;
+        $statusIds = $request->query->all('statuses') ?: null;
+        $formatIds = $request->query->all('formats') ?: null;
+
+        $qb = $this->contentRepository->createQueryBuilder('c')
+            ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.communityManager', 'cm')->addSelect('cm')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->andWhere('c.format != :videoFormat')
+            ->setParameter('videoFormat', $videoFormat)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('cl.name', 'ASC');
+
+        if (!empty($clientIds)) {
+            $qb->andWhere('c.client IN (:clientIds)')
+                ->setParameter('clientIds', $clientIds);
+        }
+        if (!empty($statusIds)) {
+            $qb->andWhere('c.status IN (:statusIds)')
+                ->setParameter('statusIds', $statusIds);
+        }
+        if (!empty($formatIds)) {
+            $qb->andWhere('c.format IN (:formatIds)')
+                ->setParameter('formatIds', $formatIds);
+        }
+
+        $nonVideoFormats = array_values(array_filter(
+            $this->formatRepository->findAllOrdered(),
+            fn (Format $format) => !$this->contentFormatHelper->isVideoFormat($format),
+        ));
+
+        return $this->render('content/index.html.twig', [
+            'contents' => $qb->getQuery()->getResult(),
+            'clients' => $this->clientRepository->findAllOrderedByClientName(),
+            'statuses' => $this->statusRepository->findForWorkflow(\App\Entity\Status::WORKFLOW_STANDARD),
+            'formats' => $nonVideoFormats,
+            'selectedClientIds' => $clientIds ?? [],
+            'selectedStatusIds' => $statusIds ?? [],
+            'selectedFormatIds' => $formatIds ?? [],
+        ]);
     }
 
     #[Route('/nouveau', name: 'app_content_new', methods: ['GET', 'POST'])]
@@ -408,12 +459,18 @@ class ContentController extends AbstractController
             return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
         }
 
-        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request);
-        if ($returnTo !== null) {
-            return $this->redirect($returnTo);
+        return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);
+    }
+
+    private function findVideoFormat(): Format
+    {
+        foreach ($this->formatRepository->findAllOrdered() as $format) {
+            if ($this->contentFormatHelper->isVideoFormat($format)) {
+                return $format;
+            }
         }
 
-        return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);
+        throw $this->createNotFoundException('Format vidéo introuvable.');
     }
 
     private function findInitialStandardStatus(): \App\Entity\Status

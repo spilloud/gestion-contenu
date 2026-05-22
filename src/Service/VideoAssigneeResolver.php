@@ -99,9 +99,9 @@ final class VideoAssigneeResolver
 
     public function asanaGidForSubtitlesReview(Content $content): ?string
     {
-        $fromDelegated = $this->asanaGidFromCommunityManager($content->getVideoCommunityManager());
-        if ($fromDelegated !== null) {
-            return $fromDelegated;
+        $fromCm = $this->asanaGidFromCommunityManager($this->resolveCommunityManagerForDisplay($content));
+        if ($fromCm !== null) {
+            return $fromCm;
         }
 
         $cmGid = $content->getVideoCmUser()?->getAsanaUserGid();
@@ -112,11 +112,6 @@ final class VideoAssigneeResolver
         $reviewerGid = $content->getVideoSubtitlesReviewer()?->getAsanaUserGid();
         if ($reviewerGid !== null && trim($reviewerGid) !== '') {
             return trim($reviewerGid);
-        }
-
-        $fromClient = $this->asanaGidFromCommunityManager($content->getClient()?->getCommunityManager());
-        if ($fromClient !== null) {
-            return $fromClient;
         }
 
         $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');

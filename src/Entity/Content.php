@@ -46,6 +46,16 @@ class Content
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $videoEditor = null;
 
+    /** CM déléguée pour cette vidéo (sinon CM du client). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'video_cm_user_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $videoCmUser = null;
+
+    /** Relecteur sous-titres délégué (sinon CM déléguée ou CM client). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'video_subtitles_reviewer_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $videoSubtitlesReviewer = null;
+
     #[ORM\Column(length: 2048, nullable: true)]
     private ?string $videoRushesUrl = null;
 
@@ -201,6 +211,30 @@ class Content
     public function setVideoEditor(?User $videoEditor): static
     {
         $this->videoEditor = $videoEditor;
+
+        return $this;
+    }
+
+    public function getVideoCmUser(): ?User
+    {
+        return $this->videoCmUser;
+    }
+
+    public function setVideoCmUser(?User $videoCmUser): static
+    {
+        $this->videoCmUser = $videoCmUser;
+
+        return $this;
+    }
+
+    public function getVideoSubtitlesReviewer(): ?User
+    {
+        return $this->videoSubtitlesReviewer;
+    }
+
+    public function setVideoSubtitlesReviewer(?User $videoSubtitlesReviewer): static
+    {
+        $this->videoSubtitlesReviewer = $videoSubtitlesReviewer;
 
         return $this;
     }

@@ -3,7 +3,6 @@
 namespace App\Service;
 
 use App\Entity\Content;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -15,7 +14,7 @@ final class SubtitlesReviewAsanaTrigger
 {
     public function __construct(
         private readonly AsanaService $asanaService,
-        private readonly UserRepository $userRepository,
+        private readonly VideoAssigneeResolver $assigneeResolver,
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
@@ -38,16 +37,12 @@ final class SubtitlesReviewAsanaTrigger
             return;
         }
 
-        $client = $content->getClient();
-        $cmEmail = $client?->getCommunityManager()?->getEmail();
-        $cmUser = $cmEmail ? $this->userRepository->findOneByEmailCaseInsensitive($cmEmail) : null;
-        $cmAsanaGid = $cmUser?->getAsanaUserGid();
-
+        $assigneeGid = $this->assigneeResolver->asanaGidForSubtitlesReview($content);
         $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
         $fallback = $fallback === false ? null : (string) $fallback;
 
         $videoUrl = $this->urlGenerator->generate('app_video_show', ['id' => $content->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
-        $gid = $this->asanaService->createSubtitlesReviewTaskForVideo($content, $videoUrl, $cmAsanaGid, $fallback);
+        $gid = $this->asanaService->createSubtitlesReviewTaskForVideo($content, $videoUrl, $assigneeGid, $fallback);
         if ($gid) {
             $content->setAsanaSubtitlesTaskGid($gid);
             $this->entityManager->flush();

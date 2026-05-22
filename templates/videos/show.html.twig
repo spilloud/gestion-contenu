@@ -411,21 +411,40 @@
             padding: 0 1.1rem 1.1rem;
             border-top: 1px solid var(--card-border);
         }
-        .video-fiche__field-with-link { margin-bottom: 1rem; }
-        .video-fiche__field-with-link .link-open-row {
+        .vf-link-field { margin-bottom: 1.1rem; }
+        .vf-link-field__head {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
-            margin-top: 0.35rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem 0.75rem;
+            margin-bottom: 0.35rem;
         }
-        .video-fiche__field-with-link .link-open-row a {
-            font-size: 0.82rem;
-            padding: 0.25rem 0.55rem;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
+        .vf-link-field__head .field-label { margin-bottom: 0; }
+        .vf-link-open { flex-shrink: 0; text-decoration: none; white-space: nowrap; }
+        .vf-link-open[hidden] { display: none !important; }
+        .vf-delegation {
+            display: grid;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            padding: 0.75rem 0.85rem;
             background: var(--bg);
-            color: var(--text);
-            text-decoration: none;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+        }
+        .vf-delegation__title {
+            margin: 0 0 0.35rem;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+        .vf-delegation__hint {
+            margin: 0 0 0.65rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+            line-height: 1.45;
         }
         .video-fiche__empty-hint {
             font-size: 0.82rem;
@@ -511,6 +530,8 @@
             <span>{{ content.client.name }}</span>
             <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
             <span>Monteur <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
+            <span>CM <strong>{{ cm_display_name }}</strong></span>
+            <span>Relecture ST <strong>{{ subtitles_reviewer_display_name }}</strong></span>
             <span>Sous-titres <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
         </div>
     </header>
@@ -533,44 +554,21 @@
                     <span class="video-fiche__section-kicker">KDrive · SubMagic</span>
                 </div>
 
-                <div class="video-fiche__field-with-link">
-                    {{ form_label(form.videoRushesUrl, 'Rushs') }}
-                    {{ form_widget(form.videoRushesUrl) }}
-                    {{ form_errors(form.videoRushesUrl) }}
-                    {% if content.videoRushesUrl %}
-                        <div class="link-open-row">
-                            <a href="{{ content.videoRushesUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir les rushs ↗</a>
-                        </div>
-                    {% else %}
-                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-                    {% endif %}
-                </div>
-
-                <div class="video-fiche__field-with-link">
-                    {{ form_label(form.videoSubmagicUrl, 'SubMagic') }}
-                    {{ form_widget(form.videoSubmagicUrl) }}
-                    {{ form_errors(form.videoSubmagicUrl) }}
-                    {% if content.videoSubmagicUrl %}
-                        <div class="link-open-row">
-                            <a href="{{ content.videoSubmagicUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir SubMagic ↗</a>
-                        </div>
-                    {% else %}
-                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-                    {% endif %}
-                </div>
-
-                <div class="video-fiche__field-with-link">
-                    {{ form_label(form.videoFinalUrl, 'Final') }}
-                    {{ form_widget(form.videoFinalUrl) }}
-                    {{ form_errors(form.videoFinalUrl) }}
-                    {% if content.videoFinalUrl %}
-                        <div class="link-open-row">
-                            <a href="{{ content.videoFinalUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir le final ↗</a>
-                        </div>
-                    {% else %}
-                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-                    {% endif %}
-                </div>
+                {% include 'videos/_link_field.html.twig' with {
+                    label: 'Rushs',
+                    form_field: form.videoRushesUrl,
+                    initial_url: content.videoRushesUrl,
+                } %}
+                {% include 'videos/_link_field.html.twig' with {
+                    label: 'SubMagic',
+                    form_field: form.videoSubmagicUrl,
+                    initial_url: content.videoSubmagicUrl,
+                } %}
+                {% include 'videos/_link_field.html.twig' with {
+                    label: 'Final',
+                    form_field: form.videoFinalUrl,
+                    initial_url: content.videoFinalUrl,
+                } %}
 
                 <div class="video-fiche__hidden-fields" aria-hidden="true">
                     {{ form_widget(form.videoEditUrl) }}
@@ -595,7 +593,16 @@
                     {{ form_row(form.client) }}
                     {{ form_row(form.scheduledDate) }}
                     {{ form_row(form.format) }}
-                    {{ form_row(form.videoEditor) }}
+                    <div class="vf-delegation">
+                        <p class="vf-delegation__title">Délégation & Asana</p>
+                        <p class="vf-delegation__hint">
+                            CM du client : <strong>{{ client_cm_name|default('—') }}</strong>.
+                            Les changements ci-dessous réassignent les tâches Asana existantes (montage / relecture sous-titres).
+                        </p>
+                        {{ form_row(form.videoEditor) }}
+                        {{ form_row(form.videoCmUser) }}
+                        {{ form_row(form.videoSubtitlesReviewer) }}
+                    </div>
                     <div class="subtitles-field-row">
                         <span class="field-label" id="label-video-subtitles">Sous-titres</span>
                         <label class="toggle-switch" aria-labelledby="label-video-subtitles">
@@ -655,4 +662,21 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    document.querySelectorAll('.js-vf-link-open').forEach(function (btn) {
+        var input = document.getElementById(btn.getAttribute('data-input-id'));
+        if (!input) return;
+        function sync() {
+            var v = (input.value || '').trim();
+            btn.href = v || '#';
+            btn.hidden = !v;
+        }
+        input.addEventListener('input', sync);
+        input.addEventListener('change', sync);
+        sync();
+    });
+})();
+</script>
 {% endblock %}

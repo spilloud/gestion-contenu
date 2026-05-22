@@ -12,6 +12,7 @@ use App\Repository\StatusRepository;
 use App\Repository\ContentActionLogRepository;
 use App\Repository\UserRepository;
 use App\Service\SubtitlesReviewAsanaTrigger;
+use App\Service\VideoAssigneeResolver;
 use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -32,6 +33,7 @@ class VideoController extends AbstractController
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
         private readonly ContentActionLogRepository $contentActionLogRepository,
+        private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
 
@@ -109,6 +111,9 @@ class VideoController extends AbstractController
             'content' => $content,
             'form' => $form,
             'returnTo' => $defaultReturnTo,
+            'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
+            'subtitles_reviewer_display_name' => $this->videoAssigneeResolver->displayNameForSubtitlesReviewer($content),
+            'client_cm_name' => $content->getClient()?->getCommunityManager()?->getName(),
         ], $this->buildWorkflowViewData($content)));
     }
 

@@ -6,18 +6,23 @@ use App\Entity\Content;
 use App\Entity\ContentActionLog;
 use App\Entity\User;
 use App\Service\ContentWorkflowService;
+use App\Service\VideoAsanaAssigneeSync;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
+use Doctrine\ORM\Event\PostFlushEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 #[AsDoctrineListener(event: Events::preUpdate)]
+#[AsDoctrineListener(event: Events::postFlush)]
 final class ContentAuditSubscriber
 {
+    /** @var list<array{content: Content, type: string, previous: ?User, next: ?User}> */
+    private array $asanaSyncQueue = [];
+
     public function __construct(
         private readonly ContentWorkflowService $workflowService,
-        private readonly Security $security,
+        private readonly VideoAsanaAssigneeSync $videoAsanaAssigneeSync,
         private readonly RequestStack $requestStack,
     ) {
     }
@@ -67,18 +72,61 @@ final class ContentAuditSubscriber
 
         if (isset($changeSet['videoEditor'])) {
             [$old, $new] = $changeSet['videoEditor'];
-            $this->workflowService->logFieldChange(
-                $entity,
-                ContentActionLog::TYPE_EDITOR_CHANGED,
-                'Monteur modifié',
-                sprintf(
-                    '%s → %s',
-                    $old instanceof User ? ($old->getName() ?? '—') : '—',
-                    $new instanceof User ? ($new->getName() ?? '—') : '—',
-                ),
-                false,
-            );
+            $this->logUserChange($entity, 'Monteur modifié', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED);
+            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'montage', 'previous' => $old, 'next' => $new];
         }
+
+        if (isset($changeSet['videoCmUser'])) {
+            [$old, $new] = $changeSet['videoCmUser'];
+            $this->logUserChange($entity, 'CM déléguée modifiée', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED);
+            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'cm_subtitles', 'previous' => $old, 'next' => $new];
+        }
+
+        if (isset($changeSet['videoSubtitlesReviewer'])) {
+            [$old, $new] = $changeSet['videoSubtitlesReviewer'];
+            $this->logUserChange($entity, 'Relecteur sous-titres modifié', $old, $new, ContentActionLog::TYPE_SUBTITLES_REVIEWER_CHANGED);
+            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'subtitles', 'previous' => $old, 'next' => $new];
+        }
+    }
+
+    public function postFlush(PostFlushEventArgs $args): void
+    {
+        if ($this->asanaSyncQueue === []) {
+            return;
+        }
+
+        $queue = $this->asanaSyncQueue;
+        $this->asanaSyncQueue = [];
+
+        foreach ($queue as $job) {
+            $content = $job['content'];
+            $previous = $job['previous'];
+            $next = $job['next'];
+
+            match ($job['type']) {
+                'montage' => $this->videoAsanaAssigneeSync->syncMontageAssigneeIfChanged($content, $previous, $next),
+                'subtitles' => $this->videoAsanaAssigneeSync->syncSubtitlesAssigneeIfChanged($content, $previous, $next),
+                'cm_subtitles' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCmChange($content, $previous, $next),
+                default => null,
+            };
+        }
+    }
+
+    private function logUserChange(Content $entity, string $label, mixed $old, mixed $new, string $actionType): void
+    {
+        $oldName = $old instanceof User ? ($old->getName() ?? '—') : '—';
+        $newName = $new instanceof User ? ($new->getName() ?? '—') : '—';
+        if ($oldName === $newName) {
+            return;
+        }
+
+        $this->workflowService->logFieldChange(
+            $entity,
+            $actionType,
+            $label,
+            sprintf('%s → %s', $oldName, $newName),
+            false,
+        );
     }
 
     private function isWorkflowRequest(Content $content): bool

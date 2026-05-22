@@ -239,6 +239,47 @@ class AsanaService
     }
 
     /**
+     * Réassigne une tâche Asana à un utilisateur (gid Asana).
+     */
+    public function updateTaskAssignee(string $taskGid, ?string $assigneeGid): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return false;
+        }
+
+        $assigneeGid = $assigneeGid !== null ? trim($assigneeGid) : '';
+        if ($assigneeGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request('PUT', 'https://app.asana.com/api/1.0/tasks/'.$taskGid, [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        'assignee' => $assigneeGid,
+                    ],
+                ],
+            ]);
+
+            $status = $resp->getStatusCode();
+
+            return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * Marque une tâche Asana comme terminée.
      */
     public function completeTask(string $taskGid): bool

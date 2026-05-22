@@ -75,11 +75,31 @@ class VideoContentType extends AbstractType
                 'required' => false,
             ])
             ->add('videoEditor', EntityType::class, [
-                'label' => 'Monteur',
+                'label' => 'Monteur (tâche Asana montage)',
                 'class' => User::class,
                 'choice_label' => 'name',
                 'required' => false,
-                'placeholder' => '—',
+                'placeholder' => '— Par défaut : monteur du client',
+                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
+                'help' => 'Changer le monteur réassigne la tâche Asana montage (si elle existe).',
+            ])
+            ->add('videoCmUser', EntityType::class, [
+                'label' => 'CM déléguée',
+                'class' => User::class,
+                'choice_label' => 'name',
+                'required' => false,
+                'placeholder' => '— CM du client par défaut',
+                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
+                'help' => 'Utilisateur avec gid Asana. Impacte la relecture sous-titres si aucun relecteur dédié.',
+            ])
+            ->add('videoSubtitlesReviewer', EntityType::class, [
+                'label' => 'Relecteur sous-titres',
+                'class' => User::class,
+                'choice_label' => 'name',
+                'required' => false,
+                'placeholder' => '— CM déléguée ou CM client',
+                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
+                'help' => 'Changer le relecteur réassigne la tâche Asana relecture (si elle existe).',
             ])
             ->add('videoRushesUrl', UrlType::class, [
                 'label' => 'Lien KDrive rushs (dossier)',

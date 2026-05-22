@@ -1,0 +1,16 @@
+{# label, form_field (form field view), initial_url optional #}
+<div class="vf-link-field">
+    <div class="vf-link-field__head">
+        <label class="field-label" for="{{ form_field.vars.id }}">{{ label }}</label>
+        <a
+            href="{{ initial_url|default('#') }}"
+            class="btn btn-sm vf-link-open js-vf-link-open"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-input-id="{{ form_field.vars.id }}"
+            {% if not initial_url %}hidden{% endif %}
+        >Ouvrir ↗</a>
+    </div>
+    {{ form_widget(form_field, { attr: { class: (form_field.vars.attr.class|default('') ~ ' js-vf-link-input')|trim } }) }}
+    {{ form_errors(form_field) }}
+</div>

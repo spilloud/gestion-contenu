@@ -17,6 +17,8 @@ class ContentActionLog
     public const TYPE_STEP_BACK = 'step_back';
     public const TYPE_SCHEDULED_DATE_CHANGED = 'scheduled_date_changed';
     public const TYPE_EDITOR_CHANGED = 'editor_changed';
+    public const TYPE_CM_USER_CHANGED = 'cm_user_changed';
+    public const TYPE_SUBTITLES_REVIEWER_CHANGED = 'subtitles_reviewer_changed';
     public const TYPE_MANUAL_STATUS = 'manual_status';
 
     #[ORM\Id]

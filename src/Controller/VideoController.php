@@ -92,7 +92,13 @@ class VideoController extends AbstractController
         $defaultReturnTo = $this->resolveReturnTo($request);
 
         if ($request->isMethod('GET')) {
+            $editorBefore = $content->getVideoEditor();
+            $cmBefore = $content->getVideoCommunityManager();
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+            if ($content->getVideoEditor() !== $editorBefore || $content->getVideoCommunityManager() !== $cmBefore) {
+                $content->setUpdatedAt(new \DateTimeImmutable());
+                $this->entityManager->flush();
+            }
         }
 
         $form = $this->createForm(VideoContentType::class, $content);

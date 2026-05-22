@@ -10,6 +10,7 @@ use App\Entity\Status;
 use App\Entity\User;
 use App\Repository\CommunityManagerRepository;
 use App\Repository\StatusRepository;
+use App\Service\VideoAssigneeResolver;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -18,6 +19,8 @@ use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\Extension\Core\Type\UrlType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class VideoContentType extends AbstractType
@@ -25,6 +28,7 @@ class VideoContentType extends AbstractType
     public function __construct(
         private readonly StatusRepository $statusRepository,
         private readonly CommunityManagerRepository $communityManagerRepository,
+        private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
 
@@ -77,23 +81,6 @@ class VideoContentType extends AbstractType
                 'label' => false,
                 'required' => false,
             ])
-            ->add('videoEditor', EntityType::class, [
-                'label' => 'Monteur',
-                'class' => User::class,
-                'choice_label' => 'name',
-                'required' => false,
-                'placeholder' => '—',
-                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
-            ])
-            ->add('videoCommunityManager', EntityType::class, [
-                'label' => 'Community manager',
-                'class' => CommunityManager::class,
-                'choice_label' => 'name',
-                'required' => false,
-                'placeholder' => '—',
-                'query_builder' => fn () => $this->communityManagerRepository->createQueryBuilder('cm')
-                    ->orderBy('cm.name', 'ASC'),
-            ])
             ->add('videoRushesUrl', UrlType::class, [
                 'label' => 'Lien KDrive rushs (dossier)',
                 'required' => false,
@@ -131,6 +118,41 @@ class VideoContentType extends AbstractType
                 'label' => 'Légende',
                 'required' => false,
             ]);
+
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {
+            $content = $event->getData();
+            if (!$content instanceof Content) {
+                return;
+            }
+
+            $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+
+            $form = $event->getForm();
+            if ($form->has('videoEditor')) {
+                $form->remove('videoEditor');
+            }
+            $form->add('videoEditor', EntityType::class, [
+                'label' => 'Monteur',
+                'class' => User::class,
+                'choice_label' => 'name',
+                'required' => false,
+                'placeholder' => $content->getVideoEditor() !== null ? false : '—',
+                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
+            ]);
+
+            if ($form->has('videoCommunityManager')) {
+                $form->remove('videoCommunityManager');
+            }
+            $form->add('videoCommunityManager', EntityType::class, [
+                'label' => 'Community manager',
+                'class' => CommunityManager::class,
+                'choice_label' => 'name',
+                'required' => false,
+                'placeholder' => $content->getVideoCommunityManager() !== null ? false : '—',
+                'query_builder' => fn () => $this->communityManagerRepository->createQueryBuilder('cm')
+                    ->orderBy('cm.name', 'ASC'),
+            ]);
+        });
     }
 
     public function configureOptions(OptionsResolver $resolver): void

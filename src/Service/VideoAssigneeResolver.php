@@ -4,6 +4,8 @@ namespace App\Service;
 
 use App\Entity\CommunityManager;
 use App\Entity\Content;
+use App\Entity\User;
+use App\Repository\CommunityManagerRepository;
 use App\Repository\UserRepository;
 
 /**
@@ -13,6 +15,7 @@ final class VideoAssigneeResolver
 {
     public function __construct(
         private readonly UserRepository $userRepository,
+        private readonly CommunityManagerRepository $communityManagerRepository,
     ) {
     }
 
@@ -33,6 +36,13 @@ final class VideoAssigneeResolver
      */
     public function applyClientTeamDefaultsForForm(Content $content): void
     {
+        if ($content->getVideoCommunityManager() === null) {
+            $fromLegacy = $this->communityManagerFromLegacyUser($content->getVideoCmUser());
+            if ($fromLegacy !== null) {
+                $content->setVideoCommunityManager($fromLegacy);
+            }
+        }
+
         $client = $content->getClient();
         if ($client === null) {
             return;
@@ -45,6 +55,20 @@ final class VideoAssigneeResolver
         if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
             $content->setVideoCommunityManager($client->getCommunityManager());
         }
+    }
+
+    private function communityManagerFromLegacyUser(?User $user): ?CommunityManager
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        $email = $user->getEmail();
+        if ($email === null || trim($email) === '') {
+            return null;
+        }
+
+        return $this->communityManagerRepository->findOneByEmailCaseInsensitive(trim($email));
     }
 
     public function asanaGidForSubtitlesReview(Content $content): ?string

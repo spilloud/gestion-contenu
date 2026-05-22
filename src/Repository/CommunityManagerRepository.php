@@ -26,4 +26,14 @@ class CommunityManagerRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findOneByEmailCaseInsensitive(string $email): ?CommunityManager
+    {
+        return $this->createQueryBuilder('cm')
+            ->where('LOWER(cm.email) = :email')
+            ->setParameter('email', mb_strtolower(trim($email)))
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

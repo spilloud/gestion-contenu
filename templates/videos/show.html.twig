@@ -509,6 +509,8 @@
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#vw-journal">Journal</a>
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#bloc-equipe">Équipe</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#bloc-fichiers">Fichiers</a>
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#retours-discussion">Retours</a>
@@ -536,6 +538,18 @@
         <div class="video-fiche__form-col">
             {{ form_start(form) }}
             <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+
+            <section id="bloc-equipe" class="video-fiche__section">
+                <div class="video-fiche__section-head">
+                    <h2>Équipe</h2>
+                    <span class="video-fiche__section-kicker">Asana</span>
+                </div>
+                <p class="vf-team-hint">Enregistrer réassigne automatiquement les tâches Asana (montage et relecture sous-titres) si elles existent.</p>
+                <div class="vf-team-grid">
+                    {{ form_row(form.videoEditor) }}
+                    {{ form_row(form.videoCommunityManager) }}
+                </div>
+            </section>
 
             <section id="bloc-fichiers" class="video-fiche__section">
                 <div class="video-fiche__section-head">
@@ -582,16 +596,6 @@
                     {{ form_row(form.client) }}
                     {{ form_row(form.scheduledDate) }}
                     {{ form_row(form.format) }}
-                    <div class="vf-delegation">
-                        <p class="vf-delegation__title">Délégation & Asana</p>
-                        <p class="vf-delegation__hint">
-                            CM du client : <strong>{{ client_cm_name|default('—') }}</strong>.
-                            Les changements ci-dessous réassignent les tâches Asana existantes (montage / relecture sous-titres).
-                        </p>
-                        {{ form_row(form.videoEditor) }}
-                        {{ form_row(form.videoCmUser) }}
-                        {{ form_row(form.videoSubtitlesReviewer) }}
-                    </div>
                     <div class="subtitles-field-row">
                         <span class="field-label" id="label-video-subtitles">Sous-titres</span>
                         <label class="toggle-switch" aria-labelledby="label-video-subtitles">

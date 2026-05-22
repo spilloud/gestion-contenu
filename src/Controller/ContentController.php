@@ -404,13 +404,13 @@ class ContentController extends AbstractController
 
     private function redirectWorkflowBack(Content $content, Request $request): Response
     {
+        if ($this->isVideoContent($content)) {
+            return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
+        }
+
         $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request);
         if ($returnTo !== null) {
             return $this->redirect($returnTo);
-        }
-
-        if ($this->isVideoContent($content)) {
-            return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
         }
 
         return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);

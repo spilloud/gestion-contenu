@@ -130,15 +130,12 @@ class VideoController extends AbstractController
             ];
         }
 
-        $statusName = $content->getStatus()?->getName();
-
         return [
             'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
             'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
             'workflow_journey' => $journey,
-            'workflow_phases' => ContentWorkflowRegistry::VIDEO_PHASES,
-            'workflow_phase_index' => $this->contentWorkflowRegistry->currentVideoPhaseIndex($statusName),
-            'workflow_phase_total' => count(ContentWorkflowRegistry::VIDEO_PHASES),
+            'workflow_phases' => $this->contentWorkflowRegistry->phasesFor($content),
+            'workflow_phase_index' => $this->contentWorkflowRegistry->phaseIndexFor($content),
         ];
     }
 

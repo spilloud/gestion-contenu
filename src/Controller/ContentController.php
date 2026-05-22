@@ -392,6 +392,8 @@ class ContentController extends AbstractController
             'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
             'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
             'workflow_journey' => $journey,
+            'workflow_phases' => $this->contentWorkflowRegistry->phasesFor($content),
+            'workflow_phase_index' => $this->contentWorkflowRegistry->phaseIndexFor($content),
         ];
     }
 

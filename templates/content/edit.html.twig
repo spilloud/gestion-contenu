@@ -2,31 +2,100 @@
 
 {% block title %}Modifier {{ content.title }}{% endblock %}
 
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        {% include 'content/_workflow_fiche_styles.html.twig' %}
+    </style>
+{% endblock %}
+
 {% block body %}
-<h1>Modifier {{ content.title }}</h1>
-<p><a href="{{ returnTo|default(path('app_calendar')) }}">← Retour</a></p>
+{% set status_name = content.status ? content.status.name : '' %}
+{% set status_hints = {
+    'Brouillon (idée)': 'Notez l’idée et les éléments clés avant de produire le contenu.',
+    'En préparation': 'Rédaction, visuels ou montage en cours.',
+    'À valider (post)': 'Relecture interne ou validation avant publication.',
+    'Prêt à publier': 'Contenu validé — prêt pour Metricool ou publication.',
+    'Publiée': 'Contenu publié.',
+} %}
+{% set status_hint = status_hints[status_name]|default('Utilisez le bouton ci-dessous pour faire avancer le contenu.') %}
+{% set return_to_val = returnTo|default(path('app_calendar')) %}
 
-{% if content.status %}
-    <p style="margin-bottom: 0.5rem;">Statut actuel : <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span></p>
-{% endif %}
-{% include 'content/_workflow_journey.html.twig' %}
-{% include 'content/_workflow_buttons.html.twig' with { return_to: returnTo|default(path('app_calendar')) } %}
+<div class="content-fiche">
+    <nav class="content-fiche__topnav" aria-label="Navigation">
+        <a href="{{ return_to_val }}">← Retour</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Calendrier</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#vw-journal">Journal</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#bloc-contenu">Contenu</a>
+    </nav>
 
-{{ form_start(form) }}
-<input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_calendar')) }}">
-{{ form_widget(form) }}
-<button type="submit" class="btn">Enregistrer</button>
-{{ form_end(form) }}
+    <header class="content-fiche__title-bar">
+        <h1>{{ content.title }}</h1>
+        <div class="content-fiche__meta-chips">
+            <span>{{ content.client.name }}</span>
+            <span>Format <strong>{{ content.format.name }}</strong></span>
+            <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
+        </div>
+    </header>
 
-<section style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--card-border, #e2e8f0); max-width: 520px;">
-    <h2 style="font-size: 1rem; margin: 0 0 0.5rem; color: #b91c1c;">Zone sensible</h2>
-    <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">
-        La suppression retire définitivement ce contenu (y compris commentaires). Cette action ne peut pas être annulée.
-    </p>
-    <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" onsubmit="return confirm('Supprimer définitivement ce contenu ?\\n\\nCette action est irréversible.');">
-        <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
-        <input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_calendar')) }}">
-        <button type="submit" class="btn btn-danger">Supprimer ce contenu</button>
-    </form>
-</section>
+    <div class="content-fiche__layout">
+        {% include 'content/_workflow_hero.html.twig' with {
+            return_to: return_to_val,
+            status_hint: status_hint,
+            status_name: status_name,
+            manual_settings_label: 'Réglages manuels',
+        } %}
+        {% include 'content/_workflow_journal.html.twig' %}
+
+        <div class="content-fiche__form-col">
+            {{ form_start(form) }}
+            <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+
+            <section id="bloc-contenu" class="content-fiche__section">
+                <div class="content-fiche__section-head">
+                    <h2>Contenu</h2>
+                </div>
+                {{ form_row(form.title) }}
+                {{ form_row(form.client) }}
+                {{ form_row(form.scheduledDate) }}
+                {{ form_row(form.format) }}
+            </section>
+
+            <section id="bloc-notes" class="content-fiche__section">
+                <div class="content-fiche__section-head">
+                    <h2>Notes</h2>
+                </div>
+                {{ form_row(form.notes) }}
+            </section>
+
+            <details class="content-fiche__details" id="bloc-pilotage">
+                <summary>Réglages manuels</summary>
+                <div class="content-fiche__details-body">
+                    {{ form_row(form.status) }}
+                </div>
+            </details>
+
+            {{ form_rest(form) }}
+
+            <div class="content-fiche__save-bar">
+                <button type="submit" class="btn">Enregistrer les modifications</button>
+            </div>
+
+            {{ form_end(form, { render_rest: false }) }}
+
+            <section class="content-fiche__danger" aria-labelledby="content-delete-heading">
+                <h2 id="content-delete-heading">Supprimer ce contenu</h2>
+                <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">Action irréversible.</p>
+                <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" onsubmit="return confirm('Supprimer définitivement ce contenu ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
+                    <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </section>
+        </div>
+    </div>
+</div>
 {% endblock %}

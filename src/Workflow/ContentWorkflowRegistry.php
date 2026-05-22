@@ -44,6 +44,16 @@ final class ContentWorkflowRegistry
         'Publiée',
     ];
 
+    /**
+     * @var list<array{label: string, statuses: list<string>}>
+     */
+    public const STANDARD_PHASES = [
+        ['label' => 'Idée', 'statuses' => ['Brouillon (idée)']],
+        ['label' => 'Préparation', 'statuses' => ['En préparation']],
+        ['label' => 'Validation', 'statuses' => ['À valider (post)']],
+        ['label' => 'Diffusion', 'statuses' => ['Prêt à publier', 'Publiée']],
+    ];
+
     /** @var list<string> */
     public const STANDARD_ORDER = [
         'Brouillon (idée)',
@@ -70,11 +80,43 @@ final class ContentWorkflowRegistry
 
     public function currentVideoPhaseIndex(?string $statusName): int
     {
+        return $this->phaseIndexIn(self::VIDEO_PHASES, $statusName);
+    }
+
+    public function currentStandardPhaseIndex(?string $statusName): int
+    {
+        return $this->phaseIndexIn(self::STANDARD_PHASES, $statusName);
+    }
+
+    /**
+     * @return list<array{label: string, statuses: list<string>}>
+     */
+    public function phasesFor(Content $content): array
+    {
+        return $this->formatHelper->isVideoContent($content)
+            ? self::VIDEO_PHASES
+            : self::STANDARD_PHASES;
+    }
+
+    public function phaseIndexFor(Content $content): int
+    {
+        $statusName = $content->getStatus()?->getName();
+
+        return $this->formatHelper->isVideoContent($content)
+            ? $this->currentVideoPhaseIndex($statusName)
+            : $this->currentStandardPhaseIndex($statusName);
+    }
+
+    /**
+     * @param list<array{label: string, statuses: list<string>}> $phases
+     */
+    private function phaseIndexIn(array $phases, ?string $statusName): int
+    {
         if ($statusName === null || $statusName === '') {
             return 0;
         }
 
-        foreach (self::VIDEO_PHASES as $index => $phase) {
+        foreach ($phases as $index => $phase) {
             if (in_array($statusName, $phase['statuses'], true)) {
                 return $index;
             }

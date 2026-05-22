@@ -20,7 +20,7 @@
         {% endif %}
     </div>
 
-    <nav class="vw-phases" aria-label="Progression du projet">
+    <nav class="vw-phases" aria-label="Progression">
         <ol class="vw-phases__list">
             {% for phase in workflow_phases %}
                 {% set phaseIndex = loop.index0 %}
@@ -55,7 +55,7 @@
             {% endif %}
 
             {% if choice_actions is not empty %}
-                <p class="vw-actions__group-title">Choix sous-titres</p>
+                <p class="vw-actions__group-title">Choix</p>
                 <div class="vw-actions__grid vw-actions__grid--choice">
                     {% for action in choice_actions %}
                         <form method="post" action="{{ path('app_content_workflow_transition', {id: content.id, action: action.id}) }}" class="vw-actions__form">
@@ -77,9 +77,9 @@
     {% else %}
         <p class="vw-actions__empty">
             {% if status_name == 'Publiée' %}
-                Projet terminé — aucune action requise.
+                Contenu publié — aucune action requise.
             {% else %}
-                Utilisez « Réglages & pilotage manuel » si vous devez corriger l’étape.
+                Utilisez « {{ manual_settings_label|default('Réglages manuels') }} » si vous devez corriger l’étape.
             {% endif %}
         </p>
     {% endif %}

@@ -11,6 +11,20 @@ use App\Service\ContentFormatHelper;
  */
 final class ContentWorkflowRegistry
 {
+    /**
+     * Phases affichées dans la barre de progression (fiche vidéo).
+     *
+     * @var list<array{label: string, statuses: list<string>}>
+     */
+    public const VIDEO_PHASES = [
+        ['label' => 'Dérush', 'statuses' => ['Brouillon (Dérush)', 'Rushs / à dispatcher']],
+        ['label' => 'Montage', 'statuses' => ['Montage à faire', 'Montage en cours', 'Retouches (Monteur)']],
+        ['label' => 'Production', 'statuses' => ['À valider (Prod)', 'Sous-titrage (SubMagic)', 'Prépa CM (sans sous-titres)']],
+        ['label' => 'Qualité', 'statuses' => ['Sous-titres à valider', 'À valider (CM)']],
+        ['label' => 'Client', 'statuses' => ['À valider (Client)', 'À faire valider au client']],
+        ['label' => 'Diffusion', 'statuses' => ['Prête à programmer', 'Programmée', 'Publiée']],
+    ];
+
     /** @var list<string> */
     public const VIDEO_ORDER = [
         'Brouillon (Dérush)',
@@ -52,6 +66,21 @@ final class ContentWorkflowRegistry
         return $this->formatHelper->isVideoContent($content)
             ? self::VIDEO_ORDER
             : self::STANDARD_ORDER;
+    }
+
+    public function currentVideoPhaseIndex(?string $statusName): int
+    {
+        if ($statusName === null || $statusName === '') {
+            return 0;
+        }
+
+        foreach (self::VIDEO_PHASES as $index => $phase) {
+            if (in_array($statusName, $phase['statuses'], true)) {
+                return $index;
+            }
+        }
+
+        return 0;
     }
 
     public function previousStatusName(Content $content): ?string

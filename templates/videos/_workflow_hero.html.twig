@@ -1,0 +1,86 @@
+<section class="vw-hero" aria-labelledby="vw-hero-title">
+    <div class="vw-hero__head">
+        <div class="vw-hero__head-text">
+            <p class="vw-hero__eyebrow">Étape en cours</p>
+            <h2 id="vw-hero-title" class="vw-hero__status">
+                {% if content.status %}
+                    <span class="status-badge status-{{ content.status.color }} vw-hero__status-badge">{{ content.status.name }}</span>
+                {% else %}
+                    <span class="status-badge status-gray">—</span>
+                {% endif %}
+            </h2>
+            <p class="vw-hero__hint">{{ status_hint }}</p>
+        </div>
+        {% if workflow_can_step_back %}
+            <form method="post" action="{{ path('app_content_workflow_step_back', {id: content.id}) }}" class="vw-hero__back-form" onsubmit="return confirm('Reculer d\'une étape ? L\'action sera enregistrée dans le journal.');">
+                <input type="hidden" name="_token" value="{{ csrf_token('workflow' ~ content.id) }}">
+                <input type="hidden" name="_return_to" value="{{ return_to|default('') }}">
+                <button type="submit" class="vw-btn vw-btn--ghost">← Reculer</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <nav class="vw-phases" aria-label="Progression du projet">
+        <ol class="vw-phases__list">
+            {% for phase in workflow_phases %}
+                {% set phaseIndex = loop.index0 %}
+                {% set state = phaseIndex < workflow_phase_index ? 'done' : (phaseIndex == workflow_phase_index ? 'current' : 'upcoming') %}
+                <li class="vw-phases__item vw-phases__item--{{ state }}">
+                    <span class="vw-phases__dot" aria-hidden="true">
+                        {% if state == 'done' %}✓{% else %}{{ loop.index }}{% endif %}
+                    </span>
+                    <span class="vw-phases__label">{{ phase.label }}</span>
+                </li>
+            {% endfor %}
+        </ol>
+    </nav>
+
+    {% if workflow_actions is not empty %}
+        <div class="vw-actions" role="group" aria-label="Actions pour avancer">
+            {% set primary_actions = workflow_actions|filter(a => a.group is null) %}
+            {% set choice_actions = workflow_actions|filter(a => a.group is not null) %}
+
+            {% if primary_actions is not empty %}
+                <div class="vw-actions__grid">
+                    {% for action in primary_actions %}
+                        <form method="post" action="{{ path('app_content_workflow_transition', {id: content.id, action: action.id}) }}" class="vw-actions__form">
+                            <input type="hidden" name="_token" value="{{ csrf_token('workflow' ~ content.id) }}">
+                            <input type="hidden" name="_return_to" value="{{ return_to|default('') }}">
+                            <button type="submit" class="vw-btn vw-btn--{{ action.variant|default('primary') }}">
+                                <span class="vw-btn__label">{{ action.label }}</span>
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {% if choice_actions is not empty %}
+                <p class="vw-actions__group-title">Choix sous-titres</p>
+                <div class="vw-actions__grid vw-actions__grid--choice">
+                    {% for action in choice_actions %}
+                        <form method="post" action="{{ path('app_content_workflow_transition', {id: content.id, action: action.id}) }}" class="vw-actions__form">
+                            <input type="hidden" name="_token" value="{{ csrf_token('workflow' ~ content.id) }}">
+                            <input type="hidden" name="_return_to" value="{{ return_to|default('') }}">
+                            <button type="submit" class="vw-btn vw-btn--{{ action.variant|default('primary') }} vw-btn--choice">
+                                <span class="vw-btn__label">{{ action.label }}</span>
+                                {% if action.id == 'subtitles_yes' %}
+                                    <span class="vw-btn__sub">SubMagic → relecture CM</span>
+                                {% elseif action.id == 'subtitles_no' %}
+                                    <span class="vw-btn__sub">Préparation directe CM</span>
+                                {% endif %}
+                            </button>
+                        </form>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <p class="vw-actions__empty">
+            {% if status_name == 'Publiée' %}
+                Projet terminé — aucune action requise.
+            {% else %}
+                Utilisez « Réglages & pilotage manuel » si vous devez corriger l’étape.
+            {% endif %}
+        </p>
+    {% endif %}
+</section>

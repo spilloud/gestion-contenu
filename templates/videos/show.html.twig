@@ -5,7 +5,7 @@
 {% block stylesheets %}
     {{ parent() }}
     <style>
-        .video-fiche { max-width: 920px; }
+        .video-fiche { max-width: 1180px; }
         .video-fiche__topnav {
             display: flex;
             flex-wrap: wrap;
@@ -14,59 +14,355 @@
             margin-bottom: 1rem;
             font-size: 0.88rem;
         }
-        .video-fiche__topnav a { color: var(--accent, #5b21b6); }
-        .video-fiche__summary {
-            position: sticky;
-            top: 3.75rem;
-            z-index: 8;
+        .video-fiche__topnav a { color: var(--accent, #5b21b6); text-decoration: none; }
+        .video-fiche__topnav a:hover { text-decoration: underline; }
+
+        .video-fiche__title-bar {
+            margin-bottom: 1.25rem;
+        }
+        .video-fiche__title-bar h1 {
+            margin: 0 0 0.45rem;
+            font-size: 1.5rem;
+            line-height: 1.25;
+        }
+        .video-fiche__meta-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem 0.65rem;
+            font-size: 0.84rem;
+            color: var(--muted);
+        }
+        .video-fiche__meta-chips span {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 1rem 1.1rem;
-            margin-bottom: 1.25rem;
-            box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+            border-radius: 999px;
+            padding: 0.2rem 0.65rem;
         }
-        body.theme-dark .video-fiche__summary {
-            box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25);
+        .video-fiche__meta-chips strong { color: var(--text); font-weight: 600; }
+
+        /* Grille : actions (gauche) + journal sticky (droite) + formulaire sous les actions */
+        .video-fiche__layout {
+            display: grid;
+            gap: 1.25rem;
+            align-items: start;
+            grid-template-columns: 1fr;
+            grid-template-areas:
+                "hero"
+                "journal"
+                "form";
         }
-        .video-fiche__summary-title {
-            font-size: 1.15rem;
+        @media (min-width: 960px) {
+            .video-fiche__layout {
+                grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+                grid-template-areas:
+                    "hero journal"
+                    "form journal";
+            }
+        }
+        .video-fiche__layout .vw-hero { grid-area: hero; }
+        .video-fiche__layout .vw-journal { grid-area: journal; }
+        .video-fiche__form-col { grid-area: form; }
+
+        /* —— Panneau workflow —— */
+        .vw-hero {
+            background: linear-gradient(135deg, rgba(91, 33, 182, 0.08) 0%, var(--card-bg) 55%);
+            border: 2px solid rgba(91, 33, 182, 0.22);
+            border-radius: 16px;
+            padding: 1.25rem 1.35rem 1.35rem;
+            box-shadow: 0 8px 28px rgba(91, 33, 182, 0.08);
+        }
+        body.theme-dark .vw-hero {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, var(--card-bg) 60%);
+            border-color: rgba(167, 139, 250, 0.35);
+        }
+        .vw-hero__head {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.1rem;
+        }
+        .vw-hero__eyebrow {
+            margin: 0 0 0.35rem;
+            font-size: 0.72rem;
             font-weight: 700;
-            margin: 0 0 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+        .vw-hero__status { margin: 0; }
+        .vw-hero__status-badge {
+            font-size: 1.05rem !important;
+            padding: 0.4rem 0.85rem !important;
+        }
+        .vw-hero__hint {
+            margin: 0.55rem 0 0;
+            max-width: 52ch;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: var(--muted);
+        }
+
+        .vw-phases { margin-bottom: 1.25rem; }
+        .vw-phases__list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+        .vw-phases__item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.55rem;
+            border-radius: 8px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--muted);
+            background: var(--bg);
+            border: 1px solid var(--card-border);
+        }
+        .vw-phases__item--current {
+            color: #fff;
+            background: #5b21b6;
+            border-color: #5b21b6;
+        }
+        .vw-phases__item--done {
+            color: #15803d;
+            border-color: rgba(21, 128, 61, 0.35);
+            background: rgba(21, 128, 61, 0.08);
+        }
+        body.theme-dark .vw-phases__item--done {
+            color: #86efac;
+            background: rgba(21, 128, 61, 0.15);
+        }
+        .vw-phases__dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.25rem;
+            height: 1.25rem;
+            border-radius: 50%;
+            font-size: 0.68rem;
+            background: rgba(0,0,0,0.06);
+        }
+        .vw-phases__item--current .vw-phases__dot {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .vw-actions__group-title {
+            margin: 0.85rem 0 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+        }
+        .vw-actions__grid {
+            display: grid;
+            gap: 0.65rem;
+        }
+        @media (min-width: 480px) {
+            .vw-actions__grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+        }
+        .vw-actions__grid--choice {
+            grid-template-columns: 1fr;
+        }
+        @media (min-width: 480px) {
+            .vw-actions__grid--choice { grid-template-columns: 1fr 1fr; }
+        }
+        .vw-actions__form { margin: 0; }
+        .vw-actions__empty {
+            margin: 0;
+            padding: 0.85rem 1rem;
+            background: var(--bg);
+            border-radius: 10px;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        .vw-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            width: 100%;
+            min-height: 3.35rem;
+            padding: 0.85rem 1.15rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            text-align: left;
+            transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+        }
+        .vw-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.12);
+        }
+        .vw-btn:active { transform: translateY(0); }
+        .vw-btn__label {
+            font-size: 1.05rem;
+            font-weight: 700;
             line-height: 1.3;
         }
-        .video-fiche__summary-meta {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.35rem 1rem;
-            font-size: 0.86rem;
-            color: var(--muted);
-            margin-bottom: 0.5rem;
-        }
-        .video-fiche__summary-meta strong { color: var(--text); font-weight: 600; }
-        .video-fiche__anchor-nav {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem 0.75rem;
+        .vw-btn__sub {
+            margin-top: 0.2rem;
             font-size: 0.8rem;
-            padding-top: 0.5rem;
-            border-top: 1px solid var(--card-border);
+            font-weight: 500;
+            opacity: 0.88;
         }
-        .video-fiche__anchor-nav a {
+        .vw-btn--primary {
+            background: #5b21b6;
+            color: #fff;
+        }
+        .vw-btn--primary:hover { background: #4c1d95; }
+        .vw-btn--success {
+            background: #15803d;
+            color: #fff;
+        }
+        .vw-btn--success:hover { background: #166534; }
+        .vw-btn--secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+        }
+        body.theme-dark .vw-btn--secondary {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        .vw-btn--secondary:hover { filter: brightness(0.96); }
+        .vw-btn--ghost {
+            background: transparent;
             color: var(--muted);
-            text-decoration: none;
-            padding: 0.2rem 0.45rem;
-            border-radius: 6px;
+            border: 1px solid var(--card-border);
+            min-height: auto;
+            padding: 0.45rem 0.75rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            flex-direction: row;
         }
-        .video-fiche__anchor-nav a:hover {
-            background: var(--bg);
+        .vw-btn--ghost:hover {
             color: var(--text);
+            border-color: var(--muted);
+            box-shadow: none;
+            transform: none;
         }
+        .vw-btn--choice {
+            min-height: 4.5rem;
+        }
+
+        /* —— Journal —— */
+        .vw-journal {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            padding: 1rem 1.1rem 1.15rem;
+            max-height: none;
+        }
+        @media (min-width: 960px) {
+            .vw-journal {
+                position: sticky;
+                top: 4rem;
+                max-height: calc(100vh - 5rem);
+                overflow-y: auto;
+            }
+        }
+        .vw-journal__head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.85rem;
+            padding-bottom: 0.65rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+        .vw-journal__head h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+        .vw-journal__count {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--muted);
+            background: var(--bg);
+            padding: 0.15rem 0.5rem;
+            border-radius: 999px;
+        }
+        .vw-journal__timeline {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .vw-journal__entry {
+            position: relative;
+            padding-left: 1.35rem;
+            padding-bottom: 1rem;
+        }
+        .vw-journal__entry:last-child { padding-bottom: 0; }
+        .vw-journal__entry::before {
+            content: '';
+            position: absolute;
+            left: 0.35rem;
+            top: 0.5rem;
+            bottom: 0;
+            width: 2px;
+            background: var(--card-border);
+        }
+        .vw-journal__entry:last-child::before { display: none; }
+        .vw-journal__marker {
+            position: absolute;
+            left: 0;
+            top: 0.35rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            border-radius: 50%;
+            background: var(--card-border);
+            border: 2px solid var(--card-bg);
+        }
+        .vw-journal__entry--latest .vw-journal__marker {
+            background: #5b21b6;
+            box-shadow: 0 0 0 3px rgba(91, 33, 182, 0.2);
+        }
+        .vw-journal__label {
+            margin: 0 0 0.2rem;
+            font-size: 0.92rem;
+            font-weight: 700;
+            line-height: 1.35;
+        }
+        .vw-journal__entry--latest .vw-journal__label { color: #5b21b6; }
+        body.theme-dark .vw-journal__entry--latest .vw-journal__label { color: #c4b5fd; }
+        .vw-journal__detail {
+            margin: 0 0 0.25rem;
+            font-size: 0.82rem;
+            color: var(--muted);
+            line-height: 1.4;
+        }
+        .vw-journal__meta {
+            margin: 0;
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+        .vw-journal__empty {
+            text-align: center;
+            padding: 1.25rem 0.75rem;
+            color: var(--muted);
+            font-size: 0.88rem;
+        }
+        .vw-journal__empty p { margin: 0 0 0.35rem; }
+        .vw-journal__empty-hint { font-size: 0.8rem; opacity: 0.85; }
+
+        /* —— Sections formulaire —— */
+        .video-fiche__form-col { display: grid; gap: 1.1rem; }
         .video-fiche__section {
             border: 1px solid var(--card-border);
             border-radius: 12px;
             padding: 1rem 1.1rem 1.15rem;
-            margin-bottom: 1.1rem;
             background: var(--card-bg);
         }
         .video-fiche__section-head {
@@ -82,7 +378,6 @@
             margin: 0;
             font-size: 1rem;
             font-weight: 700;
-            letter-spacing: 0.02em;
         }
         .video-fiche__section-kicker {
             font-size: 0.72rem;
@@ -91,23 +386,35 @@
             color: var(--muted);
             font-weight: 600;
         }
-        .video-fiche__hint {
-            font-size: 0.86rem;
+        .video-fiche__details {
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            background: var(--card-bg);
+            overflow: hidden;
+        }
+        .video-fiche__details summary {
+            cursor: pointer;
+            padding: 0.9rem 1.1rem;
+            font-weight: 700;
+            font-size: 0.95rem;
+            list-style: none;
+        }
+        .video-fiche__details summary::-webkit-details-marker { display: none; }
+        .video-fiche__details summary::after {
+            content: '＋';
+            float: right;
             color: var(--muted);
-            margin: -0.35rem 0 0.85rem;
-            line-height: 1.45;
-            padding: 0.55rem 0.65rem;
-            background: var(--bg);
-            border-radius: 8px;
-            border-left: 3px solid var(--sidebar-active, #4c1d95);
+            font-weight: 400;
         }
-        .video-fiche__field-with-link {
-            margin-bottom: 1rem;
+        .video-fiche__details[open] summary::after { content: '−'; }
+        .video-fiche__details-body {
+            padding: 0 1.1rem 1.1rem;
+            border-top: 1px solid var(--card-border);
         }
+        .video-fiche__field-with-link { margin-bottom: 1rem; }
         .video-fiche__field-with-link .link-open-row {
             display: flex;
             flex-wrap: wrap;
-            align-items: center;
             gap: 0.5rem;
             margin-top: 0.35rem;
         }
@@ -120,10 +427,6 @@
             color: var(--text);
             text-decoration: none;
         }
-        .video-fiche__field-with-link .link-open-row a:hover {
-            border-color: var(--sidebar-active);
-            color: var(--sidebar-active);
-        }
         .video-fiche__empty-hint {
             font-size: 0.82rem;
             color: var(--muted);
@@ -134,240 +437,222 @@
             position: sticky;
             bottom: 0;
             z-index: 8;
-            margin: 1.25rem -0.25rem 0;
-            padding: 0.75rem 1rem;
+            padding: 0.85rem 1rem;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 10px;
+            border-radius: 12px;
             display: flex;
             justify-content: flex-end;
-            gap: 0.75rem;
-            align-items: center;
-            box-shadow: 0 -6px 24px rgba(15, 23, 42, 0.08);
+            box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.1);
         }
         body.theme-dark .video-fiche__save-bar {
-            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.35);
+            box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
         }
-        .video-fiche__comments {
-            max-width: 720px;
+        .video-fiche__hidden-fields {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
         }
-        .video-fiche__comments h2 { margin-top: 0; }
         .video-fiche__danger {
-            margin-top: 2rem;
+            margin-top: 0.5rem;
             padding: 1rem 1.1rem;
             border: 1px solid #fecaca;
             border-radius: 12px;
             background: #fef2f2;
-            max-width: 720px;
         }
         body.theme-dark .video-fiche__danger {
             border-color: #7f1d1d;
             background: rgba(127, 29, 29, 0.2);
         }
         .video-fiche__danger h2 { font-size: 1rem; margin: 0 0 0.5rem; color: #b91c1c; }
-        body.theme-dark .video-fiche__danger h2 { color: #fca5a5; }
-        .video-fiche__hidden-fields {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
     </style>
 {% endblock %}
 
 {% block body %}
-{% set statusName = content.status ? content.status.name : '' %}
-{% set statusHints = {
-    'Brouillon (Dérush)': 'Les rushs sont à déposer ; faites avancer vers le montage lorsque le matériel est prêt.',
-    'Montage à faire': 'Le monteur réalise le montage. Gardez les liens KDrive (rush / montage) à jour pour toute l’équipe.',
-    'À valider (Prod)': 'Contrôle production : valider ou demander des retours avant diffusion.',
-    'Sous-titres à valider': 'La CM doit relire les sous-titres ; vérifier SubMagic / fichier final si besoin.',
-    'À faire valider au client': 'Vidéo prête côté prod : prochaine étape = retour / validation du client (pas d’action CM obligatoire ici).',
+{% set status_name = content.status ? content.status.name : '' %}
+{% set status_hints = {
+    'Brouillon (Dérush)': 'Déposez les rushs puis faites avancer quand le matériel est prêt.',
+    'Rushs / à dispatcher': 'Le montage peut démarrer : assignez le monteur si besoin.',
+    'Montage à faire': 'Montage en attente — liens KDrive à jour pour le monteur.',
+    'Montage en cours': 'Montage en cours. À la fin : « Montage terminé » pour la validation prod.',
+    'Retouches (Monteur)': 'Retouches en cours avant validation prod.',
+    'À valider (Prod)': 'Contrôle production : choisissez avec ou sans sous-titres.',
+    'Sous-titrage (SubMagic)': 'Sous-titrage en cours — puis envoi en relecture.',
+    'Prépa CM (sans sous-titres)': 'Préparation CM sans passe sous-titres.',
+    'Sous-titres à valider': 'Relecture des sous-titres par la CM.',
+    'À valider (CM)': 'Validation community manager.',
+    'À valider (Client)': 'En attente du retour client.',
+    'À faire valider au client': 'En attente du retour client.',
+    'Prête à programmer': 'Validée — prête pour la programmation.',
+    'Programmée': 'Programmée — publiez quand c’est en ligne.',
+    'Publiée': 'Vidéo publiée.',
 } %}
-{% set statusHint = statusHints[statusName]|default('Faites évoluer le statut selon l’étape réelle du projet.') %}
+{% set status_hint = status_hints[status_name]|default('Utilisez le bouton principal ci-dessous pour faire avancer le projet.') %}
+{% set return_to_val = returnTo|default(path('app_videos_index')) %}
 
 <div class="video-fiche">
-    <div class="video-fiche__topnav">
-        <a href="{{ returnTo|default(path('app_videos_index')) }}">← Retour</a>
-        <span style="color: var(--card-border);">·</span>
-        <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Voir dans le calendrier</a>
-        <span style="color: var(--card-border);">·</span>
-        <a href="#retours-discussion">Retours / discussion</a>
-    </div>
+    <nav class="video-fiche__topnav" aria-label="Navigation">
+        <a href="{{ return_to_val }}">← Retour</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="{{ path('app_calendar', {formats: [content.format.id], month: content.scheduledDate|date('n'), year: content.scheduledDate|date('Y')}) }}">Calendrier</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#vw-journal">Journal</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#bloc-fichiers">Fichiers</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#retours-discussion">Retours</a>
+    </nav>
 
-    <header class="video-fiche__summary" aria-label="Résumé de la vidéo">
-        <p class="video-fiche__summary-title">{{ content.title }}</p>
-        <div class="video-fiche__summary-meta">
-            <span>Client : <strong>{{ content.client.name }}</strong></span>
-            <span>Publication : <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
-            {% if content.videoEditor %}
-                <span>Monteur : <strong>{{ content.videoEditor.name }}</strong></span>
-            {% else %}
-                <span>Monteur : <strong>—</strong></span>
-            {% endif %}
-            <span>Sous-titres : <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
+    <header class="video-fiche__title-bar">
+        <h1>{{ content.title }}</h1>
+        <div class="video-fiche__meta-chips">
+            <span>{{ content.client.name }}</span>
+            <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
+            <span>Monteur <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
+            <span>Sous-titres <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
         </div>
-        <div>
-            {% if content.status %}
-                <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
-            {% else %}
-                <span class="status-badge status-gray">—</span>
-            {% endif %}
-        </div>
-        <nav class="video-fiche__anchor-nav" aria-label="Accès rapide aux sections">
-            <a href="#bloc-pilotage">Pilotage</a>
-            <a href="#bloc-fichiers">Fichiers & liens</a>
-            <a href="#bloc-texte">Notes & légende</a>
-            <a href="#retours-discussion">Retours</a>
-        </nav>
     </header>
 
-    {{ form_start(form) }}
-    <input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
+    <div class="video-fiche__layout">
+        {% include 'videos/_workflow_hero.html.twig' with {
+            return_to: return_to_val,
+            status_hint: status_hint,
+            status_name: status_name,
+        } %}
+        {% include 'videos/_workflow_journal.html.twig' %}
 
-    <section id="bloc-pilotage" class="video-fiche__section">
-        <div class="video-fiche__section-head">
-            <h2>Pilotage</h2>
-            <span class="video-fiche__section-kicker">Workflow</span>
-        </div>
-        <p class="video-fiche__hint"><strong>Étape actuelle :</strong> {{ statusName ?: '—' }} — {{ statusHint }}</p>
+        <div class="video-fiche__form-col">
+            {{ form_start(form) }}
+            <input type="hidden" name="_return_to" value="{{ return_to_val }}">
 
-        {% include 'content/_workflow_journey.html.twig' %}
-        {% include 'content/_workflow_buttons.html.twig' with { return_to: returnTo|default(path('app_videos_index')) } %}
-
-        {{ form_row(form.title) }}
-        {{ form_row(form.client) }}
-        {{ form_row(form.scheduledDate) }}
-        {{ form_row(form.format) }}
-        {{ form_row(form.status) }}
-        {{ form_row(form.videoEditor) }}
-        <div class="subtitles-field-row">
-            <span class="field-label" id="label-video-subtitles">Sous-titres</span>
-            <label class="toggle-switch" aria-labelledby="label-video-subtitles">
-                {{ form_widget(form.videoHasSubtitles) }}
-                <span class="toggle-switch-ui" aria-hidden="true"></span>
-            </label>
-        </div>
-        {{ form_errors(form.videoHasSubtitles) }}
-    </section>
-
-    <section id="bloc-fichiers" class="video-fiche__section">
-        <div class="video-fiche__section-head">
-            <h2>Fichiers & liens</h2>
-            <span class="video-fiche__section-kicker">Liens</span>
-        </div>
-
-        <div class="video-fiche__field-with-link">
-            {{ form_label(form.videoRushesUrl, 'Lien des rushs') }}
-            {{ form_widget(form.videoRushesUrl) }}
-            {{ form_errors(form.videoRushesUrl) }}
-            {% if content.videoRushesUrl %}
-                <div class="link-open-row">
-                    <a href="{{ content.videoRushesUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir les rushs ↗</a>
+            <section id="bloc-fichiers" class="video-fiche__section">
+                <div class="video-fiche__section-head">
+                    <h2>Fichiers & liens</h2>
+                    <span class="video-fiche__section-kicker">KDrive · SubMagic</span>
                 </div>
-            {% else %}
-                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-            {% endif %}
-        </div>
 
-        <div class="video-fiche__field-with-link">
-            {{ form_label(form.videoSubmagicUrl, 'Lien SubMagic') }}
-            {{ form_widget(form.videoSubmagicUrl) }}
-            {{ form_errors(form.videoSubmagicUrl) }}
-            {% if content.videoSubmagicUrl %}
-                <div class="link-open-row">
-                    <a href="{{ content.videoSubmagicUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir SubMagic ↗</a>
-                </div>
-            {% else %}
-                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-            {% endif %}
-        </div>
-
-        <div class="video-fiche__field-with-link">
-            {{ form_label(form.videoFinalUrl, 'Lien final (KDrive)') }}
-            {{ form_widget(form.videoFinalUrl) }}
-            {{ form_errors(form.videoFinalUrl) }}
-            {% if content.videoFinalUrl %}
-                <div class="link-open-row">
-                    <a href="{{ content.videoFinalUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir le final ↗</a>
-                </div>
-            {% else %}
-                <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
-            {% endif %}
-        </div>
-
-        {# Champs conservés en base mais non affichés sur cette fiche (évite d'écraser les données à l'enregistrement) #}
-        <div class="video-fiche__hidden-fields" aria-hidden="true">
-            {{ form_widget(form.videoEditUrl) }}
-            {{ form_widget(form.videoEditFilename) }}
-            {{ form_widget(form.videoFinalFilename) }}
-            {{ form_widget(form.videoThumbnailUrl) }}
-        </div>
-    </section>
-
-    <section id="bloc-texte" class="video-fiche__section">
-        <div class="video-fiche__section-head">
-            <h2>Notes & légende</h2>
-            <span class="video-fiche__section-kicker">Texte</span>
-        </div>
-        {{ form_row(form.notes) }}
-        {{ form_row(form.videoCaption) }}
-    </section>
-
-    {{ form_rest(form) }}
-
-    <div class="video-fiche__save-bar">
-        <button type="submit" class="btn">Enregistrer les modifications</button>
-    </div>
-
-    {{ form_end(form, { render_rest: false }) }}
-
-    <section id="retours-discussion" class="video-fiche__section video-fiche__comments">
-        <div class="video-fiche__section-head">
-            <h2>Retours / discussion</h2>
-            <span class="video-fiche__section-kicker">Équipe</span>
-        </div>
-        {% if content.comments is empty %}
-            <p style="color: var(--muted); margin-top: 0;">Aucun retour pour le moment.</p>
-        {% else %}
-            <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
-                {% for c in content.comments %}
-                    <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--bg);">
-                        <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
-                            <div>
-                                <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
-                            </div>
-                            <div>{{ c.createdAt|date('d/m/Y H:i') }}</div>
+                <div class="video-fiche__field-with-link">
+                    {{ form_label(form.videoRushesUrl, 'Rushs') }}
+                    {{ form_widget(form.videoRushesUrl) }}
+                    {{ form_errors(form.videoRushesUrl) }}
+                    {% if content.videoRushesUrl %}
+                        <div class="link-open-row">
+                            <a href="{{ content.videoRushesUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir les rushs ↗</a>
                         </div>
-                        <div style="white-space: pre-wrap;">{{ c.message }}</div>
+                    {% else %}
+                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+                    {% endif %}
+                </div>
+
+                <div class="video-fiche__field-with-link">
+                    {{ form_label(form.videoSubmagicUrl, 'SubMagic') }}
+                    {{ form_widget(form.videoSubmagicUrl) }}
+                    {{ form_errors(form.videoSubmagicUrl) }}
+                    {% if content.videoSubmagicUrl %}
+                        <div class="link-open-row">
+                            <a href="{{ content.videoSubmagicUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir SubMagic ↗</a>
+                        </div>
+                    {% else %}
+                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+                    {% endif %}
+                </div>
+
+                <div class="video-fiche__field-with-link">
+                    {{ form_label(form.videoFinalUrl, 'Final') }}
+                    {{ form_widget(form.videoFinalUrl) }}
+                    {{ form_errors(form.videoFinalUrl) }}
+                    {% if content.videoFinalUrl %}
+                        <div class="link-open-row">
+                            <a href="{{ content.videoFinalUrl }}" target="_blank" rel="noopener noreferrer">Ouvrir le final ↗</a>
+                        </div>
+                    {% else %}
+                        <p class="video-fiche__empty-hint">Pas encore renseigné.</p>
+                    {% endif %}
+                </div>
+
+                <div class="video-fiche__hidden-fields" aria-hidden="true">
+                    {{ form_widget(form.videoEditUrl) }}
+                    {{ form_widget(form.videoEditFilename) }}
+                    {{ form_widget(form.videoFinalFilename) }}
+                    {{ form_widget(form.videoThumbnailUrl) }}
+                </div>
+            </section>
+
+            <section id="bloc-texte" class="video-fiche__section">
+                <div class="video-fiche__section-head">
+                    <h2>Notes & légende</h2>
+                </div>
+                {{ form_row(form.notes) }}
+                {{ form_row(form.videoCaption) }}
+            </section>
+
+            <details class="video-fiche__details" id="bloc-pilotage">
+                <summary>Réglages & pilotage manuel</summary>
+                <div class="video-fiche__details-body">
+                    {{ form_row(form.title) }}
+                    {{ form_row(form.client) }}
+                    {{ form_row(form.scheduledDate) }}
+                    {{ form_row(form.format) }}
+                    {{ form_row(form.videoEditor) }}
+                    <div class="subtitles-field-row">
+                        <span class="field-label" id="label-video-subtitles">Sous-titres</span>
+                        <label class="toggle-switch" aria-labelledby="label-video-subtitles">
+                            {{ form_widget(form.videoHasSubtitles) }}
+                            <span class="toggle-switch-ui" aria-hidden="true"></span>
+                        </label>
                     </div>
-                {% endfor %}
+                    {{ form_errors(form.videoHasSubtitles) }}
+                    {{ form_row(form.status) }}
+                </div>
+            </details>
+
+            {{ form_rest(form) }}
+
+            <div class="video-fiche__save-bar">
+                <button type="submit" class="btn">Enregistrer les modifications</button>
             </div>
-        {% endif %}
 
-        <form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem;">
-            <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
-            <label for="video-comment-message" class="field-label" style="margin-bottom: 0;">Ajouter un retour</label>
-            <textarea id="video-comment-message" name="message" rows="4" placeholder="Message pour prod, CM ou monteur…" style="width: 100%; max-width: 100%;"></textarea>
-            <button type="submit" class="btn">Publier le commentaire</button>
-        </form>
-    </section>
+            {{ form_end(form, { render_rest: false }) }}
 
-    <section class="video-fiche__danger" aria-labelledby="video-delete-heading">
-        <h2 id="video-delete-heading">Supprimer ce contenu</h2>
-        <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">
-            Retire définitivement cette fiche vidéo (liens, commentaires, liaisons). Action irréversible.
-        </p>
-        <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" onsubmit="return confirm('Supprimer définitivement cette vidéo et tout son historique ?\\n\\nCette action est irréversible.');">
-            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
-            <input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_videos_index')) }}">
-            <button type="submit" class="btn btn-danger">Supprimer définitivement</button>
-        </form>
-    </section>
+            <section id="retours-discussion" class="video-fiche__section">
+                <div class="video-fiche__section-head">
+                    <h2>Retours / discussion</h2>
+                </div>
+                {% if content.comments is empty %}
+                    <p style="color: var(--muted); margin: 0;">Aucun retour pour le moment.</p>
+                {% else %}
+                    <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+                        {% for c in content.comments %}
+                            <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--bg);">
+                                <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
+                                    <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
+                                    <time>{{ c.createdAt|date('d/m/Y H:i') }}</time>
+                                </div>
+                                <div style="white-space: pre-wrap;">{{ c.message }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem;">
+                    <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
+                    <label for="video-comment-message" class="field-label">Ajouter un retour</label>
+                    <textarea id="video-comment-message" name="message" rows="4" placeholder="Message pour prod, CM ou monteur…" style="width: 100%;"></textarea>
+                    <button type="submit" class="btn">Publier le commentaire</button>
+                </form>
+            </section>
+
+            <section class="video-fiche__danger" aria-labelledby="video-delete-heading">
+                <h2 id="video-delete-heading">Supprimer cette vidéo</h2>
+                <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">Action irréversible.</p>
+                <form method="post" action="{{ path('app_content_delete', {id: content.id}) }}" onsubmit="return confirm('Supprimer définitivement cette vidéo ?');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ content.id) }}">
+                    <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+                    <button type="submit" class="btn btn-danger">Supprimer</button>
+                </form>
+            </section>
+        </div>
+    </div>
 </div>
 {% endblock %}

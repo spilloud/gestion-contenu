@@ -1,0 +1,30 @@
+<aside class="vw-journal" id="vw-journal" aria-labelledby="vw-journal-title">
+    <div class="vw-journal__head">
+        <h3 id="vw-journal-title">Journal du parcours</h3>
+        <span class="vw-journal__count">{{ workflow_journey|length }} entrée{{ workflow_journey|length > 1 ? 's' : '' }}</span>
+    </div>
+    {% if workflow_journey is not empty %}
+        <ol class="vw-journal__timeline">
+            {% for entry in workflow_journey %}
+                <li class="vw-journal__entry{% if loop.last %} vw-journal__entry--latest{% endif %}">
+                    <div class="vw-journal__marker" aria-hidden="true"></div>
+                    <div class="vw-journal__body">
+                        <p class="vw-journal__label">{{ entry.label }}</p>
+                        {% if entry.detail %}
+                            <p class="vw-journal__detail">{{ entry.detail }}</p>
+                        {% endif %}
+                        <p class="vw-journal__meta">
+                            <time datetime="{{ entry.createdAt|date('c') }}">{{ entry.createdAt|date('d/m/Y à H:i') }}</time>
+                            {% if entry.userName %}<span>· {{ entry.userName }}</span>{% endif %}
+                        </p>
+                    </div>
+                </li>
+            {% endfor %}
+        </ol>
+    {% else %}
+        <div class="vw-journal__empty">
+            <p>Aucune étape enregistrée pour l’instant.</p>
+            <p class="vw-journal__empty-hint">Chaque bouton d’avancement ou recul alimentera ce journal.</p>
+        </div>
+    {% endif %}
+</aside>

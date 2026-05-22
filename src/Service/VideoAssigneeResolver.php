@@ -19,8 +19,32 @@ final class VideoAssigneeResolver
     public function asanaGidForMontage(Content $content): ?string
     {
         $gid = $content->getVideoEditor()?->getAsanaUserGid();
+        if ($gid !== null && trim($gid) !== '') {
+            return trim($gid);
+        }
+
+        $gid = $content->getClient()?->getEditor()?->getAsanaUserGid();
 
         return $gid !== null && trim($gid) !== '' ? trim($gid) : null;
+    }
+
+    /**
+     * Préremplit monteur et CM depuis le client lorsque la fiche n'a pas de délégation explicite.
+     */
+    public function applyClientTeamDefaultsForForm(Content $content): void
+    {
+        $client = $content->getClient();
+        if ($client === null) {
+            return;
+        }
+
+        if ($content->getVideoEditor() === null && $client->getEditor() !== null) {
+            $content->setVideoEditor($client->getEditor());
+        }
+
+        if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
+            $content->setVideoCommunityManager($client->getCommunityManager());
+        }
     }
 
     public function asanaGidForSubtitlesReview(Content $content): ?string

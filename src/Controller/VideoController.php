@@ -91,6 +91,10 @@ class VideoController extends AbstractController
 
         $defaultReturnTo = $this->resolveReturnTo($request);
 
+        if ($request->isMethod('GET')) {
+            $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+        }
+
         $form = $this->createForm(VideoContentType::class, $content);
         $form->handleRequest($request);
 

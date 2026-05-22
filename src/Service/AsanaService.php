@@ -44,7 +44,7 @@ class AsanaService
         }
 
         $assigneeGid = null;
-        $editor = $content->getVideoEditor();
+        $editor = $content->getVideoEditor() ?? $client?->getEditor();
         if ($editor && $editor->getAsanaUserGid()) {
             $assigneeGid = $editor->getAsanaUserGid();
         } elseif ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '') {
@@ -52,9 +52,8 @@ class AsanaService
         }
 
         $clientName = $client?->getName() ?? 'Sans client';
-        $title = trim((string) ($content->getTitle() ?? ''));
-        // Titre Asana: Projet (client) + nom de la vidéo.
-        $name = trim($clientName.' — '.($title !== '' ? $title : 'Vidéo'));
+        $videoTitle = trim((string) ($content->getTitle() ?? ''));
+        $name = ($videoTitle !== '' ? $videoTitle : 'Vidéo').' - Montage vidéo';
 
         // Délai montage: J+2 (indépendant de la date planifiée du calendrier).
         $dueAt = (new \DateTimeImmutable('today'))->modify('+2 days');
@@ -81,7 +80,7 @@ class AsanaService
         ]));
 
         $taskData = [
-            'name' => $name.' — échéance J+2 ('.$dueLabelFr.')',
+            'name' => $name,
             'notes' => $notes,
             'workspace' => $workspaceGid,
             'projects' => [$projectGid],
@@ -180,14 +179,13 @@ class AsanaService
             : ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '' ? trim($fallbackAssigneeGid) : null);
 
         $clientName = $client?->getName() ?? 'Sans client';
-        $title = trim((string) ($content->getTitle() ?? ''));
-        $baseName = trim('Relecture sous-titres — '.($title !== '' ? $title : $clientName));
+        $videoTitle = trim((string) ($content->getTitle() ?? ''));
+        $name = ($videoTitle !== '' ? $videoTitle : 'Vidéo').' - Relecture de sous-titres';
 
         // Délai relecture sous-titres: toujours J+1 (date calendaire serveur → due_on Asana).
         $dueAt = (new \DateTimeImmutable('today'))->modify('+1 day');
         $dueOn = $dueAt->format('Y-m-d');
         $dueLabelFr = $dueAt->format('d/m/Y');
-        $name = $baseName.' — échéance J+1 ('.$dueLabelFr.')';
 
         $links = array_filter([
             $content->getVideoEditUrl() ? 'Montage (KDrive) : '.$content->getVideoEditUrl() : null,

@@ -90,7 +90,7 @@ class VideoContentType extends AbstractType
                 'class' => CommunityManager::class,
                 'choice_label' => 'name',
                 'required' => false,
-                'placeholder' => '— CM du client par défaut',
+                'placeholder' => '—',
                 'query_builder' => fn () => $this->communityManagerRepository->createQueryBuilder('cm')
                     ->orderBy('cm.name', 'ASC'),
             ])

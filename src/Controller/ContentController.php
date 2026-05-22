@@ -85,8 +85,13 @@ class ContentController extends AbstractController
                 $content->setStatus($this->findInitialVideoStatus());
 
                 $client = $content->getClient();
-                if ($client && $content->getVideoEditor() === null && $client->getEditor() !== null) {
-                    $content->setVideoEditor($client->getEditor());
+                if ($client) {
+                    if ($content->getVideoEditor() === null && $client->getEditor() !== null) {
+                        $content->setVideoEditor($client->getEditor());
+                    }
+                    if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
+                        $content->setVideoCommunityManager($client->getCommunityManager());
+                    }
                 }
                 if ($content->getVideoHasSubtitles() === null) {
                     $content->setVideoHasSubtitles(false);

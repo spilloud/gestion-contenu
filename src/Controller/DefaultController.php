@@ -22,13 +22,22 @@ class DefaultController extends AbstractController
     public function index(
         ContentRepository $contentRepository,
         ClientRepository $clientRepository,
+        UserRepository $userRepository,
     ): Response
     {
         $entityManager = $contentRepository->getEntityManager();
         $statusRepository = $entityManager->getRepository(Status::class);
+        $user = $this->getUser();
+        $roles = $user instanceof User ? $user->getRoles() : [];
+        $isAdmin = in_array(User::ROLE_ADMIN, $roles, true);
+        $isCm = in_array(User::ROLE_CM, $roles, true);
+        $isEditor = in_array(User::ROLE_EDITOR, $roles, true);
 
         $visibleClientIds = $this->resolveVisibleClientIds($entityManager);
         $hasClientScope = $visibleClientIds !== null;
+        $managedClients = ($visibleClientIds !== null && $visibleClientIds !== [])
+            ? $clientRepository->findByIds($visibleClientIds)
+            : ($isAdmin ? $clientRepository->findAllOrderedByClientName() : []);
 
         // KPIs : on scope par utilisateur (admin = tout).
         $totalClients = $hasClientScope ? count($visibleClientIds) : $entityManager->getRepository(Client::class)->count([]);
@@ -298,11 +307,32 @@ class DefaultController extends AbstractController
         $statusAValiderClient = $statusRepository->findOneBy(['name' => 'À faire valider au client']);
 
         $montagesAFaire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAFaire, $visibleClientIds, 12);
-        $montagesAControler = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAControler, $visibleClientIds, 12);
-        $soustitresARelire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusSousTitresRelire, $visibleClientIds, 12);
-        $videosAValiderClient = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusAValiderClient, $visibleClientIds, 12);
+        if ($isEditor && !$isAdmin) {
+            $montagesAFaire = $this->filterVideosForEditor($montagesAFaire, $user);
+        }
+        $montagesAControler = ($isAdmin || $isCm)
+            ? $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAControler, $visibleClientIds, 12)
+            : [];
+        $soustitresARelire = ($isAdmin || $isCm)
+            ? $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusSousTitresRelire, $visibleClientIds, 12)
+            : [];
+        $videosAValiderClient = ($isAdmin || $isCm)
+            ? $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusAValiderClient, $visibleClientIds, 12)
+            : [];
+
+        $dashboardProfile = [
+            'label' => $isAdmin ? 'Administrateur' : ($isCm ? 'Community manager' : ($isEditor ? 'Monteur' : 'Utilisateur')),
+            'showAdminShortcuts' => $isAdmin,
+            'showVideoMontage' => $isAdmin || $isEditor,
+            'showVideoProd' => $isAdmin || $isCm,
+            'showPostPriorities' => $isAdmin || $isCm,
+            'showGlobalStats' => true,
+        ];
 
         return $this->render('dashboard/index.html.twig', [
+            'dashboardProfile' => $dashboardProfile,
+            'managedClients' => $managedClients,
+            'userDisplayName' => $user instanceof User ? ($user->getName() ?? $user->getUserIdentifier()) : '',
             'totalClients' => $totalClients,
             'totalPosts' => $totalPosts,
             'totalCommunityManagers' => $totalCommunityManagers,
@@ -441,5 +471,26 @@ class DefaultController extends AbstractController
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * @param Content[] $items
+     *
+     * @return Content[]
+     */
+    private function filterVideosForEditor(array $items, ?User $editor): array
+    {
+        if ($editor === null) {
+            return [];
+        }
+
+        return array_values(array_filter($items, static function (Content $content) use ($editor): bool {
+            $assigned = $content->getVideoEditor();
+            if ($assigned !== null) {
+                return $assigned->getId() === $editor->getId();
+            }
+
+            return $content->getClient()?->getEditor()?->getId() === $editor->getId();
+        }));
     }
 }

@@ -167,6 +167,46 @@
         color: #c4b5fd;
         border-color: rgba(167, 139, 250, 0.25);
     }
+    .todo-columns--editor { grid-template-columns: 1fr; max-width: 520px; }
+    .dashboard-welcome {
+        background: linear-gradient(135deg, rgba(91, 33, 182, 0.1), rgba(14, 165, 233, 0.07));
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 1rem 1.15rem;
+        margin-bottom: 1rem;
+    }
+    .dashboard-welcome__role {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #5b21b6;
+    }
+    body.theme-dark .dashboard-welcome__role { color: #c4b5fd; }
+    .dashboard-clients {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        margin-top: 0.65rem;
+    }
+    .dashboard-clients a {
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        color: var(--text);
+        text-decoration: none;
+        font-size: 0.82rem;
+    }
+    .dashboard-clients a:hover { border-color: #7c3aed; }
+    .dashboard-section-title {
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin: 0 0 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
     @media (max-width: 1200px) {
         .todo-columns { grid-template-columns: 1fr; }
     }
@@ -174,18 +214,40 @@
 
 <div class="dashboard-header">
     <div>
-        <h1 style="margin-bottom: 0;">Dashboard Contenu</h1>
-        <p class="dashboard-subtitle">Vue globale de la production, des priorités et de la charge</p>
+        <h1 style="margin-bottom: 0;">Bonjour{% if userDisplayName %}, {{ userDisplayName }}{% endif %}</h1>
+        <p class="dashboard-subtitle">Votre espace de travail — priorités puis statistiques</p>
     </div>
     <div class="header-actions">
+        {% if dashboardProfile.showPostPriorities %}
         <a href="{{ path('app_content_new') }}" class="btn">+ Nouveau post</a>
+        {% endif %}
+        {% if dashboardProfile.showVideoMontage or dashboardProfile.showVideoProd %}
         <a href="{{ path('app_derush_index') }}" class="btn">+ Dérush vidéo</a>
+        {% endif %}
         <a href="{{ path('app_calendar') }}" class="btn">Calendrier</a>
         <a href="{{ path('app_clients_table') }}" class="btn">Clients</a>
     </div>
 </div>
 
-<div class="todo-columns">
+<div class="dashboard-welcome">
+    <div class="dashboard-welcome__role">{{ dashboardProfile.label }}</div>
+    {% if managedClients is not empty %}
+        <p style="margin: 0.35rem 0 0; font-size: 0.9rem;">Clients gérés :</p>
+        <div class="dashboard-clients">
+            {% for client in managedClients %}
+                <a href="{{ path('app_client_show', {id: client.id}) }}">{{ client.name }}</a>
+            {% endfor %}
+        </div>
+    {% elseif dashboardProfile.showAdminShortcuts %}
+        <p style="margin: 0.35rem 0 0; font-size: 0.9rem; color: var(--muted);">Vue globale — tous les clients</p>
+    {% else %}
+        <p style="margin: 0.35rem 0 0; font-size: 0.9rem; color: var(--muted);">Aucun client assigné pour le moment.</p>
+    {% endif %}
+</div>
+
+{% if dashboardProfile.showVideoMontage or dashboardProfile.showVideoProd %}
+<div class="todo-columns{% if dashboardProfile.showVideoMontage and not dashboardProfile.showVideoProd %} todo-columns--editor{% endif %}">
+    {% if dashboardProfile.showVideoMontage %}
     <section class="panel">
         <h2>Montages à faire <span class="pill-count">{{ montagesAFaire|length }}</span></h2>
         {% if montagesAFaire is empty %}
@@ -203,7 +265,9 @@
             </ul>
         {% endif %}
     </section>
+    {% endif %}
 
+    {% if dashboardProfile.showVideoProd %}
     <section class="panel">
         <h2>Montages à contrôler <span class="pill-count">{{ montagesAControler|length }}</span></h2>
         {% if montagesAControler is empty %}
@@ -257,14 +321,19 @@
             </ul>
         {% endif %}
     </section>
+    {% endif %}
 </div>
+{% endif %}
 
+{% if dashboardProfile.showAdminShortcuts %}
 <div class="shortcut-grid">
     <a href="{{ path('app_admin_user_index') }}" class="shortcut">Utilisateurs</a>
     <a href="{{ path('app_admin_client_index') }}" class="shortcut">Admin Clients</a>
     <a href="{{ path('app_admin_status_format_index') }}" class="shortcut">Statuts et formats</a>
 </div>
+{% endif %}
 
+<p class="dashboard-section-title">Statistiques</p>
 <div class="kpi-grid">
     <div class="kpi-card">
         <div class="label">Posts prévus ce mois</div>
@@ -312,6 +381,7 @@
     </section>
 </div>
 
+{% if dashboardProfile.showPostPriorities %}
 <div class="priority-grid">
     <section class="panel">
         <h2>A traiter aujourd'hui</h2>
@@ -364,6 +434,7 @@
         {% endif %}
     </section>
 </div>
+{% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>

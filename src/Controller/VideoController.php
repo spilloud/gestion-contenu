@@ -112,8 +112,6 @@ class VideoController extends AbstractController
             'form' => $form,
             'returnTo' => $defaultReturnTo,
             'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
-            'subtitles_reviewer_display_name' => $this->videoAssigneeResolver->displayNameForSubtitlesReviewer($content),
-            'client_cm_name' => $content->getClient()?->getCommunityManager()?->getName(),
         ], $this->buildWorkflowViewData($content)));
     }
 

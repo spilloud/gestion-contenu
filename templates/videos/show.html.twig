@@ -423,26 +423,16 @@
         .vf-link-field__head .field-label { margin-bottom: 0; }
         .vf-link-open { flex-shrink: 0; text-decoration: none; white-space: nowrap; }
         .vf-link-open[hidden] { display: none !important; }
-        .vf-delegation {
+        .vf-team-grid {
             display: grid;
-            gap: 0.25rem;
-            margin-bottom: 1rem;
-            padding: 0.75rem 0.85rem;
-            background: var(--bg);
-            border-radius: 10px;
-            border: 1px solid var(--card-border);
+            gap: 1rem;
         }
-        .vf-delegation__title {
-            margin: 0 0 0.35rem;
-            font-size: 0.78rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--muted);
+        @media (min-width: 560px) {
+            .vf-team-grid { grid-template-columns: 1fr 1fr; align-items: start; }
         }
-        .vf-delegation__hint {
-            margin: 0 0 0.65rem;
-            font-size: 0.82rem;
+        .vf-team-hint {
+            margin: 0 0 0.85rem;
+            font-size: 0.86rem;
             color: var(--muted);
             line-height: 1.45;
         }
@@ -531,7 +521,6 @@
             <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
             <span>Monteur <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
             <span>CM <strong>{{ cm_display_name }}</strong></span>
-            <span>Relecture ST <strong>{{ subtitles_reviewer_display_name }}</strong></span>
             <span>Sous-titres <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
         </div>
     </header>

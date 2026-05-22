@@ -3,10 +3,12 @@
 namespace App\Form;
 
 use App\Entity\Client;
+use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\User;
+use App\Repository\CommunityManagerRepository;
 use App\Repository\StatusRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -22,6 +24,7 @@ class VideoContentType extends AbstractType
 {
     public function __construct(
         private readonly StatusRepository $statusRepository,
+        private readonly CommunityManagerRepository $communityManagerRepository,
     ) {
     }
 
@@ -75,31 +78,21 @@ class VideoContentType extends AbstractType
                 'required' => false,
             ])
             ->add('videoEditor', EntityType::class, [
-                'label' => 'Monteur (tâche Asana montage)',
+                'label' => 'Monteur',
                 'class' => User::class,
                 'choice_label' => 'name',
                 'required' => false,
-                'placeholder' => '— Par défaut : monteur du client',
+                'placeholder' => '—',
                 'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
-                'help' => 'Changer le monteur réassigne la tâche Asana montage (si elle existe).',
             ])
-            ->add('videoCmUser', EntityType::class, [
-                'label' => 'CM déléguée',
-                'class' => User::class,
+            ->add('videoCommunityManager', EntityType::class, [
+                'label' => 'Community manager',
+                'class' => CommunityManager::class,
                 'choice_label' => 'name',
                 'required' => false,
                 'placeholder' => '— CM du client par défaut',
-                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
-                'help' => 'Utilisateur avec gid Asana. Impacte la relecture sous-titres si aucun relecteur dédié.',
-            ])
-            ->add('videoSubtitlesReviewer', EntityType::class, [
-                'label' => 'Relecteur sous-titres',
-                'class' => User::class,
-                'choice_label' => 'name',
-                'required' => false,
-                'placeholder' => '— CM déléguée ou CM client',
-                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
-                'help' => 'Changer le relecteur réassigne la tâche Asana relecture (si elle existe).',
+                'query_builder' => fn () => $this->communityManagerRepository->createQueryBuilder('cm')
+                    ->orderBy('cm.name', 'ASC'),
             ])
             ->add('videoRushesUrl', UrlType::class, [
                 'label' => 'Lien KDrive rushs (dossier)',

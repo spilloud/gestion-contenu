@@ -2,6 +2,7 @@
 
 namespace App\EventSubscriber;
 
+use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\ContentActionLog;
 use App\Entity\User;
@@ -17,7 +18,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 #[AsDoctrineListener(event: Events::postFlush)]
 final class ContentAuditSubscriber
 {
-    /** @var list<array{content: Content, type: string, previous: ?User, next: ?User}> */
+    /** @var list<array{content: Content, type: string, previousUser: ?User, nextUser: ?User, previousCm: ?CommunityManager, nextCm: ?CommunityManager}> */
     private array $asanaSyncQueue = [];
 
     public function __construct(
@@ -73,19 +74,27 @@ final class ContentAuditSubscriber
         if (isset($changeSet['videoEditor'])) {
             [$old, $new] = $changeSet['videoEditor'];
             $this->logUserChange($entity, 'Monteur modifié', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED);
-            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'montage', 'previous' => $old, 'next' => $new];
+            $this->asanaSyncQueue[] = [
+                'content' => $entity,
+                'type' => 'montage',
+                'previousUser' => $old,
+                'nextUser' => $new,
+                'previousCm' => null,
+                'nextCm' => null,
+            ];
         }
 
-        if (isset($changeSet['videoCmUser'])) {
-            [$old, $new] = $changeSet['videoCmUser'];
-            $this->logUserChange($entity, 'CM déléguée modifiée', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED);
-            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'cm_subtitles', 'previous' => $old, 'next' => $new];
-        }
-
-        if (isset($changeSet['videoSubtitlesReviewer'])) {
-            [$old, $new] = $changeSet['videoSubtitlesReviewer'];
-            $this->logUserChange($entity, 'Relecteur sous-titres modifié', $old, $new, ContentActionLog::TYPE_SUBTITLES_REVIEWER_CHANGED);
-            $this->asanaSyncQueue[] = ['content' => $entity, 'type' => 'subtitles', 'previous' => $old, 'next' => $new];
+        if (isset($changeSet['videoCommunityManager'])) {
+            [$old, $new] = $changeSet['videoCommunityManager'];
+            $this->logCmChange($entity, $old, $new);
+            $this->asanaSyncQueue[] = [
+                'content' => $entity,
+                'type' => 'cm',
+                'previousUser' => null,
+                'nextUser' => null,
+                'previousCm' => $old,
+                'nextCm' => $new,
+            ];
         }
     }
 
@@ -99,14 +108,17 @@ final class ContentAuditSubscriber
         $this->asanaSyncQueue = [];
 
         foreach ($queue as $job) {
-            $content = $job['content'];
-            $previous = $job['previous'];
-            $next = $job['next'];
-
             match ($job['type']) {
-                'montage' => $this->videoAsanaAssigneeSync->syncMontageAssigneeIfChanged($content, $previous, $next),
-                'subtitles' => $this->videoAsanaAssigneeSync->syncSubtitlesAssigneeIfChanged($content, $previous, $next),
-                'cm_subtitles' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCmChange($content, $previous, $next),
+                'montage' => $this->videoAsanaAssigneeSync->syncMontageAssigneeIfChanged(
+                    $job['content'],
+                    $job['previousUser'],
+                    $job['nextUser'],
+                ),
+                'cm' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCommunityManagerChange(
+                    $job['content'],
+                    $job['previousCm'],
+                    $job['nextCm'],
+                ),
                 default => null,
             };
         }
@@ -124,6 +136,23 @@ final class ContentAuditSubscriber
             $entity,
             $actionType,
             $label,
+            sprintf('%s → %s', $oldName, $newName),
+            false,
+        );
+    }
+
+    private function logCmChange(Content $entity, mixed $old, mixed $new): void
+    {
+        $oldName = $old instanceof CommunityManager ? ($old->getName() ?? '—') : '—';
+        $newName = $new instanceof CommunityManager ? ($new->getName() ?? '—') : '—';
+        if ($oldName === $newName) {
+            return;
+        }
+
+        $this->workflowService->logFieldChange(
+            $entity,
+            ContentActionLog::TYPE_CM_USER_CHANGED,
+            'Community manager modifiée',
             sprintf('%s → %s', $oldName, $newName),
             false,
         );

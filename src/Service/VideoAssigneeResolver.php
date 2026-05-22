@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Repository\UserRepository;
 
@@ -24,9 +25,9 @@ final class VideoAssigneeResolver
 
     public function asanaGidForSubtitlesReview(Content $content): ?string
     {
-        $reviewerGid = $content->getVideoSubtitlesReviewer()?->getAsanaUserGid();
-        if ($reviewerGid !== null && trim($reviewerGid) !== '') {
-            return trim($reviewerGid);
+        $fromDelegated = $this->asanaGidFromCommunityManager($content->getVideoCommunityManager());
+        if ($fromDelegated !== null) {
+            return $fromDelegated;
         }
 
         $cmGid = $content->getVideoCmUser()?->getAsanaUserGid();
@@ -34,14 +35,14 @@ final class VideoAssigneeResolver
             return trim($cmGid);
         }
 
-        $client = $content->getClient();
-        $cmEmail = $client?->getCommunityManager()?->getEmail();
-        if ($cmEmail !== null && trim($cmEmail) !== '') {
-            $cmUser = $this->userRepository->findOneByEmailCaseInsensitive(trim($cmEmail));
-            $fromClient = $cmUser?->getAsanaUserGid();
-            if ($fromClient !== null && trim($fromClient) !== '') {
-                return trim($fromClient);
-            }
+        $reviewerGid = $content->getVideoSubtitlesReviewer()?->getAsanaUserGid();
+        if ($reviewerGid !== null && trim($reviewerGid) !== '') {
+            return trim($reviewerGid);
+        }
+
+        $fromClient = $this->asanaGidFromCommunityManager($content->getClient()?->getCommunityManager());
+        if ($fromClient !== null) {
+            return $fromClient;
         }
 
         $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
@@ -51,23 +52,27 @@ final class VideoAssigneeResolver
 
     public function displayNameForCm(Content $content): string
     {
-        if ($content->getVideoCmUser() !== null) {
-            return $content->getVideoCmUser()->getName() ?? '—';
+        if ($content->getVideoCommunityManager() !== null) {
+            return $content->getVideoCommunityManager()->getName() ?? '—';
         }
 
         return $content->getClient()?->getCommunityManager()?->getName() ?? '—';
     }
 
-    public function displayNameForSubtitlesReviewer(Content $content): string
+    private function asanaGidFromCommunityManager(?CommunityManager $cm): ?string
     {
-        if ($content->getVideoSubtitlesReviewer() !== null) {
-            return $content->getVideoSubtitlesReviewer()->getName() ?? '—';
+        if ($cm === null) {
+            return null;
         }
 
-        if ($content->getVideoCmUser() !== null) {
-            return $content->getVideoCmUser()->getName().' (CM)';
+        $email = $cm->getEmail();
+        if ($email === null || trim($email) === '') {
+            return null;
         }
 
-        return $content->getClient()?->getCommunityManager()?->getName() ?? '—';
+        $user = $this->userRepository->findOneByEmailCaseInsensitive(trim($email));
+        $gid = $user?->getAsanaUserGid();
+
+        return $gid !== null && trim($gid) !== '' ? trim($gid) : null;
     }
 }

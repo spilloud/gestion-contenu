@@ -2,11 +2,12 @@
 
 namespace App\Service;
 
+use App\Entity\CommunityManager;
 use App\Entity\Content;
 use App\Entity\User;
 
 /**
- * Réassigne les tâches Asana montage / sous-titres quand les responsables changent sur la fiche.
+ * Réassigne les tâches Asana montage / sous-titres quand monteur ou CM changent sur la fiche.
  */
 final class VideoAsanaAssigneeSync
 {
@@ -45,12 +46,15 @@ final class VideoAsanaAssigneeSync
         }
     }
 
-    public function syncSubtitlesAssigneeIfChanged(Content $content, ?User $previous, ?User $next): void
-    {
+    public function syncSubtitlesAfterCommunityManagerChange(
+        Content $content,
+        ?CommunityManager $previous,
+        ?CommunityManager $next,
+    ): void {
         if (!$this->formatHelper->isVideoContent($content)) {
             return;
         }
-        if ($this->sameUser($previous, $next)) {
+        if ($this->sameCommunityManager($previous, $next)) {
             return;
         }
 
@@ -65,27 +69,27 @@ final class VideoAsanaAssigneeSync
         }
 
         if ($this->asanaService->updateTaskAssignee($taskGid, $assigneeGid)) {
-            $name = $next?->getName() ?? $this->assigneeResolver->displayNameForSubtitlesReviewer($content);
+            $name = $next?->getName() ?? $this->assigneeResolver->displayNameForCm($content);
             $this->asanaService->addCommentToTask(
                 $taskGid,
-                "Relecteur sous-titres réassigné (via Gestion des contenus) : $name",
+                "Community manager réassignée (via Gestion des contenus) : $name",
             );
         }
     }
 
-    /**
-     * La CM déléguée peut impacter la tâche sous-titres si aucun relecteur dédié.
-     */
-    public function syncSubtitlesAfterCmChange(Content $content, ?User $previous, ?User $next): void
+    private function sameUser(?User $a, ?User $b): bool
     {
-        if ($content->getVideoSubtitlesReviewer() !== null) {
-            return;
+        if ($a === null && $b === null) {
+            return true;
+        }
+        if ($a === null || $b === null) {
+            return false;
         }
 
-        $this->syncSubtitlesAssigneeIfChanged($content, $previous, $next);
+        return $a->getId() === $b->getId();
     }
 
-    private function sameUser(?User $a, ?User $b): bool
+    private function sameCommunityManager(?CommunityManager $a, ?CommunityManager $b): bool
     {
         if ($a === null && $b === null) {
             return true;

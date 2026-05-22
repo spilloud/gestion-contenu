@@ -45,6 +45,7 @@ class VideoController extends AbstractController
         $clientIds = $request->query->all('clients') ?: null;
         $statusIds = $request->query->all('statuses') ?: null;
         $editorIds = $request->query->all('editors') ?: null;
+        [$sort, $dir] = $this->resolveListSort($request);
 
         $qb = $this->contentRepository->createQueryBuilder('c')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
@@ -52,9 +53,13 @@ class VideoController extends AbstractController
             ->leftJoin('c.status', 's')->addSelect('s')
             ->leftJoin('c.videoEditor', 'e')->addSelect('e')
             ->andWhere('c.format = :format')
-            ->setParameter('format', $videoFormat)
-            ->orderBy('c.scheduledDate', 'ASC')
-            ->addOrderBy('cl.name', 'ASC');
+            ->setParameter('format', $videoFormat);
+
+        if ($sort === 'client') {
+            $qb->orderBy('cl.name', $dir)->addOrderBy('c.scheduledDate', 'ASC');
+        } else {
+            $qb->orderBy('c.scheduledDate', $dir)->addOrderBy('cl.name', 'ASC');
+        }
 
         if (!empty($clientIds)) {
             $qb->andWhere('c.client IN (:clientIds)')
@@ -78,7 +83,23 @@ class VideoController extends AbstractController
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],
             'selectedEditorIds' => $editorIds ?? [],
+            'sort' => $sort,
+            'dir' => strtolower($dir),
         ]);
+    }
+
+    /**
+     * @return array{0: string, 1: string} [sort, dir SQL]
+     */
+    private function resolveListSort(Request $request): array
+    {
+        $sort = $request->query->getString('sort', 'date');
+        if (!in_array($sort, ['date', 'client'], true)) {
+            $sort = 'date';
+        }
+        $dir = strtolower($request->query->getString('dir', 'asc')) === 'desc' ? 'DESC' : 'ASC';
+
+        return [$sort, $dir];
     }
 
     #[Route('/fiche/{id}', name: 'app_video_show', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]

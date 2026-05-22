@@ -1,0 +1,26 @@
+{# Styles + macro pour en-têtes de colonnes triables (listes contenus / vidéos) #}
+<style>
+    .list-sort-table th a.list-sort-th {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-weight: 600;
+    }
+    .list-sort-table th a.list-sort-th:hover { text-decoration: underline; }
+    .list-sort-table th a.list-sort-th.active { color: var(--accent, #2563eb); }
+    .list-sort-arrows { font-size: 0.75em; opacity: 0.85; letter-spacing: -0.05em; }
+    .list-sort-inactive { opacity: 0.45; font-weight: 400; }
+</style>
+
+{% macro sort_link(route, column, label, sort, dir) %}
+    {% set nextDir = sort == column and dir == 'asc' ? 'desc' : 'asc' %}
+    {% set params = app.request.query.all|merge({sort: column, dir: nextDir}) %}
+    <a href="{{ path(route, params) }}" class="list-sort-th {{ sort == column ? 'active' : '' }}">
+        {{ label }}
+        <span class="list-sort-arrows" aria-hidden="true">
+            {% if sort == column %}{{ dir == 'asc' ? '▲' : '▼' }}{% else %}<span class="list-sort-inactive">⇅</span>{% endif %}
+        </span>
+    </a>
+{% endmacro %}

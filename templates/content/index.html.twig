@@ -1,8 +1,10 @@
 {% extends 'base.html.twig' %}
+{% import 'content/_list_sort.html.twig' as list_sort %}
 
 {% block title %}Contenus{% endblock %}
 
 {% block body %}
+{% include 'content/_list_sort.html.twig' %}
 <h1>Contenus</h1>
 <p style="color: var(--muted);">
     Posts, carrousels et autres contenus <strong>hors vidéo</strong>. Filtrez par client, format ou statut.
@@ -47,11 +49,11 @@
 </form>
 
 <div style="overflow-x:auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
-    <table style="width:100%; min-width: 900px; border-collapse: collapse;">
+    <table class="list-sort-table" style="width:100%; min-width: 900px; border-collapse: collapse;">
         <thead>
             <tr style="background: rgba(148, 163, 184, 0.12);">
-                <th style="text-align:left; padding: 0.6rem;">Date</th>
-                <th style="text-align:left; padding: 0.6rem;">Client</th>
+                <th style="text-align:left; padding: 0.6rem;">{{ list_sort.sort_link('app_contents_index', 'date', 'Date', sort, dir) }}</th>
+                <th style="text-align:left; padding: 0.6rem;">{{ list_sort.sort_link('app_contents_index', 'client', 'Client', sort, dir) }}</th>
                 <th style="text-align:left; padding: 0.6rem;">Format</th>
                 <th style="text-align:left; padding: 0.6rem;">Titre</th>
                 <th style="text-align:left; padding: 0.6rem;">Statut</th>

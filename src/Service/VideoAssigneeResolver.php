@@ -32,17 +32,10 @@ final class VideoAssigneeResolver
     }
 
     /**
-     * Préremplit monteur et CM depuis le client lorsque la fiche n'a pas de délégation explicite.
+     * Préremplit monteur et CM depuis le client (comme le monteur sur la fiche vidéo).
      */
     public function applyClientTeamDefaultsForForm(Content $content): void
     {
-        if ($content->getVideoCommunityManager() === null) {
-            $fromLegacy = $this->communityManagerFromLegacyUser($content->getVideoCmUser());
-            if ($fromLegacy !== null) {
-                $content->setVideoCommunityManager($fromLegacy);
-            }
-        }
-
         $client = $content->getClient();
         if ($client === null) {
             return;
@@ -52,9 +45,42 @@ final class VideoAssigneeResolver
             $content->setVideoEditor($client->getEditor());
         }
 
-        if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
-            $content->setVideoCommunityManager($client->getCommunityManager());
+        $clientCm = $client->getCommunityManager();
+        if ($clientCm !== null) {
+            if ($this->shouldAlignCommunityManagerWithClient($content, $clientCm)) {
+                $content->setVideoCommunityManager($clientCm);
+            }
+
+            return;
         }
+
+        if ($content->getVideoCommunityManager() === null) {
+            $fromLegacy = $this->communityManagerFromLegacyUser($content->getVideoCmUser());
+            if ($fromLegacy !== null) {
+                $content->setVideoCommunityManager($fromLegacy);
+            }
+        }
+    }
+
+    public function resolveCommunityManagerForDisplay(Content $content): ?CommunityManager
+    {
+        $clientCm = $content->getClient()?->getCommunityManager();
+        if ($clientCm !== null) {
+            return $clientCm;
+        }
+
+        return $content->getVideoCommunityManager()
+            ?? $this->communityManagerFromLegacyUser($content->getVideoCmUser());
+    }
+
+    private function shouldAlignCommunityManagerWithClient(Content $content, CommunityManager $clientCm): bool
+    {
+        $current = $content->getVideoCommunityManager();
+        if ($current === null) {
+            return true;
+        }
+
+        return $current->getId() !== $clientCm->getId();
     }
 
     private function communityManagerFromLegacyUser(?User $user): ?CommunityManager
@@ -100,11 +126,7 @@ final class VideoAssigneeResolver
 
     public function displayNameForCm(Content $content): string
     {
-        if ($content->getVideoCommunityManager() !== null) {
-            return $content->getVideoCommunityManager()->getName() ?? '—';
-        }
-
-        return $content->getClient()?->getCommunityManager()?->getName() ?? '—';
+        return $this->resolveCommunityManagerForDisplay($content)?->getName() ?? '—';
     }
 
     private function asanaGidFromCommunityManager(?CommunityManager $cm): ?string

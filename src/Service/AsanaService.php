@@ -237,5 +237,41 @@ class AsanaService
 
         return trim($gid);
     }
+
+    /**
+     * Marque une tâche Asana comme terminée.
+     */
+    public function completeTask(string $taskGid): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request('PUT', 'https://app.asana.com/api/1.0/tasks/'.$taskGid, [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        'completed' => true,
+                    ],
+                ],
+            ]);
+
+            $status = $resp->getStatusCode();
+
+            return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 }
 

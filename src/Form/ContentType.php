@@ -6,6 +6,7 @@ use App\Entity\Content;
 use App\Entity\Client;
 use App\Entity\Format;
 use App\Entity\Status;
+use App\Repository\StatusRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -46,9 +47,15 @@ class ContentType extends AbstractType
                 'choice_label' => 'name',
             ])
             ->add('status', EntityType::class, [
-                'label' => 'Statut',
+                'label' => 'Statut (réglage manuel)',
                 'class' => Status::class,
                 'choice_label' => 'name',
+                'query_builder' => fn () => $this->statusRepository->createQueryBuilder('s')
+                    ->andWhere('s.workflow IN (:workflows)')
+                    ->setParameter('workflows', [Status::WORKFLOW_STANDARD, Status::WORKFLOW_BOTH])
+                    ->orderBy('s.sortOrder', 'ASC')
+                    ->addOrderBy('s.name', 'ASC'),
+                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ])
             ->add('notes', TextareaType::class, [
                 'label' => 'Notes',

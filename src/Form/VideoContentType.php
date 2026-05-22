@@ -7,6 +7,7 @@ use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\User;
+use App\Repository\StatusRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -19,6 +20,11 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 
 class VideoContentType extends AbstractType
 {
+    public function __construct(
+        private readonly StatusRepository $statusRepository,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -50,9 +56,15 @@ class VideoContentType extends AbstractType
                 'disabled' => true,
             ])
             ->add('status', EntityType::class, [
-                'label' => 'Statut',
+                'label' => 'Statut (réglage manuel)',
                 'class' => Status::class,
                 'choice_label' => 'name',
+                'query_builder' => fn () => $this->statusRepository->createQueryBuilder('s')
+                    ->andWhere('s.workflow IN (:workflows)')
+                    ->setParameter('workflows', [Status::WORKFLOW_VIDEO, Status::WORKFLOW_BOTH])
+                    ->orderBy('s.sortOrder', 'ASC')
+                    ->addOrderBy('s.name', 'ASC'),
+                'help' => 'Préférez les boutons d\'avancement ci-dessus ; le menu sert aux corrections.',
             ])
             ->add('notes', TextareaType::class, [
                 'label' => 'Notes (interne)',

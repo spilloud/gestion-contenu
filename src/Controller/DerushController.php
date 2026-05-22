@@ -9,6 +9,7 @@ use App\Repository\ClientRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Service\AsanaService;
+use App\Service\ContentWorkflowService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +26,7 @@ class DerushController extends AbstractController
         private readonly FormatRepository $formatRepository,
         private readonly StatusRepository $statusRepository,
         private readonly AsanaService $asanaService,
+        private readonly ContentWorkflowService $contentWorkflowService,
     ) {
     }
 
@@ -80,6 +82,11 @@ class DerushController extends AbstractController
             }
 
             if ($created > 0) {
+                $this->entityManager->flush();
+
+                foreach ($createdContents as $content) {
+                    $this->contentWorkflowService->logCreation($content);
+                }
                 $this->entityManager->flush();
 
                 // Création des tâches Asana (best-effort).
@@ -151,7 +158,8 @@ class DerushController extends AbstractController
         $status = new Status();
         $status->setName('Brouillon (Dérush)');
         $status->setColor(Status::COLOR_GRAY);
-        $status->setSortOrder(999);
+        $status->setSortOrder(100);
+        $status->setWorkflow(Status::WORKFLOW_VIDEO);
         $this->entityManager->persist($status);
         $this->entityManager->flush();
 

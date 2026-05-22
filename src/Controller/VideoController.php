@@ -9,8 +9,10 @@ use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
+use App\Repository\ContentActionLogRepository;
 use App\Repository\UserRepository;
 use App\Service\SubtitlesReviewAsanaTrigger;
+use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,6 +30,8 @@ class VideoController extends AbstractController
         private readonly FormatRepository $formatRepository,
         private readonly UserRepository $userRepository,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
+        private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
+        private readonly ContentActionLogRepository $contentActionLogRepository,
     ) {
     }
 
@@ -67,7 +71,7 @@ class VideoController extends AbstractController
             'videoFormat' => $videoFormat,
             'contents' => $qb->getQuery()->getResult(),
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
-            'statuses' => $this->statusRepository->findAllOrdered(),
+            'statuses' => $this->statusRepository->findForWorkflow(\App\Entity\Status::WORKFLOW_VIDEO),
             'editors' => $this->userRepository->findBy([], ['name' => 'ASC']),
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],
@@ -101,11 +105,33 @@ class VideoController extends AbstractController
             return $this->redirect($returnTo);
         }
 
-        return $this->render('videos/show.html.twig', [
+        return $this->render('videos/show.html.twig', array_merge([
             'content' => $content,
             'form' => $form,
             'returnTo' => $defaultReturnTo,
-        ]);
+        ], $this->buildWorkflowViewData($content)));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildWorkflowViewData(Content $content): array
+    {
+        $journey = [];
+        foreach ($this->contentActionLogRepository->findVisibleJourneyForContent($content) as $log) {
+            $journey[] = [
+                'label' => $log->getLabel(),
+                'detail' => $log->getDetail(),
+                'createdAt' => $log->getCreatedAt(),
+                'userName' => $log->getUser()?->getName(),
+            ];
+        }
+
+        return [
+            'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
+            'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
+            'workflow_journey' => $journey,
+        ];
     }
 
     private function findVideoFormat(): Format

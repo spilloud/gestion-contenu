@@ -27,4 +27,23 @@ class StatusRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return Status[]
+     */
+    public function findForWorkflow(string $workflow): array
+    {
+        return $this->createQueryBuilder('s')
+            ->andWhere('s.workflow IN (:workflows)')
+            ->setParameter('workflows', [$workflow, Status::WORKFLOW_BOTH])
+            ->orderBy('s.sortOrder', 'ASC')
+            ->addOrderBy('s.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findOneByName(string $name): ?Status
+    {
+        return $this->findOneBy(['name' => $name]);
+    }
 }

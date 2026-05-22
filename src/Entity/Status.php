@@ -11,6 +11,10 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'status')]
 class Status
 {
+    public const WORKFLOW_STANDARD = 'standard';
+    public const WORKFLOW_VIDEO = 'video';
+    public const WORKFLOW_BOTH = 'both';
+
     public const COLOR_GRAY = 'gray';
     public const COLOR_RED = 'red';
     public const COLOR_ORANGE = 'orange';
@@ -31,6 +35,9 @@ class Status
 
     #[ORM\Column]
     private ?int $sortOrder = 0;
+
+    #[ORM\Column(length: 16, options: ['default' => self::WORKFLOW_STANDARD])]
+    private string $workflow = self::WORKFLOW_STANDARD;
 
     /**
      * @var Collection<int, Content>
@@ -80,6 +87,18 @@ class Status
     public function setSortOrder(int $sortOrder): static
     {
         $this->sortOrder = $sortOrder;
+
+        return $this;
+    }
+
+    public function getWorkflow(): string
+    {
+        return $this->workflow;
+    }
+
+    public function setWorkflow(string $workflow): static
+    {
+        $this->workflow = $workflow;
 
         return $this;
     }

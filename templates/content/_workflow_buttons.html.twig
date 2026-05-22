@@ -1,0 +1,25 @@
+{% if workflow_actions is not empty or workflow_can_step_back %}
+    <div class="workflow-actions" style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.85rem 0 1rem;">
+        {% set lastGroup = null %}
+        {% for action in workflow_actions %}
+            {% if action.group and action.group != lastGroup and lastGroup is not null %}
+                <span style="width: 100%; height: 0;" aria-hidden="true"></span>
+            {% endif %}
+            <form method="post" action="{{ path('app_content_workflow_transition', {id: content.id, action: action.id}) }}" style="margin: 0;">
+                <input type="hidden" name="_token" value="{{ csrf_token('workflow' ~ content.id) }}">
+                <input type="hidden" name="_return_to" value="{{ return_to|default('') }}">
+                <button type="submit" class="btn{% if action.variant == 'success' %} btn-success{% elseif action.variant == 'secondary' %} btn-secondary{% endif %}">
+                    {{ action.label }}
+                </button>
+            </form>
+            {% set lastGroup = action.group %}
+        {% endfor %}
+        {% if workflow_can_step_back %}
+            <form method="post" action="{{ path('app_content_workflow_step_back', {id: content.id}) }}" style="margin: 0;" onsubmit="return confirm('Reculer d\'une étape ? L\'action sera enregistrée dans le journal.');">
+                <input type="hidden" name="_token" value="{{ csrf_token('workflow' ~ content.id) }}">
+                <input type="hidden" name="_return_to" value="{{ return_to|default('') }}">
+                <button type="submit" class="btn btn-secondary">← Reculer</button>
+            </form>
+        {% endif %}
+    </div>
+{% endif %}

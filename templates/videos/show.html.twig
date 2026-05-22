@@ -237,6 +237,9 @@
         </div>
         <p class="video-fiche__hint"><strong>Étape actuelle :</strong> {{ statusName ?: '—' }} — {{ statusHint }}</p>
 
+        {% include 'content/_workflow_journey.html.twig' %}
+        {% include 'content/_workflow_buttons.html.twig' with { return_to: returnTo|default(path('app_videos_index')) } %}
+
         {{ form_row(form.title) }}
         {{ form_row(form.client) }}
         {{ form_row(form.scheduledDate) }}

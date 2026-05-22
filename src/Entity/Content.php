@@ -83,6 +83,13 @@ class Content
     #[ORM\OrderBy(['createdAt' => 'ASC'])]
     private Collection $comments;
 
+    /**
+     * @var Collection<int, ContentActionLog>
+     */
+    #[ORM\OneToMany(targetEntity: ContentActionLog::class, mappedBy: 'content', orphanRemoval: true, cascade: ['persist', 'remove'])]
+    #[ORM\OrderBy(['createdAt' => 'ASC', 'id' => 'ASC'])]
+    private Collection $actionLogs;
+
     #[ORM\Column]
     private ?\DateTimeImmutable $createdAt = null;
 
@@ -94,6 +101,7 @@ class Content
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
         $this->comments = new ArrayCollection();
+        $this->actionLogs = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -341,6 +349,24 @@ class Content
             if ($comment->getContent() === $this) {
                 $comment->setContent(null);
             }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ContentActionLog>
+     */
+    public function getActionLogs(): Collection
+    {
+        return $this->actionLogs;
+    }
+
+    public function addActionLog(ContentActionLog $actionLog): static
+    {
+        if (!$this->actionLogs->contains($actionLog)) {
+            $this->actionLogs->add($actionLog);
+            $actionLog->setContent($this);
         }
 
         return $this;

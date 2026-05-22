@@ -9,8 +9,12 @@ use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
+use App\Repository\ContentActionLogRepository;
 use App\Service\AsanaService;
+use App\Service\ContentFormatHelper;
+use App\Service\ContentWorkflowService;
 use App\Service\SubtitlesReviewAsanaTrigger;
+use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -30,6 +34,10 @@ class ContentController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly AsanaService $asanaService,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
+        private readonly ContentWorkflowService $contentWorkflowService,
+        private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
+        private readonly ContentActionLogRepository $contentActionLogRepository,
+        private readonly ContentFormatHelper $contentFormatHelper,
     ) {
     }
 
@@ -85,7 +93,13 @@ class ContentController extends AbstractController
                 }
             }
 
+            if (!$isVideo && $content->getStatus() === null) {
+                $content->setStatus($this->findInitialStandardStatus());
+            }
+
             $this->entityManager->persist($content);
+            $this->entityManager->flush();
+            $this->contentWorkflowService->logCreation($content);
             $this->entityManager->flush();
 
             $this->addFlash('success', 'Contenu créé.');
@@ -138,11 +152,11 @@ class ContentController extends AbstractController
             return $this->redirect($returnTo);
         }
 
-        return $this->render('content/edit.html.twig', [
+        return $this->render('content/edit.html.twig', array_merge([
             'content' => $content,
             'form' => $form,
             'returnTo' => $defaultReturnTo,
-        ]);
+        ], $this->buildWorkflowViewData($content)));
     }
 
     #[Route('/{id}/supprimer', name: 'app_content_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -193,30 +207,11 @@ class ContentController extends AbstractController
             return $this->redirectToRoute('app_calendar');
         }
 
-        $oldStatusName = $content->getStatus()?->getName();
-
         $statusId = $request->request->getInt('statusId');
         if ($statusId > 0) {
             $status = $this->statusRepository->find($statusId);
             if ($status) {
-                $content->setStatus($status);
-                $content->setUpdatedAt(new \DateTimeImmutable());
-                $this->entityManager->flush();
-
-                // Sync Asana: commentaire de changement de statut (best-effort)
-                if ($this->isVideoContent($content) && $this->asanaService->isEnabled() && $content->getAsanaTaskGid()) {
-                    $user = $this->getUser();
-                    $actor = $user instanceof \App\Entity\User ? ($user->getName() ?? $user->getUserIdentifier()) : '—';
-                    $from = $oldStatusName ?: '—';
-                    $to = $status->getName() ?: '—';
-                    $text = trim("Statut changé (via Lucy) : $from → $to\nPar : @$actor");
-                    $this->asanaService->addCommentToTask($content->getAsanaTaskGid(), $text);
-                }
-
-                // Si statut vidéo = relecture sous-titres, créer la tâche Asana dédiée (CM)
-                if ($this->isVideoContent($content)) {
-                    $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
-                }
+                $this->contentWorkflowService->applyManualStatusChange($content, $status, 'calendrier');
             }
         }
 
@@ -226,6 +221,44 @@ class ContentController extends AbstractController
         }
 
         return $this->redirectToRoute('app_calendar');
+    }
+
+    #[Route('/{id}/workflow/{action}', name: 'app_content_workflow_transition', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function workflowTransition(Content $content, string $action, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('workflow'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectWorkflowBack($content, $request);
+        }
+
+        $result = $this->contentWorkflowService->applyTransition($content, $action);
+        if ($result['ok']) {
+            $this->addFlash('success', 'Étape enregistrée.');
+        } else {
+            $this->addFlash('error', $result['message'] ?? 'Action impossible.');
+        }
+
+        return $this->redirectWorkflowBack($content, $request);
+    }
+
+    #[Route('/{id}/workflow/reculer', name: 'app_content_workflow_step_back', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function workflowStepBack(Content $content, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('workflow'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectWorkflowBack($content, $request);
+        }
+
+        $result = $this->contentWorkflowService->stepBack($content);
+        if ($result['ok']) {
+            $this->addFlash('success', 'Retour à l\'étape précédente.');
+        } else {
+            $this->addFlash('error', $result['message'] ?? 'Recul impossible.');
+        }
+
+        return $this->redirectWorkflowBack($content, $request);
     }
 
     #[Route('/{id}/commenter', name: 'app_content_comment', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -337,9 +370,61 @@ class ContentController extends AbstractController
 
     private function isVideoContent(Content $content): bool
     {
-        $name = mb_strtolower(trim((string) ($content->getFormat()?->getName() ?? '')));
+        return $this->contentFormatHelper->isVideoContent($content);
+    }
 
-        return $name === 'vidéo' || $name === 'video';
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildWorkflowViewData(Content $content): array
+    {
+        $journey = [];
+        foreach ($this->contentActionLogRepository->findVisibleJourneyForContent($content) as $log) {
+            $journey[] = [
+                'label' => $log->getLabel(),
+                'detail' => $log->getDetail(),
+                'createdAt' => $log->getCreatedAt(),
+                'userName' => $log->getUser()?->getName(),
+            ];
+        }
+
+        return [
+            'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
+            'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
+            'workflow_journey' => $journey,
+        ];
+    }
+
+    private function redirectWorkflowBack(Content $content, Request $request): Response
+    {
+        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request);
+        if ($returnTo !== null) {
+            return $this->redirect($returnTo);
+        }
+
+        if ($this->isVideoContent($content)) {
+            return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
+        }
+
+        return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);
+    }
+
+    private function findInitialStandardStatus(): \App\Entity\Status
+    {
+        $status = $this->statusRepository->findOneByName('Brouillon (idée)');
+        if ($status !== null) {
+            return $status;
+        }
+
+        $status = new \App\Entity\Status();
+        $status->setName('Brouillon (idée)');
+        $status->setColor(\App\Entity\Status::COLOR_GRAY);
+        $status->setSortOrder(10);
+        $status->setWorkflow(\App\Entity\Status::WORKFLOW_STANDARD);
+        $this->entityManager->persist($status);
+        $this->entityManager->flush();
+
+        return $status;
     }
 
     private function findInitialVideoStatus(): \App\Entity\Status
@@ -354,7 +439,8 @@ class ContentController extends AbstractController
         $status = new \App\Entity\Status();
         $status->setName('Brouillon (Dérush)');
         $status->setColor(\App\Entity\Status::COLOR_GRAY);
-        $status->setSortOrder(999);
+        $status->setSortOrder(100);
+        $status->setWorkflow(\App\Entity\Status::WORKFLOW_VIDEO);
         $this->entityManager->persist($status);
         $this->entityManager->flush();
 

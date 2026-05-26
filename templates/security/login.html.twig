@@ -98,6 +98,40 @@
         <p style="margin-top: 1rem; text-align: center; font-size: 0.9rem;">
             <a href="{{ path('app_forgot_password_request') }}" style="color: #5b21b6; font-weight: 600;">Mot de passe oublié ?</a>
         </p>
+        <p style="margin-top: 0.75rem; text-align: center; font-size: 0.85rem;">
+            <a href="{{ path('app_login', {reset: 1}) }}" style="color: #64748b;">Problème de connexion ? Réinitialiser la session</a>
+        </p>
     </div>
+    <script>
+        (function () {
+            if (window.history && history.replaceState) {
+                history.replaceState(null, document.title, location.pathname + location.search);
+            }
+
+            {% if needs_auth_reset|default(false) %}
+            var cookieNames = ['PHPSESSID', 'REMEMBERME', 'sf_redirect'];
+            var host = location.hostname;
+            var domains = ['', host, '.' + host];
+            if (host !== 'contenu.osmose-marketing.ch') {
+                domains.push('contenu.osmose-marketing.ch', '.contenu.osmose-marketing.ch');
+            }
+            cookieNames.forEach(function (name) {
+                domains.forEach(function (domain) {
+                    var domainPart = domain ? '; domain=' + domain : '';
+                    document.cookie = name + '=; Max-Age=0; path=/' + domainPart;
+                });
+            });
+            try {
+                sessionStorage.clear();
+            } catch (e) {}
+            {% endif %}
+
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    location.reload();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

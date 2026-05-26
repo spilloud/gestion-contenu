@@ -4,6 +4,7 @@ namespace App\Workflow;
 
 use App\Entity\Content;
 use App\Entity\Status;
+use App\Repository\ContentActionLogRepository;
 use App\Service\ContentFormatHelper;
 
 /**
@@ -65,6 +66,7 @@ final class ContentWorkflowRegistry
 
     public function __construct(
         private readonly ContentFormatHelper $formatHelper,
+        private readonly ContentActionLogRepository $actionLogRepository,
     ) {
     }
 
@@ -130,6 +132,11 @@ final class ContentWorkflowRegistry
         $current = $content->getStatus()?->getName();
         if ($current === null || $current === '') {
             return null;
+        }
+
+        $fromJournal = $this->actionLogRepository->resolvePreviousStatusName($content);
+        if ($fromJournal !== null) {
+            return $fromJournal;
         }
 
         $order = $this->orderedStatusNamesFor($content);

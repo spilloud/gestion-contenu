@@ -476,11 +476,17 @@ class ContentController extends AbstractController
 
     private function redirectWorkflowBack(Content $content, Request $request): Response
     {
-        if ($this->isVideoContent($content)) {
-            return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
+        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request);
+        $params = ['id' => $content->getId()];
+        if ($returnTo !== null) {
+            $params['return_to'] = $returnTo;
         }
 
-        return $this->redirectToRoute('app_content_edit', ['id' => $content->getId()]);
+        if ($this->isVideoContent($content)) {
+            return $this->redirectToRoute('app_video_show', $params);
+        }
+
+        return $this->redirectToRoute('app_content_edit', $params);
     }
 
     private function findVideoFormat(): Format

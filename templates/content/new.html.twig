@@ -2,13 +2,70 @@
 
 {% block title %}Nouveau contenu{% endblock %}
 
-{% block body %}
-<h1>Nouveau contenu</h1>
-<p><a href="{{ returnTo|default(path('app_calendar')) }}">← Retour</a></p>
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        {% include 'content/_workflow_fiche_styles.html.twig' %}
+    </style>
+{% endblock %}
 
-{{ form_start(form) }}
-<input type="hidden" name="_return_to" value="{{ returnTo|default(path('app_calendar')) }}">
-{{ form_widget(form) }}
-<button type="submit" class="btn">Créer</button>
-{{ form_end(form) }}
+{% block body %}
+{% set return_to_val = returnTo|default(path('app_contents_index')) %}
+
+<div class="content-fiche">
+    <nav class="content-fiche__topnav" aria-label="Navigation">
+        <a href="{{ return_to_val }}">← Retour</a>
+    </nav>
+
+    <header class="content-fiche__title-bar">
+        <h1>Nouveau contenu</h1>
+        <p class="dashboard-subtitle" style="margin: 0.35rem 0 0; color: var(--muted); font-size: 0.92rem;">
+            Posts, carrousels, stories… Les <strong>vidéos</strong> se créent via <a href="{{ path('app_derush_index') }}">Dérush vidéo</a>.
+        </p>
+    </header>
+
+    <div class="content-fiche__layout content-fiche__layout--single">
+        <div class="content-fiche__form-col">
+            {{ form_start(form) }}
+            <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+
+            <section class="content-fiche__section">
+                <div class="content-fiche__section-head">
+                    <h2>Identification</h2>
+                </div>
+                {{ form_row(form.title) }}
+                {{ form_row(form.client) }}
+                {{ form_row(form.scheduledDate) }}
+                {{ form_row(form.format) }}
+            </section>
+
+            {% include 'content/_fiche_form_fields.html.twig' with { content: content } %}
+
+            {{ form_rest(form) }}
+
+            <div class="content-fiche__save-bar">
+                <button type="submit" class="btn">Créer le contenu</button>
+            </div>
+
+            {{ form_end(form, { render_rest: false }) }}
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    document.querySelectorAll('.js-vf-link-open').forEach(function (btn) {
+        var input = document.getElementById(btn.getAttribute('data-input-id'));
+        if (!input) return;
+        function sync() {
+            var v = (input.value || '').trim();
+            btn.href = v || '#';
+            btn.hidden = !v;
+        }
+        input.addEventListener('input', sync);
+        input.addEventListener('change', sync);
+        sync();
+    });
+})();
+</script>
 {% endblock %}

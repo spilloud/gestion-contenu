@@ -13,13 +13,13 @@
 {% set status_name = content.status ? content.status.name : '' %}
 {% set status_hints = {
     'Brouillon (idée)': 'Notez l’idée et les éléments clés avant de produire le contenu.',
-    'En préparation': 'Rédaction, visuels ou montage en cours.',
+    'En préparation': 'Production en cours (visuels, rédaction, médias).',
     'À valider (post)': 'Relecture interne ou validation avant publication.',
     'Prêt à publier': 'Contenu validé — prêt pour Metricool ou publication.',
     'Publiée': 'Contenu publié.',
 } %}
 {% set status_hint = status_hints[status_name]|default('Utilisez le bouton ci-dessous pour faire avancer le contenu.') %}
-{% set return_to_val = returnTo|default(path('app_calendar')) %}
+{% set return_to_val = returnTo|default(path('app_contents_index')) %}
 
 <div class="content-fiche">
     <nav class="content-fiche__topnav" aria-label="Navigation">
@@ -29,7 +29,11 @@
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#vw-journal">Journal</a>
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
-        <a href="#bloc-contenu">Contenu</a>
+        <a href="#bloc-equipe">Équipe</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#bloc-fichiers">Fichiers</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#retours-discussion">Retours</a>
     </nav>
 
     <header class="content-fiche__title-bar">
@@ -38,6 +42,8 @@
             <span>{{ content.client.name }}</span>
             <span>Format <strong>{{ content.format.name }}</strong></span>
             <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
+            <span>Médiamaticien <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
+            <span>CM <strong>{{ cm_display_name|default('—') }}</strong></span>
         </div>
     </header>
 
@@ -54,9 +60,9 @@
             {{ form_start(form) }}
             <input type="hidden" name="_return_to" value="{{ return_to_val }}">
 
-            <section id="bloc-contenu" class="content-fiche__section">
+            <section id="bloc-identite" class="content-fiche__section">
                 <div class="content-fiche__section-head">
-                    <h2>Contenu</h2>
+                    <h2>Identification</h2>
                 </div>
                 {{ form_row(form.title) }}
                 {{ form_row(form.client) }}
@@ -64,12 +70,7 @@
                 {{ form_row(form.format) }}
             </section>
 
-            <section id="bloc-notes" class="content-fiche__section">
-                <div class="content-fiche__section-head">
-                    <h2>Notes</h2>
-                </div>
-                {{ form_row(form.notes) }}
-            </section>
+            {% include 'content/_fiche_form_fields.html.twig' %}
 
             <details class="content-fiche__details" id="bloc-pilotage">
                 <summary>Réglages manuels</summary>
@@ -86,6 +87,33 @@
 
             {{ form_end(form, { render_rest: false }) }}
 
+            <section id="retours-discussion" class="content-fiche__section">
+                <div class="content-fiche__section-head">
+                    <h2>Retours / discussion</h2>
+                </div>
+                {% if content.comments is empty %}
+                    <p style="color: var(--muted); margin: 0;">Aucun retour pour le moment.</p>
+                {% else %}
+                    <div style="display: grid; gap: 0.6rem; margin-bottom: 1rem;">
+                        {% for c in content.comments %}
+                            <div style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--bg);">
+                                <div style="display:flex; justify-content: space-between; gap: 1rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem;">
+                                    <strong style="color: var(--text);">{{ c.author ? c.author.name : '—' }}</strong>
+                                    <time>{{ c.createdAt|date('d/m/Y H:i') }}</time>
+                                </div>
+                                <div style="white-space: pre-wrap;">{{ c.message }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <form method="post" action="{{ path('app_content_comment', {id: content.id}) }}" style="display:grid; gap: 0.6rem;">
+                    <input type="hidden" name="_token" value="{{ csrf_token('comment' ~ content.id) }}">
+                    <label for="content-comment-message" class="field-label">Ajouter un retour</label>
+                    <textarea id="content-comment-message" name="message" rows="4" placeholder="Message pour l’équipe…" style="width: 100%;"></textarea>
+                    <button type="submit" class="btn">Publier le commentaire</button>
+                </form>
+            </section>
+
             <section class="content-fiche__danger" aria-labelledby="content-delete-heading">
                 <h2 id="content-delete-heading">Supprimer ce contenu</h2>
                 <p style="color: var(--muted); font-size: 0.88rem; margin: 0 0 1rem;">Action irréversible.</p>
@@ -98,4 +126,21 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    document.querySelectorAll('.js-vf-link-open').forEach(function (btn) {
+        var input = document.getElementById(btn.getAttribute('data-input-id'));
+        if (!input) return;
+        function sync() {
+            var v = (input.value || '').trim();
+            btn.href = v || '#';
+            btn.hidden = !v;
+        }
+        input.addEventListener('input', sync);
+        input.addEventListener('change', sync);
+        sync();
+    });
+})();
+</script>
 {% endblock %}

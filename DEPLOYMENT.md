@@ -54,6 +54,11 @@
 Créer un fichier `.env` à la racine du projet contenu ou définir :
 - `CONTENU_DB_PASSWORD` : mot de passe PostgreSQL pour la base contenu
 
+## Connexion SSH (agents / développeurs)
+
+- Modèle : [`deploy/ssh-config.example`](deploy/ssh-config.example)
+- Guide : [`docs/CONNEXION-SERVEUR.md`](docs/CONNEXION-SERVEUR.md)
+
 ## Mise à jour en production (git déjà configuré sur le serveur)
 
 Sur le serveur (utilisateur typique : `debian`, dépôt cloné sous le chemin avec espace ci-dessous) :

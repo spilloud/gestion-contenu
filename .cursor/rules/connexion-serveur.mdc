@@ -1,0 +1,14 @@
+---
+description: Connexion SSH et déploiement serveur Contenu
+alwaysApply: true
+---
+
+# Connexion serveur Contenu
+
+- Guide : `docs/CONNEXION-SERVEUR.md`
+- Modèle SSH : `deploy/ssh-config.example` (à copier dans `~/.ssh/config` sur la machine locale)
+- Hôte typique : `Contenu-Osmose` → `83.228.217.159`, user `debian`
+- Chemin dépôt prod : `/home/debian/Systeme de formation/contenu`
+- Après `git pull` : `docker exec contenu_php php bin/console cache:clear --env=prod --no-interaction`
+
+Voir `DEPLOYMENT.md` pour le détail.

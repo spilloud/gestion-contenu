@@ -1,0 +1,49 @@
+{# Champs communs fiche contenu (hors vidéo) : équipe, liens KDrive, texte #}
+<section id="bloc-equipe" class="content-fiche__section">
+    <div class="content-fiche__section-head">
+        <h2>Équipe</h2>
+        <span class="content-fiche__section-kicker">Délégation</span>
+    </div>
+    <p class="vf-team-hint">Assignez le médiamaticien et la CM pour ce contenu. Par défaut, les valeurs du client sont proposées.</p>
+    <div class="vf-team-grid">
+        {% if form.videoEditor is defined %}
+            {{ form_row(form.videoEditor) }}
+        {% endif %}
+        {% if form.videoCommunityManager is defined %}
+            {{ form_row(form.videoCommunityManager) }}
+        {% endif %}
+    </div>
+</section>
+
+<section id="bloc-fichiers" class="content-fiche__section">
+    <div class="content-fiche__section-head">
+        <h2>Fichiers & liens</h2>
+        <span class="content-fiche__section-kicker">KDrive</span>
+    </div>
+    {% if form.videoRushesUrl is defined %}
+        {% include 'videos/_link_field.html.twig' with {
+            label: 'Source',
+            form_field: form.videoRushesUrl,
+            initial_url: content.videoRushesUrl|default(null),
+        } %}
+    {% endif %}
+    {% if form.videoFinalUrl is defined %}
+        {% include 'videos/_link_field.html.twig' with {
+            label: 'Final',
+            form_field: form.videoFinalUrl,
+            initial_url: content.videoFinalUrl|default(null),
+        } %}
+    {% endif %}
+</section>
+
+<section id="bloc-texte" class="content-fiche__section">
+    <div class="content-fiche__section-head">
+        <h2>Texte & notes</h2>
+    </div>
+    {% if form.videoCaption is defined %}
+        {{ form_row(form.videoCaption) }}
+    {% endif %}
+    {% if form.notes is defined %}
+        {{ form_row(form.notes) }}
+    {% endif %}
+</section>

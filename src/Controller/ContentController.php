@@ -16,6 +16,7 @@ use App\Service\AsanaService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowService;
 use App\Service\SubtitlesReviewAsanaTrigger;
+use App\Service\VideoAssigneeResolver;
 use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -41,6 +42,7 @@ class ContentController extends AbstractController
         private readonly ContentActionLogRepository $contentActionLogRepository,
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly FormatRepository $formatRepository,
+        private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
 
@@ -170,8 +172,11 @@ class ContentController extends AbstractController
                 }
             }
 
-            if (!$isVideo && $content->getStatus() === null) {
-                $content->setStatus($this->findInitialStandardStatus());
+            if (!$isVideo) {
+                $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+                if ($content->getStatus() === null) {
+                    $content->setStatus($this->findInitialStandardStatus());
+                }
             }
 
             $this->entityManager->persist($content);
@@ -190,7 +195,10 @@ class ContentController extends AbstractController
                 ]);
             }
 
-            return $this->redirect($returnTo);
+            return $this->redirectToRoute('app_content_edit', [
+                'id' => $content->getId(),
+                'return_to' => $returnTo,
+            ]);
         }
 
         return $this->render('content/new.html.twig', [
@@ -216,6 +224,10 @@ class ContentController extends AbstractController
 
         $defaultReturnTo = $this->resolveReturnTo($request);
 
+        if ($request->isMethod('GET')) {
+            $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+        }
+
         $form = $this->createForm(ContentType::class, $content);
         $form->handleRequest($request);
 
@@ -226,13 +238,19 @@ class ContentController extends AbstractController
             $this->addFlash('success', 'Contenu modifié.');
             $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request) ?? $defaultReturnTo;
 
-            return $this->redirect($returnTo);
+            $params = ['id' => $content->getId()];
+            if ($returnTo !== null && $returnTo !== '') {
+                $params['return_to'] = $returnTo;
+            }
+
+            return $this->redirectToRoute('app_content_edit', $params);
         }
 
         return $this->render('content/edit.html.twig', array_merge([
             'content' => $content,
             'form' => $form,
             'returnTo' => $defaultReturnTo,
+            'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
         ], $this->buildWorkflowViewData($content)));
     }
 

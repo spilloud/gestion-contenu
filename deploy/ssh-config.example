@@ -1,0 +1,7 @@
+# Exemple de configuration SSH pour le projet Contenu (Osmose)
+# Copier ce bloc dans ~/.ssh/config puis adapter IdentityFile.
+
+Host Contenu-Osmose
+  HostName 83.228.217.159
+  User debian
+  IdentityFile ~/.ssh/id_ed25519

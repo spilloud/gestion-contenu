@@ -13,6 +13,15 @@ use App\Service\ContentFormatHelper;
 final class ContentWorkflowRegistry
 {
     /**
+     * Certains statuts existent en double (legacy / synonymes) mais représentent la même étape.
+     * On les "aplatit" pour que le recul revienne à l'étape métier précédente.
+     */
+    private const VIDEO_EQUIVALENT_STATUS_GROUPS = [
+        // Étape "Client" (deux libellés possibles) → étape précédente = validation CM
+        ['À valider (Client)', 'À faire valider au client'],
+    ];
+
+    /**
      * Phases affichées dans la barre de progression (fiche vidéo).
      *
      * @var list<array{label: string, statuses: list<string>}>
@@ -134,6 +143,15 @@ final class ContentWorkflowRegistry
             return null;
         }
 
+        // Si on est sur un statut "équivalent" vidéo, on force le recul vers l'étape précédente.
+        if ($this->formatHelper->isVideoContent($content)) {
+            foreach (self::VIDEO_EQUIVALENT_STATUS_GROUPS as $group) {
+                if (in_array($current, $group, true)) {
+                    return 'À valider (CM)';
+                }
+            }
+        }
+
         $fromJournal = $this->actionLogRepository->resolvePreviousStatusName($content);
         if ($fromJournal !== null) {
             return $fromJournal;
@@ -145,7 +163,18 @@ final class ContentWorkflowRegistry
             return null;
         }
 
-        return $order[$index - 1];
+        $previous = $order[$index - 1];
+
+        // Si l'étape précédente est un libellé équivalent, on saute au vrai précédent.
+        if ($this->formatHelper->isVideoContent($content)) {
+            foreach (self::VIDEO_EQUIVALENT_STATUS_GROUPS as $group) {
+                if (in_array($previous, $group, true) && $index - 2 >= 0) {
+                    return $order[$index - 2];
+                }
+            }
+        }
+
+        return $previous;
     }
 
     /**

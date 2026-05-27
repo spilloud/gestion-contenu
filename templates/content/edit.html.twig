@@ -43,7 +43,7 @@
 
     <div class="content-fiche__layout">
         {% include 'content/_workflow_hero.html.twig' with {
-            return_to: path('app_content_edit', {id: content.id, return_to: return_to_val}),
+            return_to: return_to_val,
             status_hint: status_hint,
             status_name: status_name,
             manual_settings_label: 'Réglages manuels',

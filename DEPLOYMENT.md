@@ -67,6 +67,14 @@ docker exec contenu_php php bin/console cache:clear --env=prod --no-interaction
 En local, si `~/.ssh/config` définit un hôte (ex. `Contenu-Osmose` → `83.228.217.159`, user `debian`), tu peux enchaîner :  
 `ssh Contenu-Osmose 'cd '\''/home/debian/Systeme de formation/contenu'\'' && git pull origin main && docker exec contenu_php php bin/console cache:clear --env=prod --no-interaction'`
 
+Exemple de bloc à ajouter dans `~/.ssh/config` (adapter la ligne `IdentityFile` selon ta clé) :
+```sshconfig
+Host Contenu-Osmose
+  HostName 83.228.217.159
+  User debian
+  IdentityFile ~/.ssh/<ta_cle>
+```
+
 ## Vérification
 
 - https://contenu.osmose-marketing.ch → doit afficher la page de connexion

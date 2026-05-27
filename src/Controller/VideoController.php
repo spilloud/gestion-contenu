@@ -11,6 +11,7 @@ use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\ContentActionLogRepository;
 use App\Repository\UserRepository;
+use App\Service\ContentFormatHelper;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Workflow\ContentWorkflowRegistry;
@@ -30,6 +31,7 @@ class VideoController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly FormatRepository $formatRepository,
         private readonly UserRepository $userRepository,
+        private readonly ContentFormatHelper $contentFormatHelper,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
         private readonly ContentActionLogRepository $contentActionLogRepository,
@@ -105,8 +107,8 @@ class VideoController extends AbstractController
     #[Route('/fiche/{id}', name: 'app_video_show', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function show(Content $content, Request $request): Response
     {
-        $videoFormat = $this->findVideoFormat();
-        if ($content->getFormat()?->getId() !== $videoFormat->getId()) {
+        // Accepte aussi les formats "vidéo-like" (ex: carrousel/carousel).
+        if (!$this->contentFormatHelper->isVideoContent($content)) {
             throw $this->createNotFoundException();
         }
 

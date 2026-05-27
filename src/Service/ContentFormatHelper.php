@@ -15,7 +15,9 @@ final class ContentFormatHelper
     {
         $name = mb_strtolower(trim((string) ($format?->getName() ?? '')));
 
-        return $name === 'vidéo' || $name === 'video';
+        // Certains formats (ex: carrousel) utilisent le même pipeline "vidéo"
+        // (KDrive, CM, actions de workflow).
+        return in_array($name, ['vidéo', 'video', 'carrousel', 'carousel'], true);
     }
 
     public function isVideoContent(Content $content): bool

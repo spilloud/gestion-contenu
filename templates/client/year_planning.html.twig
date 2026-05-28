@@ -130,7 +130,7 @@
         padding: 1.2rem 0.28rem 0.35rem;
         box-sizing: border-box;
         display: grid;
-        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-columns: 9.2rem minmax(0, 1fr);
         grid-template-rows: minmax(0, 1fr);
         grid-template-areas: "events contents";
         gap: 0.15rem;
@@ -199,7 +199,7 @@
         align-items: flex-start;
         gap: 0.25rem;
         min-height: 0;
-        overflow: visible;
+        overflow: hidden; /* évite de masquer les posts à droite */
         flex-shrink: 0;
     }
     .year-week-events--empty {
@@ -223,12 +223,9 @@
     }
     .year-event--inline {
         padding: 0.12rem 0.28rem;
-        max-width: 8.2rem;
+        max-width: 100%;
         white-space: normal;
         overflow: hidden;
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
         word-break: break-word;
     }
     .year-event--vertical {
@@ -395,29 +392,28 @@
             max-height: none;
             overflow: visible;
         }
-        /* Impression : priorité lisibilité événements.
-           Sur A4 (12 colonnes), on ne peut pas tout lire (événements + contenus).
-           On masque donc les contenus et on laisse tout l’espace aux événements.
+        /* Impression : même logique que l’écran :
+           événements à gauche, contenus à droite (contenus compactés).
         */
-        .year-week-contents {
-            display: none !important;
-        }
+        .year-week-contents { display: block; }
         .year-week-cell__inner {
-            display: block;
+            display: grid;
+            grid-template-columns: 45mm minmax(0, 1fr);
+            grid-template-areas: "events contents";
         }
         .year-week-events {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             gap: 1mm;
-            width: 100%;
+            width: 45mm;
         }
         .year-event--inline {
             max-width: 100%;
             white-space: normal;
             overflow: visible;
             display: block;
-            font-size: 7.2pt;
+            font-size: 7pt;
             line-height: 1.18;
             padding: 1mm 1.2mm;
         }
@@ -448,7 +444,11 @@
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .year-content-title { -webkit-line-clamp: 1; }
+        .year-content-title {
+            font-size: 5.4pt;
+            line-height: 1.15;
+            -webkit-line-clamp: 1;
+        }
         .year-planning-table thead th {
             background: #f3f4f6 !important;
             -webkit-print-color-adjust: exact;

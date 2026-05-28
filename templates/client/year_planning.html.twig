@@ -392,11 +392,39 @@
             overflow: hidden;
         }
         .year-week-events {
-            max-height: 1.75rem;
-            overflow: hidden;
+            max-height: none;
+            overflow: visible;
         }
         .year-week-contents {
             overflow: hidden;
+        }
+        /* Impression : garder la même logique que l’écran
+           - 1 jour : bulle horizontale sur 2 lignes
+           - multi-jours : bulle verticale (peut prendre toute la hauteur)
+           - contenus à droite des bulles
+        */
+        .year-week-cell__inner {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            grid-template-areas: "events contents";
+        }
+        .year-week-events {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1mm;
+            padding-right: 1mm;
+        }
+        .year-event--inline {
+            max-width: 32mm;
+            white-space: normal;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+        .year-event--vertical {
+            max-height: 100%;
         }
         .year-event--vertical {
             font-size: 5.5pt;

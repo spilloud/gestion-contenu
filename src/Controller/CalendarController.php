@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Content;
+use App\Entity\Status;
 use App\Repository\CalendarEventRepository;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
@@ -74,7 +75,9 @@ class CalendarController extends AbstractController
             'calendarEvents' => $calendarEvents,
             'showEvents' => $showEvents,
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
-            'statuses' => $this->statusRepository->findAllOrdered(),
+            // Deux listes : posts vs vidéos (sinon la liste devient trop longue).
+            'statuses' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_STANDARD),
+            'videoStatuses' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_VIDEO),
             'formats' => $this->formatRepository->findAllOrdered(),
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],

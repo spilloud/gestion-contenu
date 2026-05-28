@@ -502,7 +502,8 @@
                                     <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
                                         <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                                         <select name="statusId" class="status-inline-select" draggable="false">
-                                            {% for status in statuses %}
+                                            {% set statusChoices = isVideo ? (videoStatuses|default(statuses)) : statuses %}
+                                            {% for status in statusChoices %}
                                                 <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                             {% endfor %}
                                         </select>
@@ -566,7 +567,8 @@
                         <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
                             <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                             <select name="statusId" class="status-inline-select">
-                                {% for status in statuses %}
+                                {% set statusChoices = isVideo ? (videoStatuses|default(statuses)) : statuses %}
+                                {% for status in statusChoices %}
                                     <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                 {% endfor %}
                             </select>

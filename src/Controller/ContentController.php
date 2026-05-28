@@ -152,11 +152,11 @@ class ContentController extends AbstractController
             }
 
             if ($isVideo) {
-                // On démarre le même process que le dérush (sans liens) :
-                // - statut initial vidéo
+                // Création "planning" (CM) : on planifie une vidéo avec date,
+                // sans déclencher Asana (créé uniquement depuis la page Dérush).
                 // - monteur auto depuis le client (si défini)
                 // - sous-titres par défaut à non
-                $content->setStatus($this->findInitialVideoStatus());
+                $content->setStatus($this->findPlannedVideoStatus());
 
                 $client = $content->getClient();
                 if ($client) {
@@ -549,6 +549,24 @@ class ContentController extends AbstractController
         $status->setName('Brouillon (Dérush)');
         $status->setColor(\App\Entity\Status::COLOR_GRAY);
         $status->setSortOrder(100);
+        $status->setWorkflow(\App\Entity\Status::WORKFLOW_VIDEO);
+        $this->entityManager->persist($status);
+        $this->entityManager->flush();
+
+        return $status;
+    }
+
+    private function findPlannedVideoStatus(): \App\Entity\Status
+    {
+        $status = $this->statusRepository->findOneByName('Tournage à prévoir');
+        if ($status !== null) {
+            return $status;
+        }
+
+        $status = new \App\Entity\Status();
+        $status->setName('Tournage à prévoir');
+        $status->setColor(\App\Entity\Status::COLOR_RED);
+        $status->setSortOrder(5);
         $status->setWorkflow(\App\Entity\Status::WORKFLOW_VIDEO);
         $this->entityManager->persist($status);
         $this->entityManager->flush();

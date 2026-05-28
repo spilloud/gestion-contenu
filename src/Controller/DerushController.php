@@ -6,6 +6,7 @@ use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Repository\ClientRepository;
+use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Service\AsanaService;
@@ -23,6 +24,7 @@ class DerushController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ClientRepository $clientRepository,
+        private readonly ContentRepository $contentRepository,
         private readonly FormatRepository $formatRepository,
         private readonly StatusRepository $statusRepository,
         private readonly AsanaService $asanaService,
@@ -40,21 +42,55 @@ class DerushController extends AbstractController
                 return $this->redirectToRoute('app_derush_index');
             }
 
+            $clientId = $request->request->getInt('client_id');
+            if ($clientId <= 0) {
+                $this->addFlash('error', 'Sélectionne un client.');
+                return $this->redirectToRoute('app_derush_index', array_filter(['client' => $defaultClientId]));
+            }
+
+            $client = $this->clientRepository->find($clientId);
+            if ($client === null) {
+                $this->addFlash('error', 'Client introuvable.');
+                return $this->redirectToRoute('app_derush_index');
+            }
+
             $rows = $request->request->all('videos');
+            $plannedIds = array_values(array_filter(array_map('intval', (array) $request->request->all('planned_ids'))));
+            $globalRushesUrl = trim($request->request->getString('rushes_url_global')) ?: null;
             $created = 0;
-            $createdContents = [];
+            $plannedMoved = 0;
+            $newContents = [];
+            $touchedContents = [];
 
             $videoFormat = $this->findVideoFormat();
-            $initialStatus = $this->findInitialVideoStatus();
+            $statusMontageAFaire = $this->findOrCreateVideoStatus('Montage à faire', Status::COLOR_ORANGE, 30);
 
-            foreach ($rows as $row) {
-                $title = trim((string) ($row['title'] ?? ''));
-                $clientId = (int) ($row['client_id'] ?? 0);
-                if ($title === '' || $clientId <= 0) {
+            // 1) Vidéos planifiées par les CM : cocher = "dérush fait" => on passe directement à Montage à faire.
+            foreach ($plannedIds as $id) {
+                $content = $this->contentRepository->find($id);
+                if (!$content instanceof Content) {
                     continue;
                 }
-                $client = $this->clientRepository->find($clientId);
-                if ($client === null) {
+                if ($content->getClient()?->getId() !== $client->getId()) {
+                    continue;
+                }
+                if ($content->getFormat()?->getId() !== $videoFormat->getId()) {
+                    continue;
+                }
+
+                $this->contentWorkflowService->applyManualStatusChange($content, $statusMontageAFaire, 'derush');
+                if ($globalRushesUrl !== null) {
+                    $content->setVideoRushesUrl($globalRushesUrl);
+                }
+                $content->setUpdatedAt(new \DateTimeImmutable());
+                $touchedContents[] = $content;
+                $plannedMoved++;
+            }
+
+            // 2) Création de nouvelles vidéos (casier en bas) pour ce client.
+            foreach ($rows as $row) {
+                $title = trim((string) ($row['title'] ?? ''));
+                if ($title === '') {
                     continue;
                 }
 
@@ -68,9 +104,9 @@ class DerushController extends AbstractController
                     ->setClient($client)
                     ->setScheduledDate($scheduledDate)
                     ->setFormat($videoFormat)
-                    ->setStatus($initialStatus)
+                    ->setStatus($statusMontageAFaire)
                     ->setVideoHasSubtitles(($row['has_subtitles'] ?? '') === '1')
-                    ->setVideoRushesUrl(trim((string) ($row['rushes_url'] ?? '')) ?: null);
+                    ->setVideoRushesUrl($globalRushesUrl);
 
                 // Auto-assign monteur et CM depuis le client si définis.
                 if ($client->getEditor() !== null) {
@@ -81,14 +117,15 @@ class DerushController extends AbstractController
                 }
 
                 $this->entityManager->persist($content);
-                $createdContents[] = $content;
+                $touchedContents[] = $content;
+                $newContents[] = $content;
                 $created++;
             }
 
-            if ($created > 0) {
+            if ($touchedContents !== []) {
                 $this->entityManager->flush();
 
-                foreach ($createdContents as $content) {
+                foreach ($newContents as $content) {
                     $this->contentWorkflowService->logCreation($content);
                 }
                 $this->entityManager->flush();
@@ -96,7 +133,7 @@ class DerushController extends AbstractController
                 // Création des tâches Asana (best-effort).
                 $fallbackAssignee = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
                 $asanaCreated = 0;
-                foreach ($createdContents as $content) {
+                foreach ($touchedContents as $content) {
                     if ($content->getAsanaTaskGid()) {
                         continue;
                     }
@@ -114,7 +151,16 @@ class DerushController extends AbstractController
                 if ($asanaCreated > 0) {
                     $this->entityManager->flush();
                 }
-                $this->addFlash('success', sprintf('%d vidéo(s) créée(s) en brouillon.', $created));
+                $messages = [];
+                if ($plannedMoved > 0) {
+                    $messages[] = sprintf('%d vidéo(s) planifiée(s) passée(s) en montage.', $plannedMoved);
+                }
+                if ($created > 0) {
+                    $messages[] = sprintf('%d vidéo(s) créée(s).', $created);
+                }
+                if ($messages !== []) {
+                    $this->addFlash('success', implode(' ', $messages));
+                }
                 if ($asanaCreated > 0) {
                     $this->addFlash('success', sprintf('%d tâche(s) Asana créée(s).', $asanaCreated));
                 } elseif ($this->asanaService->isEnabled()) {
@@ -123,12 +169,38 @@ class DerushController extends AbstractController
                 return $this->redirectToRoute('app_calendar', ['formats' => [$videoFormat->getId()]]);
             }
 
-            $this->addFlash('error', 'Aucune vidéo créée (vérifie titre + client).');
+            $this->addFlash('error', 'Aucune vidéo sélectionnée ou créée (vérifie le client, les cases, ou les titres).');
+        }
+
+        $clients = $this->clientRepository->findAllOrderedByClientName();
+        $selectedClient = null;
+        if ($defaultClientId !== null) {
+            $selectedClient = $this->clientRepository->find($defaultClientId);
+        }
+
+        $videoFormat = $this->findVideoFormat();
+        $plannedStatus = $this->statusRepository->findOneByName('Tournage à prévoir');
+        $plannedVideos = [];
+        if ($selectedClient !== null && $plannedStatus !== null) {
+            $plannedVideos = $this->contentRepository->createQueryBuilder('c')
+                ->leftJoin('c.client', 'cl')->addSelect('cl')
+                ->leftJoin('c.videoEditor', 'e')->addSelect('e')
+                ->andWhere('c.client = :client')
+                ->andWhere('c.format = :format')
+                ->andWhere('c.status = :status')
+                ->setParameter('client', $selectedClient)
+                ->setParameter('format', $videoFormat)
+                ->setParameter('status', $plannedStatus)
+                ->orderBy('c.scheduledDate', 'ASC')
+                ->addOrderBy('c.id', 'ASC')
+                ->getQuery()
+                ->getResult();
         }
 
         return $this->render('derush/index.html.twig', [
-            'clients' => $this->clientRepository->findAllOrderedByClientName(),
+            'clients' => $clients,
             'defaultClientId' => $defaultClientId,
+            'plannedVideos' => $plannedVideos,
         ]);
     }
 
@@ -164,6 +236,24 @@ class DerushController extends AbstractController
         $status->setName('Brouillon (Dérush)');
         $status->setColor(Status::COLOR_GRAY);
         $status->setSortOrder(100);
+        $status->setWorkflow(Status::WORKFLOW_VIDEO);
+        $this->entityManager->persist($status);
+        $this->entityManager->flush();
+
+        return $status;
+    }
+
+    private function findOrCreateVideoStatus(string $name, string $color, int $sortOrder): Status
+    {
+        $existing = $this->statusRepository->findOneByName($name);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $status = new Status();
+        $status->setName($name);
+        $status->setColor($color);
+        $status->setSortOrder($sortOrder);
         $status->setWorkflow(Status::WORKFLOW_VIDEO);
         $this->entityManager->persist($status);
         $this->entityManager->flush();

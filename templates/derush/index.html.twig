@@ -3,115 +3,140 @@
 {% block title %}Dérush (vidéos){% endblock %}
 
 {% block body %}
-<h1>Dérush — créer des vidéos</h1>
-<p style="color: var(--muted); max-width: 900px;">
-    Objectif : créer un <strong>brouillon de contenu vidéo</strong> par vidéo dès le tri des rushs, pour que les CM puissent planifier la
-    <strong>date de publication</strong> et suivre l'avancement. Les liens pointent vers le KDrive.
+<h1>Dérush — lancer le montage</h1>
+<p style="color: var(--muted); max-width: 980px;">
+    Ici, on travaille <strong>par client</strong>. La CM planifie les vidéos (titre + date de publication). Le dérush sert à indiquer
+    « <strong>tourné</strong> » et à envoyer les vidéos en <strong>montage</strong> (et créer les tâches Asana).
 </p>
-<p style="color: var(--muted); max-width: 900px; margin-top: -0.5rem;">
-    La date de publication n'est pas demandée ici : par défaut, la vidéo est mise à <strong>+14 jours</strong> (tu peux ensuite la déplacer dans le calendrier).
-</p>
+
+<form method="get" style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem;">
+    <div>
+        <label for="derush-client" class="field-label">Client</label>
+        <select id="derush-client" name="client" style="min-width: 320px;">
+            <option value="">— Sélectionner —</option>
+            {% for c in clients %}
+                <option value="{{ c.id }}" {{ defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn">Ouvrir</button>
+    <a href="{{ path('app_calendar') }}" class="btn" style="background:#64748b;">Calendrier</a>
+    <a href="{{ path('app_videos_index') }}" class="btn" style="background:#64748b;">Vidéos</a>
+</form>
+
+{% if not defaultClientId %}
+    <p style="color: var(--muted);">Sélectionne un client pour voir les vidéos planifiées et dérusher.</p>
+{% else %}
 
 <form method="post" style="display: grid; gap: 1rem;">
     <input type="hidden" name="_token" value="{{ csrf_token('derush') }}">
+    <input type="hidden" name="client_id" value="{{ defaultClientId }}">
 
-    <div style="display:flex; gap: 0.5rem; flex-wrap: wrap;">
-        <a href="{{ path('app_calendar') }}" class="btn" style="background:#64748b;">Calendrier</a>
-        <a href="{{ path('app_clients_table') }}" class="btn" style="background:#64748b;">Clients</a>
-        <a href="{{ path('app_content_new') }}" class="btn">+ Nouveau contenu (manuel)</a>
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Liens</h2>
+        <label class="field-label" for="rushes_url_global">Lien KDrive (rushs) — commun</label>
+        <input id="rushes_url_global" name="rushes_url_global" type="url" placeholder="https://kdrive..." style="width: 100%;">
+        <p style="margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem;">Ce lien sera appliqué aux vidéos cochées / créées ci-dessous.</p>
     </div>
 
-    <div style="overflow-x: auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
-        <table style="width: 100%; min-width: 980px; border-collapse: collapse;">
-            <thead>
-                <tr style="background: rgba(148, 163, 184, 0.12);">
-                    <th style="text-align:left; padding: 0.6rem;">Titre</th>
-                    <th style="text-align:left; padding: 0.6rem;">Client</th>
-                    <th style="text-align:left; padding: 0.6rem;">Sous-titres</th>
-                    <th style="text-align:left; padding: 0.6rem;">Lien KDrive rushs</th>
-                    <th style="padding: 0.6rem; width: 1%; white-space: nowrap;">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="rows">
-                {% for i in 0..2 %}
-                    <tr>
-                        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                            <input name="videos[{{ i }}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
-                        </td>
-                        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                            <select name="videos[{{ i }}][client_id]" style="width: 100%;">
-                                <option value="">—</option>
-                                {% for c in clients %}
-                                    <option value="{{ c.id }}" {{ defaultClientId is defined and defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </td>
-                        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                            <input type="hidden" name="videos[{{ i }}][has_subtitles]" value="0">
-                            <label class="toggle-switch" style="margin:0;">
-                                <input type="checkbox" name="videos[{{ i }}][has_subtitles]" value="1">
-                                <span class="toggle-switch-ui" aria-hidden="true"></span>
-                            </label>
-                        </td>
-                        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                            <input name="videos[{{ i }}][rushes_url]" type="url" placeholder="https://kdrive..." style="width: 100%;">
-                        </td>
-                        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                            <button type="button" class="btn btn-sm" style="background:#b91c1c;" onclick="removeRow(this)">Supprimer</button>
-                        </td>
-                    </tr>
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Vidéos planifiées (CM) — en attente de flux</h2>
+        {% if plannedVideos is empty %}
+            <p style="color: var(--muted); margin: 0;">Aucune vidéo planifiée « Tournage à prévoir » pour ce client.</p>
+        {% else %}
+            <div style="display:grid; gap: 0.45rem;">
+                {% for v in plannedVideos %}
+                    <label style="display:flex; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--card-border); border-radius: 10px; padding: 0.6rem; background: var(--surface-inset);">
+                        <input type="checkbox" name="planned_ids[]" value="{{ v.id }}" style="margin-top: 0.25rem;">
+                        <div style="min-width:0;">
+                            <div style="font-weight: 700;">{{ v.title }}</div>
+                            <div style="color: var(--muted); font-size: 0.85rem;">
+                                Pub. {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
+                                · Médiamaticien {{ v.videoEditor ? v.videoEditor.name : '—' }}
+                            </div>
+                        </div>
+                    </label>
                 {% endfor %}
-            </tbody>
-        </table>
+            </div>
+            <p style="margin: 0.5rem 0 0; color: var(--muted); font-size: 0.85rem;">Cocher = dérush fait → passe en <strong>Montage à faire</strong>.</p>
+        {% endif %}
     </div>
 
-    <div style="display:flex; gap: 0.6rem; flex-wrap: wrap;">
-        <button type="button" class="btn" style="background:#64748b;" onclick="addRow()">+ Ajouter une ligne</button>
-        <button type="submit" class="btn">Créer les vidéos</button>
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Casier — nouvelles vidéos à dérusher</h2>
+        <p style="color: var(--muted); margin-top: -0.3rem;">Utilise ce casier si une vidéo n’a pas été planifiée par la CM.</p>
+
+        <div style="overflow-x: auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
+            <table style="width: 100%; min-width: 760px; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: rgba(148, 163, 184, 0.12);">
+                        <th style="text-align:left; padding: 0.6rem;">Titre</th>
+                        <th style="text-align:left; padding: 0.6rem;">Sous-titres</th>
+                        <th style="padding: 0.6rem; width: 1%; white-space: nowrap;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="rows">
+                    {% for i in 0..2 %}
+                        <tr>
+                            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                                <input name="videos[{{ i }}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
+                            </td>
+                            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                                <input type="hidden" name="videos[{{ i }}][has_subtitles]" value="0">
+                                <label class="toggle-switch" style="margin:0;">
+                                    <input type="checkbox" name="videos[{{ i }}][has_subtitles]" value="1">
+                                    <span class="toggle-switch-ui" aria-hidden="true"></span>
+                                </label>
+                            </td>
+                            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                                <button type="button" class="btn btn-sm" style="background:#b91c1c;" onclick="removeRow(this)">Supprimer</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem;">
+            <button type="button" class="btn" style="background:#64748b;" onclick="addRow()">+ Ajouter une ligne</button>
+            <button type="submit" class="btn">Valider le dérush (montage)</button>
+        </div>
     </div>
 </form>
 
 <script>
-    let nextIndex = 3;
+let nextIndex = 3;
 
-    function addRow() {
-        const tbody = document.getElementById('rows');
-        if (!tbody) return;
-        const tr = document.createElement('tr');
-        const i = nextIndex++;
-        tr.innerHTML = `
-            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                <input name="videos[${i}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
-            </td>
-            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                <select name="videos[${i}][client_id]" style="width: 100%;">
-                    <option value="">—</option>
-                    {% for c in clients %}
-                        <option value="{{ c.id }}" {{ defaultClientId is defined and defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
-                    {% endfor %}
-                </select>
-            </td>
-            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                <input type="hidden" name="videos[${i}][has_subtitles]" value="0">
-                <label class="toggle-switch" style="margin:0;">
-                    <input type="checkbox" name="videos[${i}][has_subtitles]" value="1">
-                    <span class="toggle-switch-ui" aria-hidden="true"></span>
-                </label>
-            </td>
-            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                <input name="videos[${i}][rushes_url]" type="url" placeholder="https://kdrive..." style="width: 100%;">
-            </td>
-            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-                <button type="button" class="btn btn-sm" style="background:#b91c1c;" onclick="removeRow(this)">Supprimer</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    }
+function addRow() {
+    const tbody = document.getElementById('rows');
+    if (!tbody) return;
+    const tr = document.createElement('tr');
+    const i = nextIndex++;
+    tr.innerHTML = `
+        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+            <input name="videos[${i}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
+        </td>
+        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+            <input type="hidden" name="videos[${i}][has_subtitles]" value="0">
+            <label class="toggle-switch" style="margin:0;">
+                <input type="checkbox" name="videos[${i}][has_subtitles]" value="1">
+                <span class="toggle-switch-ui" aria-hidden="true"></span>
+            </label>
+        </td>
+        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+            <button type="button" class="btn btn-sm" style="background:#b91c1c;" onclick="removeRow(this)">Supprimer</button>
+        </td>
+    `;
+    tbody.appendChild(tr);
+}
 
-    function removeRow(btn) {
-        const tr = btn && btn.closest ? btn.closest('tr') : null;
-        if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
-    }
+function removeRow(btn) {
+    const tr = btn && btn.closest ? btn.closest('tr') : null;
+    if (tr && tr.parentNode) tr.parentNode.removeChild(tr);
+}
 </script>
+
+{% endif %}
+
 {% endblock %}
 

@@ -62,11 +62,9 @@ class ContentType extends AbstractType
                 'class' => Format::class,
                 'choice_label' => 'name',
                 'query_builder' => fn ($repo) => $repo->createQueryBuilder('f')
-                    ->andWhere('LOWER(f.name) NOT IN (:videoNames)')
-                    ->setParameter('videoNames', ['vidéo', 'video'])
                     ->orderBy('f.sortOrder', 'ASC')
                     ->addOrderBy('f.name', 'ASC'),
-                'help' => 'Les vidéos se créent via « Dérush vidéo » ou la liste Vidéos.',
+                'help' => 'Pour les vidéos : la date ici correspond à la date de publication. Le dérush sert ensuite à lancer le montage (Asana).',
             ])
             ->add('status', EntityType::class, [
                 'label' => 'Statut (réglage manuel)',

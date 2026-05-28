@@ -248,10 +248,7 @@
         {% if showArchives %}
             <a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Contenus à venir</a>
         {% endif %}
-        <span style="display: inline-flex; gap: 0.35rem; flex-wrap: wrap;">
-            <a href="{{ path('app_content_new') }}?client={{ client.id }}" class="btn btn-sm">+ Nouveau contenu</a>
-            <a href="{{ path('app_derush_index', {client: client.id}) }}" class="btn btn-sm" style="background:#64748b;">+ Vidéo</a>
-        </span>
+        <a href="{{ path('app_content_new') }}?client={{ client.id }}" class="btn btn-sm">+ Nouveau contenu</a>
     </p>
     <table class="client-contents-meta-table">
         <thead>

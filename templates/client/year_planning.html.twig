@@ -395,47 +395,41 @@
             max-height: none;
             overflow: visible;
         }
-        .year-week-contents {
-            overflow: hidden;
-        }
-        /* Impression : garder la même logique que l’écran
-           - 1 jour : bulle horizontale sur 2 lignes
-           - multi-jours : bulle verticale (peut prendre toute la hauteur)
-           - contenus à droite des bulles
+        /* Impression : priorité lisibilité événements.
+           Sur A4 (12 colonnes), on ne peut pas tout lire (événements + contenus).
+           On masque donc les contenus et on laisse tout l’espace aux événements.
         */
+        .year-week-contents {
+            display: none !important;
+        }
         .year-week-cell__inner {
-            display: grid;
-            grid-template-columns: auto minmax(0, 1fr);
-            grid-template-areas: "events contents";
+            display: block;
         }
         .year-week-events {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             gap: 1mm;
-            padding-right: 1mm;
-            width: 36mm;
+            width: 100%;
         }
         .year-event--inline {
-            max-width: 36mm;
+            max-width: 100%;
             white-space: normal;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-box-orient: vertical;
-            -webkit-line-clamp: 2;
-            font-size: 6.6pt;
-            line-height: 1.15;
-            padding: 0.9mm 1.1mm;
+            overflow: visible;
+            display: block;
+            font-size: 7.2pt;
+            line-height: 1.18;
+            padding: 1mm 1.2mm;
         }
         .year-event--vertical {
             max-height: 100%;
         }
         .year-event--vertical {
-            font-size: 7pt;
+            font-size: 7.2pt;
             min-width: 0.95rem;
             max-width: 1.15rem;
             min-height: 1.4rem;
-            max-height: 2.15rem;
+            max-height: 100%;
         }
         .year-week-num {
             color: #374151;
@@ -454,11 +448,7 @@
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
-        .year-content-title {
-            font-size: 5.6pt;
-            line-height: 1.15;
-            -webkit-line-clamp: 1;
-        }
+        .year-content-title { -webkit-line-clamp: 1; }
         .year-planning-table thead th {
             background: #f3f4f6 !important;
             -webkit-print-color-adjust: exact;

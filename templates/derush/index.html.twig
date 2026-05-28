@@ -42,7 +42,7 @@
                             <select name="videos[{{ i }}][client_id]" style="width: 100%;">
                                 <option value="">—</option>
                                 {% for c in clients %}
-                                    <option value="{{ c.id }}">{{ c.name }}</option>
+                                    <option value="{{ c.id }}" {{ defaultClientId is defined and defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
                                 {% endfor %}
                             </select>
                         </td>
@@ -87,7 +87,7 @@
                 <select name="videos[${i}][client_id]" style="width: 100%;">
                     <option value="">—</option>
                     {% for c in clients %}
-                        <option value="{{ c.id }}">{{ c.name }}</option>
+                        <option value="{{ c.id }}" {{ defaultClientId is defined and defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
                     {% endfor %}
                 </select>
             </td>

@@ -33,6 +33,7 @@ class DerushController extends AbstractController
     #[Route('', name: 'app_derush_index', methods: ['GET', 'POST'])]
     public function index(Request $request): Response
     {
+        $defaultClientId = $request->query->getInt('client') ?: null;
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('derush', $request->request->getString('_token'))) {
                 $this->addFlash('error', 'Jeton CSRF invalide.');
@@ -127,6 +128,7 @@ class DerushController extends AbstractController
 
         return $this->render('derush/index.html.twig', [
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
+            'defaultClientId' => $defaultClientId,
         ]);
     }
 

@@ -267,17 +267,53 @@
             {% for content in contents %}
                 <tr>
                     <td style="padding: 0.5rem;">{{ content.scheduledDate|date('d/m/Y') }}</td>
-                    <td style="padding: 0.5rem;">{{ content.title }}</td>
-                    <td style="padding: 0.5rem;">{{ content.format.name }}</td>
-                    <td style="padding: 0.5rem;">
-                        {% if content.status.color starts with '#' %}
-                            <span class="status-badge" style="background: {{ content.status.color }}; color: #ffffff;">{{ content.status.name }}</span>
-                        {% else %}
-                            <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
-                        {% endif %}
-                    </td>
                     <td style="padding: 0.5rem;">
                         {% set fmt = content.format.name|lower %}
+                        {% if fmt == 'vidéo' or fmt == 'video' %}
+                            <strong><a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
+                        {% else %}
+                            <strong><a href="{{ path('app_content_edit', {id: content.id, return_to: app.request.requestUri}) }}" style="color: inherit; text-decoration: underline;">{{ content.title }}</a></strong>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 0.5rem;">{{ content.format.name }}</td>
+                    <td style="padding: 0.5rem;">
+                        <div style="display:flex; align-items:center; gap: 0.4rem; flex-wrap: wrap;">
+                            {% if content.status.color starts with '#' %}
+                                <span class="status-badge" style="background: {{ content.status.color }}; color: #ffffff;">{{ content.status.name }}</span>
+                            {% else %}
+                                <span class="status-badge status-{{ content.status.color }}">{{ content.status.name }}</span>
+                            {% endif %}
+
+                            <button
+                                type="button"
+                                class="btn btn-sm"
+                                style="background:#64748b; padding: 0.2rem 0.5rem;"
+                                title="Changer le statut"
+                                onclick="toggleStatusEditor({{ content.id }})"
+                            >✎</button>
+
+                            <form
+                                id="status-editor-{{ content.id }}"
+                                method="post"
+                                action="{{ path('app_content_change_status', {id: content.id}) }}"
+                                style="display:none; gap: 0.35rem; align-items: center; flex-wrap: wrap;"
+                            >
+                                <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
+                                <select name="statusId" style="min-width: 220px;">
+                                    {% for s in statuses %}
+                                        {% set ok = (fmt == 'vidéo' or fmt == 'video')
+                                            ? (s.workflow == 'video' or s.workflow == 'both')
+                                            : (s.workflow == 'standard' or s.workflow == 'both') %}
+                                        {% if ok %}
+                                            <option value="{{ s.id }}" {{ content.status and s.id == content.status.id ? 'selected' : '' }}>{{ s.name }}</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" class="btn btn-sm">OK</button>
+                            </form>
+                        </div>
+                    </td>
+                    <td style="padding: 0.5rem;">
                         {% if fmt == 'vidéo' or fmt == 'video' %}
                             <a href="{{ path('app_video_show', {id: content.id, return_to: app.request.requestUri}) }}" class="btn btn-sm">Flux vidéo</a>
                         {% else %}
@@ -291,6 +327,14 @@
         </tbody>
     </table>
 </div>
+
+<script>
+function toggleStatusEditor(id) {
+    var el = document.getElementById('status-editor-' + id);
+    if (!el) return;
+    el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'inline-flex' : 'none';
+}
+</script>
 
 <div style="margin-bottom: 1.5rem;">
     <div class="month-nav" style="display: inline-flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">

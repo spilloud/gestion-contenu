@@ -130,10 +130,9 @@
         padding: 1.2rem 0.28rem 0.35rem;
         box-sizing: border-box;
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr);
-        grid-template-areas:
-            "events"
-            "contents";
+        grid-template-columns: auto minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        grid-template-areas: "events contents";
         gap: 0.15rem;
         overflow: hidden;
     }
@@ -195,13 +194,12 @@
     .year-week-events {
         grid-area: events;
         display: flex;
-        flex-direction: row;
+        flex-direction: column;
         flex-wrap: nowrap;
         align-items: flex-start;
         gap: 0.25rem;
         min-height: 0;
-        max-height: 2.6rem;
-        overflow: hidden;
+        overflow: visible;
         flex-shrink: 0;
     }
     .year-week-events--empty {
@@ -224,21 +222,24 @@
         filter: brightness(0.95);
     }
     .year-event--inline {
-        padding: 0.1rem 0.25rem;
-        max-width: 100%;
+        padding: 0.12rem 0.28rem;
+        max-width: 8.2rem;
+        white-space: normal;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: break-word;
     }
     .year-event--vertical {
         writing-mode: vertical-rl;
         text-orientation: mixed;
         transform: rotate(180deg);
         padding: 0.35rem 0.28rem;
-        min-width: 1.35rem;
-        max-width: 1.65rem;
-        min-height: calc(1.75rem + var(--event-span, 2) * 0.65rem);
-        max-height: 4rem;
+        min-width: 1.6rem;
+        max-width: 1.9rem;
+        min-height: calc(2.2rem + var(--event-span, 2) * 0.85rem);
+        max-height: 100%;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -246,60 +247,6 @@
         font-size: 0.72rem;
         line-height: 1.2;
         letter-spacing: 0.02em;
-    }
-
-    .year-event-ref {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 1.2rem;
-        padding: 0.1rem 0.3rem;
-        border-radius: 999px;
-        font-size: 0.62rem;
-        font-weight: 800;
-        border: 1px solid rgba(0, 0, 0, 0.15);
-        color: #0f172a;
-        background: rgba(255, 255, 255, 0.85);
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .year-events-list {
-        margin-top: 0.75rem;
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 0.6rem 0.75rem;
-        font-size: 0.8rem;
-    }
-    .year-events-list h2 {
-        margin: 0 0 0.5rem;
-        font-size: 0.9rem;
-    }
-    .year-events-list ol {
-        margin: 0;
-        padding-left: 1.25rem;
-        columns: 2;
-        column-gap: 1.25rem;
-    }
-    .year-events-list li {
-        break-inside: avoid;
-        margin: 0 0 0.35rem;
-    }
-
-    @media print {
-        .year-events-list {
-            font-size: 0.62rem;
-            padding: 0.45rem 0.55rem;
-        }
-        .year-events-list h2 {
-            font-size: 0.7rem;
-            margin-bottom: 0.35rem;
-        }
-        .year-events-list ol {
-            columns: 3;
-            column-gap: 0.9rem;
-        }
     }
 
     .year-print-header {
@@ -564,14 +511,13 @@
                                     <span class="year-week-num" title="Semaine {{ cell.isoWeek }}">S{{ '%02d'|format(cell.isoWeek) }}</span>
                                     <div class="year-week-events{{ cell.events is empty ? ' year-week-events--empty' : '' }}">
                                         {% for event in cell.events %}
-                                            {% set ref = eventIndexById[event.id]|default(null) %}
                                             <a
                                                 href="{{ path('app_calendar_event_edit', {id: event.id, return_to: app.request.requestUri}) }}"
                                                 class="year-event {{ event.vertical ? 'year-event--vertical' : 'year-event--inline' }}"
                                                 style="background: {{ event.color }};{% if event.vertical %} --event-span: {{ event.daySpan }};{% endif %}"
-                                                title="E{{ ref ?: '?' }} — {{ event.title }} ({{ event.daySpan }} j)"
+                                                title="{{ event.title }} ({{ event.daySpan }} j)"
                                             >
-                                                <span class="year-event-ref" style="border-color: {{ event.color }};">E{{ ref ?: '?' }}</span>
+                                                {{ event.title }}
                                             </a>
                                         {% endfor %}
                                     </div>
@@ -603,22 +549,4 @@
     </table>
 </div>
 </div>
-
-{% if eventList is defined and eventList is not empty %}
-<section class="year-events-list" aria-label="Liste des événements (libellés complets)">
-    <h2>Événements (libellés complets)</h2>
-    <ol>
-        {% for e in eventList %}
-            <li>
-                <strong>E{{ e.index }}</strong>
-                <span style="display:inline-block; width:10px; height:10px; border-radius:3px; background: {{ e.color }}; border: 1px solid rgba(0,0,0,0.15); vertical-align: middle; margin: 0 6px;"></span>
-                {{ e.title }}
-                {% if e.startDate and e.endDate %}
-                    <span style="color: var(--muted);">({{ e.startDate|date('d/m') }}→{{ e.endDate|date('d/m') }})</span>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ol>
-</section>
-{% endif %}
 {% endblock %}

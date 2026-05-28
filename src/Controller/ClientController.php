@@ -50,36 +50,6 @@ class ClientController extends AbstractController
             $client->getId()
         );
 
-        // Index des événements pour affichage compact dans la grille (E1, E2, …)
-        // et liste lisible en entier sous le tableau / à l'impression.
-        usort($events, static function ($a, $b): int {
-            $ad = $a->getStartDate()?->format('Y-m-d') ?? '';
-            $bd = $b->getStartDate()?->format('Y-m-d') ?? '';
-            $at = mb_strtolower((string) ($a->getTitle() ?? ''));
-            $bt = mb_strtolower((string) ($b->getTitle() ?? ''));
-            return [$ad, $at] <=> [$bd, $bt];
-        });
-        $eventIndexById = [];
-        $eventList = [];
-        $i = 1;
-        foreach ($events as $event) {
-            $id = $event->getId();
-            if ($id === null) {
-                continue;
-            }
-            $eventIndexById[$id] = $i;
-            $eventList[] = [
-                'index' => $i,
-                'id' => $id,
-                'title' => (string) ($event->getTitle() ?? ''),
-                'startDate' => $event->getStartDate(),
-                'endDate' => $event->getEndDate(),
-                'color' => $event->getColor(),
-                'textColor' => $event->getTextColor(),
-            ];
-            $i++;
-        }
-
         $grid = $this->yearPlanningGridBuilder->build($year, $contents, $events);
 
         return $this->render('client/year_planning.html.twig', [
@@ -89,8 +59,6 @@ class ClientController extends AbstractController
             'nextYear' => $year + 1,
             'grid' => $grid,
             'formatLegend' => YearPlanningGridBuilder::getFormatLegend(),
-            'eventIndexById' => $eventIndexById,
-            'eventList' => $eventList,
         ]);
     }
 

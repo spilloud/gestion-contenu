@@ -128,7 +128,7 @@ class ClientController extends AbstractController
             'calendarMonth' => $calendarMonth,
             'calendarYear' => $calendarYear,
             'calendarMonthStart' => $calendarMonthStart,
-            'statuses' => $this->statusRepository->findAllOrdered(),
+            'statuses' => $this->statusRepository->findForWorkflow(\App\Entity\Status::WORKFLOW_STANDARD),
         ]);
     }
 

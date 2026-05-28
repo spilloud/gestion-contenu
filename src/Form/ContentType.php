@@ -70,11 +70,7 @@ class ContentType extends AbstractType
                 'label' => 'Statut (réglage manuel)',
                 'class' => Status::class,
                 'choice_label' => 'name',
-                'query_builder' => fn () => $this->statusRepository->createQueryBuilder('s')
-                    ->andWhere('s.workflow IN (:workflows)')
-                    ->setParameter('workflows', [Status::WORKFLOW_STANDARD, Status::WORKFLOW_BOTH])
-                    ->orderBy('s.sortOrder', 'ASC')
-                    ->addOrderBy('s.name', 'ASC'),
+                'choices' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_STANDARD),
                 'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ])
             ->add('notes', TextareaType::class, [
@@ -107,6 +103,13 @@ class ContentType extends AbstractType
             }
 
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+
+            if ($content->getId() === null && $content->getStatus() === null) {
+                $initial = $this->statusRepository->findOneByName('Brouillon (idée)');
+                if ($initial !== null) {
+                    $content->setStatus($initial);
+                }
+            }
 
             $form = $event->getForm();
             if ($form->has('videoEditor')) {

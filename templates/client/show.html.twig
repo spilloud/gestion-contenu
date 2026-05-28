@@ -286,11 +286,11 @@
                                 class="btn btn-sm"
                                 style="background:#64748b; padding: 0.2rem 0.5rem;"
                                 title="Changer le statut"
-                                onclick="toggleStatusEditor({{ content.id }})"
+                                onclick="toggleStatusEditorList({{ content.id }})"
                             >✎</button>
 
                             <form
-                                id="status-editor-{{ content.id }}"
+                                id="status-editor-list-{{ content.id }}"
                                 method="post"
                                 action="{{ path('app_content_change_status', {id: content.id}) }}"
                                 style="display:none; gap: 0.35rem; align-items: center; flex-wrap: wrap;"
@@ -326,8 +326,8 @@
 </div>
 
 <script>
-function toggleStatusEditor(id) {
-    var el = document.getElementById('status-editor-' + id);
+function toggleStatusEditorList(id) {
+    var el = document.getElementById('status-editor-list-' + id);
     if (!el) return;
     el.style.display = (el.style.display === 'none' || el.style.display === '') ? 'inline-flex' : 'none';
 }

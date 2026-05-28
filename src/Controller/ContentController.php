@@ -174,9 +174,7 @@ class ContentController extends AbstractController
 
             if (!$isVideo) {
                 $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
-                if ($content->getStatus() === null) {
-                    $content->setStatus($this->findInitialStandardStatus());
-                }
+                $content->setStatus($this->findInitialStandardStatus());
             }
 
             $this->entityManager->persist($content);

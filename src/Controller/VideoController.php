@@ -99,7 +99,8 @@ class VideoController extends AbstractController
         if (!in_array($sort, ['date', 'client'], true)) {
             $sort = 'date';
         }
-        $dir = strtolower($request->query->getString('dir', 'asc')) === 'desc' ? 'DESC' : 'ASC';
+        // Par défaut : les plus récentes en haut.
+        $dir = strtolower($request->query->getString('dir', 'desc')) === 'desc' ? 'DESC' : 'ASC';
 
         return [$sort, $dir];
     }

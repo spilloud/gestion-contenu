@@ -130,7 +130,8 @@
         padding: 1.2rem 0.28rem 0.35rem;
         box-sizing: border-box;
         display: grid;
-        grid-template-columns: 9.2rem minmax(0, 1fr);
+        /* % pour tenir dans la case (~8 % de la table) : une colonne fixe en rem écrasait les posts */
+        grid-template-columns: minmax(0, 38%) minmax(0, 62%);
         grid-template-rows: minmax(0, 1fr);
         grid-template-areas: "events contents";
         gap: 0.15rem;
@@ -148,6 +149,7 @@
     }
     .year-week-contents {
         grid-area: contents;
+        min-width: 0;
         min-height: 0;
         overflow-x: hidden;
         overflow-y: auto;
@@ -198,9 +200,9 @@
         flex-wrap: nowrap;
         align-items: flex-start;
         gap: 0.25rem;
+        min-width: 0;
         min-height: 0;
-        overflow: hidden; /* évite de masquer les posts à droite */
-        flex-shrink: 0;
+        overflow: hidden;
     }
     .year-week-events--empty {
         display: none;
@@ -233,8 +235,8 @@
         text-orientation: mixed;
         transform: rotate(180deg);
         padding: 0.35rem 0.28rem;
-        min-width: 1.6rem;
-        max-width: 1.9rem;
+        min-width: 1.1rem;
+        max-width: 100%;
         min-height: calc(2.2rem + var(--event-span, 2) * 0.85rem);
         max-height: 100%;
         overflow: hidden;
@@ -395,10 +397,13 @@
         /* Impression : même logique que l’écran :
            événements à gauche, contenus à droite (contenus compactés).
         */
-        .year-week-contents { display: block; }
+        .year-week-contents {
+            display: block;
+            min-width: 0;
+        }
         .year-week-cell__inner {
             display: grid;
-            grid-template-columns: 45mm minmax(0, 1fr);
+            grid-template-columns: minmax(0, 38%) minmax(0, 62%);
             grid-template-areas: "events contents";
         }
         .year-week-events {
@@ -406,7 +411,8 @@
             flex-direction: column;
             align-items: flex-start;
             gap: 1mm;
-            width: 45mm;
+            min-width: 0;
+            max-width: 100%;
         }
         .year-event--inline {
             max-width: 100%;

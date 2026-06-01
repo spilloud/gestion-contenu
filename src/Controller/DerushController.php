@@ -9,8 +9,9 @@ use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
-use App\Service\AsanaService;
 use App\Service\ContentWorkflowService;
+use App\Service\VideoAssigneeResolver;
+use App\Service\VideoMontageAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,8 +28,9 @@ class DerushController extends AbstractController
         private readonly ContentRepository $contentRepository,
         private readonly FormatRepository $formatRepository,
         private readonly StatusRepository $statusRepository,
-        private readonly AsanaService $asanaService,
         private readonly ContentWorkflowService $contentWorkflowService,
+        private readonly VideoAssigneeResolver $videoAssigneeResolver,
+        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
     ) {
     }
 
@@ -78,11 +80,11 @@ class DerushController extends AbstractController
                     continue;
                 }
 
-                $this->contentWorkflowService->applyManualStatusChange($content, $statusMontageAFaire, 'derush');
+                $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
                 if ($globalRushesUrl !== null) {
                     $content->setVideoRushesUrl($globalRushesUrl);
                 }
-                $content->setUpdatedAt(new \DateTimeImmutable());
+                $this->contentWorkflowService->applyManualStatusChange($content, $statusMontageAFaire, 'derush');
                 $touchedContents[] = $content;
                 $plannedMoved++;
             }
@@ -108,13 +110,7 @@ class DerushController extends AbstractController
                     ->setVideoHasSubtitles(($row['has_subtitles'] ?? '') === '1')
                     ->setVideoRushesUrl($globalRushesUrl);
 
-                // Auto-assign monteur et CM depuis le client si définis.
-                if ($client->getEditor() !== null) {
-                    $content->setVideoEditor($client->getEditor());
-                }
-                if ($client->getCommunityManager() !== null) {
-                    $content->setVideoCommunityManager($client->getCommunityManager());
-                }
+                $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
 
                 $this->entityManager->persist($content);
                 $touchedContents[] = $content;
@@ -130,22 +126,10 @@ class DerushController extends AbstractController
                 }
                 $this->entityManager->flush();
 
-                // Création des tâches Asana (best-effort).
-                $fallbackAssignee = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
                 $asanaCreated = 0;
                 foreach ($touchedContents as $content) {
-                    if ($content->getAsanaTaskGid()) {
-                        continue;
-                    }
-                    $url = $this->generateUrl('app_video_show', ['id' => $content->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
-                    $gid = $this->asanaService->createTaskForVideo(
-                        $content,
-                        $url,
-                        $fallbackAssignee === false ? null : (string) $fallbackAssignee,
-                    );
-                    if ($gid) {
-                        $content->setAsanaTaskGid($gid);
-                        $asanaCreated++;
+                    if ($this->montageAsanaTrigger->ensureWhenMontageQueued($content, false)) {
+                        ++$asanaCreated;
                     }
                 }
                 if ($asanaCreated > 0) {
@@ -163,8 +147,17 @@ class DerushController extends AbstractController
                 }
                 if ($asanaCreated > 0) {
                     $this->addFlash('success', sprintf('%d tâche(s) Asana créée(s).', $asanaCreated));
-                } elseif ($this->asanaService->isEnabled()) {
-                    $this->addFlash('error', 'Aucune tâche Asana créée (mapping client→projet ou assignee manquant).');
+                } elseif (getenv('ASANA_ACCESS_TOKEN') !== false && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
+                    $stillMissing = false;
+                    foreach ($touchedContents as $c) {
+                        if ($c->getStatus()?->getName() === 'Montage à faire' && $c->getAsanaTaskGid() === null) {
+                            $stillMissing = true;
+                            break;
+                        }
+                    }
+                    if ($stillMissing) {
+                        $this->addFlash('error', 'Aucune tâche Asana montage (projet client, monteur Asana ou API).');
+                    }
                 }
                 return $this->redirectToRoute('app_calendar', ['formats' => [$videoFormat->getId()]]);
             }

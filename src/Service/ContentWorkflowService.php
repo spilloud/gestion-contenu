@@ -21,6 +21,7 @@ final class ContentWorkflowService
         private readonly ContentFormatHelper $formatHelper,
         private readonly AsanaService $asanaService,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
+        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly Security $security,
         private readonly RequestStack $requestStack,
     ) {
@@ -184,6 +185,10 @@ final class ContentWorkflowService
             return;
         }
 
+        if ($to === 'Montage à faire') {
+            $this->montageAsanaTrigger->ensureWhenMontageQueued($content, false);
+        }
+
         $gid = $content->getAsanaTaskGid();
         if ($gid) {
             $user = $this->currentUser();
@@ -193,6 +198,8 @@ final class ContentWorkflowService
         }
 
         $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
+
+        $this->entityManager->flush();
     }
 
     private function persistLog(Content $content, string $type, string $label, ?string $detail): void

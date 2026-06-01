@@ -27,6 +27,7 @@ final class ContentWorkflowRegistry
      * @var list<array{label: string, statuses: list<string>}>
      */
     public const VIDEO_PHASES = [
+        ['label' => 'Planif.', 'statuses' => ['Tournage à prévoir']],
         ['label' => 'Dérush', 'statuses' => ['Brouillon (Dérush)', 'Rushs / à dispatcher']],
         ['label' => 'Montage', 'statuses' => ['Montage à faire', 'Montage en cours', 'Retouches (Monteur)']],
         ['label' => 'Production', 'statuses' => ['À valider (Prod)', 'Sous-titrage (SubMagic)', 'Prépa CM (sans sous-titres)']],
@@ -37,6 +38,7 @@ final class ContentWorkflowRegistry
 
     /** @var list<string> */
     public const VIDEO_ORDER = [
+        'Tournage à prévoir',
         'Brouillon (Dérush)',
         'Rushs / à dispatcher',
         'Montage à faire',
@@ -231,6 +233,9 @@ final class ContentWorkflowRegistry
     private function videoActions(Content $content, string $statusName): array
     {
         return match ($statusName) {
+            'Tournage à prévoir' => [
+                ['id' => 'derush_launch_montage', 'label' => 'Dérush fait — lancer le montage', 'variant' => 'primary', 'group' => null],
+            ],
             'Brouillon (Dérush)' => [
                 ['id' => 'rushes_ready', 'label' => 'Rushs prêtes — à dispatcher', 'variant' => 'primary', 'group' => null],
             ],
@@ -316,6 +321,12 @@ final class ContentWorkflowRegistry
     private function videoTransitions(): array
     {
         return [
+            'derush_launch_montage' => [
+                'from' => ['Tournage à prévoir'],
+                'to' => 'Montage à faire',
+                'label' => 'Dérush fait — lancer le montage',
+                'effects' => [],
+            ],
             'rushes_ready' => [
                 'from' => ['Brouillon (Dérush)'],
                 'to' => 'Rushs / à dispatcher',

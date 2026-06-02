@@ -51,6 +51,48 @@
         background: var(--card-bg);
         height: 110px;
     }
+    .portal-calendar .event-bars-row td {
+        padding: 0.35rem 0.35rem 0.1rem;
+        height: auto;
+        background: var(--card-bg);
+    }
+    .event-bars {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.25rem;
+        align-items: stretch;
+    }
+    .event-bar {
+        border-radius: 10px;
+        border: 1px dashed rgba(148, 163, 184, 0.75);
+        background: rgba(99, 102, 241, 0.08);
+        padding: 0.25rem 0.4rem;
+        min-height: 28px;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        overflow: hidden;
+    }
+    body.theme-dark .event-bar {
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(148, 163, 184, 0.4);
+    }
+    .event-bar__dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+    }
+    .event-bar__title {
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 800;
+        font-size: 0.82rem;
+        color: var(--text);
+    }
     .portal-calendar th { background: var(--surface-inset); font-weight: 800; }
     .day-head { display:flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem; }
     .day-event {
@@ -59,15 +101,6 @@
         border-radius: 10px;
         border: 1px solid var(--card-border);
         background: var(--surface-inset);
-    }
-    .day-event--event {
-        border-style: dashed;
-        border-color: rgba(148, 163, 184, 0.8);
-        background: rgba(99, 102, 241, 0.08);
-    }
-    body.theme-dark .day-event--event {
-        background: rgba(99, 102, 241, 0.12);
-        border-color: rgba(148, 163, 184, 0.45);
     }
     .day-event__kind {
         display: inline-flex;
@@ -117,6 +150,27 @@
         </thead>
         <tbody>
             {% for week in 0..5 %}
+                {% set weekStart = gridStart|date_modify('+' ~ (week * 7) ~ ' days') %}
+                {% set weekEnd = weekStart|date_modify('+6 days') %}
+                {% set weekEvents = calendarEvents|filter(e => e.endDate >= weekStart and e.startDate <= weekEnd) %}
+                <tr class="event-bars-row">
+                    <td colspan="7">
+                        <div class="event-bars" aria-label="Événements de la semaine">
+                            {% for event in weekEvents %}
+                                {% set overlapStart = event.startDate > weekStart ? event.startDate : weekStart %}
+                                {% set overlapEnd = event.endDate < weekEnd ? event.endDate : weekEnd %}
+                                {% set startCol = ((overlapStart|date('U') - weekStart|date('U')) / 86400)|round(0, 'floor') + 1 %}
+                                {% set endCol = ((overlapEnd|date('U') - weekStart|date('U')) / 86400)|round(0, 'floor') + 1 %}
+                                <div class="event-bar"
+                                     style="grid-column: {{ startCol }} / {{ endCol + 1 }}; border-left: 4px solid {{ event.color ?: '#94a3b8' }};"
+                                     title="{{ event.title }} ({{ event.startDate|date('d/m') }} → {{ event.endDate|date('d/m') }})">
+                                    <span class="event-bar__dot" style="background: {{ event.color ?: '#94a3b8' }};" aria-hidden="true"></span>
+                                    <span class="event-bar__title">Événement — {{ event.title }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                </tr>
                 <tr>
                     {% for weekday in 0..6 %}
                         {% set offset = week * 7 + weekday %}
@@ -129,19 +183,6 @@
                                 <strong style="color: var(--text);">{{ dayObj|date('d') }}</strong>
                                 <span>{{ dayObj|date('d/m') }}</span>
                             </div>
-
-                            {% for event in calendarEvents|filter(e => e.startDate|date('Y-m-d') <= dayDate and e.endDate|date('Y-m-d') >= dayDate) %}
-                                <div class="day-event day-event--event" style="border-left: 4px solid {{ event.color ?: '#94a3b8' }};">
-                                    <div class="day-event__kind">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-                                            <path d="M16 2v4M8 2v4M3 10h18"></path>
-                                        </svg>
-                                        Événement
-                                    </div>
-                                    <strong>{{ event.title }}</strong>
-                                </div>
-                            {% endfor %}
 
                             {% for content in dayContents %}
                                 <div class="day-event">

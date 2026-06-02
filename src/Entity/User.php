@@ -152,7 +152,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $roles[] = $this->role;
         }
 
-        if (!in_array('ROLE_USER', $roles, true)) {
+        // Les comptes clients sont volontairement isolés: pas de ROLE_USER implicite.
+        // L'accès est géré uniquement via ROLE_CLIENT + /agenda.
+        $isClient = in_array(self::ROLE_CLIENT, $roles, true);
+        if (!$isClient && !in_array('ROLE_USER', $roles, true)) {
             $roles[] = 'ROLE_USER';
         }
 

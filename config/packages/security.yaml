@@ -42,5 +42,5 @@ security:
         - { path: ^/api/ai, roles: PUBLIC_ACCESS }
         - { path: ^/agenda, roles: ROLE_CLIENT }
         - { path: ^/admin/users, roles: ROLE_ADMIN }
-        - { path: ^/admin, roles: ROLE_USER, allow_if: "not is_granted('ROLE_CLIENT')" }
-        - { path: ^/, roles: ROLE_USER, allow_if: "not is_granted('ROLE_CLIENT')" }
+        - { path: ^/admin, roles: ROLE_USER }
+        - { path: ^/, roles: ROLE_USER }

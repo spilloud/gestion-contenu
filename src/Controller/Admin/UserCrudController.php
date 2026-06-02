@@ -74,7 +74,9 @@ class UserCrudController extends AbstractController
             $user->setName($name);
             $user->setEmail($email);
             $this->applyAccountTypeFromRequest($user, $request, $roles);
-            $user->setRole('ROLE_USER');
+            if (!$user->isClientAccount()) {
+                $user->setRole('ROLE_USER');
+            }
             $user->setAsanaUserGid(trim($request->request->getString('asanaUserGid')) ?: null);
             $user->setPassword($this->passwordHasher->hashPassword($user, $password));
 
@@ -162,6 +164,7 @@ class UserCrudController extends AbstractController
         $isClientAccount = $request->request->getBoolean('isClientAccount');
         if ($isClientAccount) {
             $user->setRoles([User::ROLE_CLIENT]);
+            $user->setRole(User::ROLE_CLIENT);
             $user->setAsanaUserGid(null);
             $user->clearClientAccesses();
 
@@ -181,6 +184,7 @@ class UserCrudController extends AbstractController
         }
 
         $user->setRoles($osmoseRoles);
+        $user->setRole('ROLE_USER');
         $user->clearClientAccesses();
     }
 

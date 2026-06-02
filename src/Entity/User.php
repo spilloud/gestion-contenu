@@ -147,14 +147,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $roles = $this->roles ?? [];
 
+        $isClient = in_array(self::ROLE_CLIENT, $roles, true);
+
         // Backward compatibility: keep legacy single role if present.
-        if ($this->role !== null && $this->role !== '' && !in_array($this->role, $roles, true)) {
+        // IMPORTANT: pour les comptes clients, on ignore le champ legacy `role`
+        // afin d'éviter de ré-injecter ROLE_USER et d'ouvrir l'accès.
+        if (!$isClient && $this->role !== null && $this->role !== '' && !in_array($this->role, $roles, true)) {
             $roles[] = $this->role;
         }
 
         // Les comptes clients sont volontairement isolés: pas de ROLE_USER implicite.
         // L'accès est géré uniquement via ROLE_CLIENT + /agenda.
-        $isClient = in_array(self::ROLE_CLIENT, $roles, true);
         if (!$isClient && !in_array('ROLE_USER', $roles, true)) {
             $roles[] = 'ROLE_USER';
         }

@@ -28,6 +28,9 @@ class DefaultController extends AbstractController
         $entityManager = $contentRepository->getEntityManager();
         $statusRepository = $entityManager->getRepository(Status::class);
         $user = $this->getUser();
+        if ($user instanceof User && $user->isClientAccount()) {
+            return $this->redirectToRoute('app_client_agenda_home');
+        }
         $roles = $user instanceof User ? $user->getRoles() : [];
         $isAdmin = in_array(User::ROLE_ADMIN, $roles, true);
         $isCm = in_array(User::ROLE_CM, $roles, true);

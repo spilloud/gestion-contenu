@@ -627,7 +627,7 @@
             {% for message in app.flashes('error') %}
                 <div class="flash-error">{{ message }}</div>
             {% endfor %}
-            {% block body %}{% endblock %}
+            {{ block('body') }}
         </div>
     {% else %}
     <div class="layout">

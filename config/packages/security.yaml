@@ -20,6 +20,7 @@ security:
                 check_path: /login
                 default_target_path: app_dashboard
                 always_use_default_target_path: true
+                success_handler: App\Security\LoginSuccessHandler
                 enable_csrf: true
                 csrf_token_id: authenticate
                 failure_path: app_login
@@ -40,8 +41,6 @@ security:
         - { path: ^/mot-de-passe-oublie, roles: PUBLIC_ACCESS }
         - { path: ^/reinitialiser-mot-de-passe, roles: PUBLIC_ACCESS }
         - { path: ^/api/ai, roles: PUBLIC_ACCESS }
-        - { path: ^/$, roles: ROLE_CLIENT }
-        - { path: ^/dashboard$, roles: ROLE_CLIENT }
         - { path: ^/agenda, roles: ROLE_CLIENT }
         - { path: ^/admin/users, roles: ROLE_ADMIN }
         - { path: ^/admin, roles: ROLE_USER }

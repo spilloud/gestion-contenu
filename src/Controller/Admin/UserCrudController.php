@@ -2,7 +2,9 @@
 
 namespace App\Controller\Admin;
 
+use App\Entity\Client;
 use App\Entity\User;
+use App\Repository\ClientRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +18,7 @@ class UserCrudController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UserPasswordHasherInterface $passwordHasher,
+        private readonly ClientRepository $clientRepository,
     ) {
     }
 
@@ -24,8 +27,19 @@ class UserCrudController extends AbstractController
     {
         $users = $this->entityManager->getRepository(User::class)->findBy([], ['name' => 'ASC']);
 
+        $clientUsers = [];
+        $osmoseUsers = [];
+        foreach ($users as $u) {
+            if ($u instanceof User && $u->isClientAccount()) {
+                $clientUsers[] = $u;
+            } else {
+                $osmoseUsers[] = $u;
+            }
+        }
+
         return $this->render('admin/user/index.html.twig', [
-            'users' => $users,
+            'osmoseUsers' => $osmoseUsers,
+            'clientUsers' => $clientUsers,
         ]);
     }
 
@@ -59,7 +73,7 @@ class UserCrudController extends AbstractController
             $roles = $this->extractRolesFromRequest($request);
             $user->setName($name);
             $user->setEmail($email);
-            $user->setRoles($roles);
+            $this->applyAccountTypeFromRequest($user, $request, $roles);
             $user->setRole('ROLE_USER');
             $user->setAsanaUserGid(trim($request->request->getString('asanaUserGid')) ?: null);
             $user->setPassword($this->passwordHasher->hashPassword($user, $password));
@@ -73,6 +87,7 @@ class UserCrudController extends AbstractController
 
         return $this->render('admin/user/form.html.twig', [
             'user' => $user,
+            'clients' => $this->clientRepository->findAllOrderedByClientName(),
         ]);
     }
 
@@ -104,7 +119,7 @@ class UserCrudController extends AbstractController
             $roles = $this->extractRolesFromRequest($request);
             $user->setName($name);
             $user->setEmail($email);
-            $user->setRoles($roles);
+            $this->applyAccountTypeFromRequest($user, $request, $roles);
             $user->setAsanaUserGid(trim($request->request->getString('asanaUserGid')) ?: null);
 
             if ($password !== '') {
@@ -119,6 +134,7 @@ class UserCrudController extends AbstractController
 
         return $this->render('admin/user/form.html.twig', [
             'user' => $user,
+            'clients' => $this->clientRepository->findAllOrderedByClientName(),
         ]);
     }
 
@@ -136,6 +152,36 @@ class UserCrudController extends AbstractController
         }
 
         return $roles;
+    }
+
+    /**
+     * @param string[] $osmoseRoles
+     */
+    private function applyAccountTypeFromRequest(User $user, Request $request, array $osmoseRoles): void
+    {
+        $isClientAccount = $request->request->getBoolean('isClientAccount');
+        if ($isClientAccount) {
+            $user->setRoles([User::ROLE_CLIENT]);
+            $user->setAsanaUserGid(null);
+            $user->clearClientAccesses();
+
+            $clientIds = (array) $request->request->all('client_ids');
+            foreach ($clientIds as $raw) {
+                $clientId = (int) $raw;
+                if ($clientId <= 0) {
+                    continue;
+                }
+                $client = $this->clientRepository->find($clientId);
+                if ($client instanceof Client) {
+                    $user->addClientAccess($client);
+                }
+            }
+
+            return;
+        }
+
+        $user->setRoles($osmoseRoles);
+        $user->clearClientAccesses();
     }
 
     #[Route('/{id}/supprimer', name: 'app_admin_user_delete', requirements: ['id' => '\\d+'], methods: ['POST'])]

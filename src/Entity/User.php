@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -15,6 +17,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public const ROLE_ADMIN = 'ROLE_ADMIN';
     public const ROLE_CM = 'ROLE_CM';
     public const ROLE_EDITOR = 'ROLE_EDITOR';
+    public const ROLE_CLIENT = 'ROLE_CLIENT';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -51,11 +54,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $asanaUserGid = null;
 
+    /**
+     * Comptes clients : accès lecture seule à un ou plusieurs clients.
+     *
+     * @var Collection<int, Client>
+     */
+    #[ORM\ManyToMany(targetEntity: Client::class)]
+    #[ORM\JoinTable(name: 'client_user_access')]
+    #[ORM\JoinColumn(name: 'user_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    #[ORM\InverseJoinColumn(name: 'client_id', referencedColumnName: 'id', onDelete: 'CASCADE')]
+    private Collection $clientAccesses;
+
     private ?string $plainPassword = null;
 
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->clientAccesses = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -212,6 +227,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function isEditor(): bool
     {
         return in_array(self::ROLE_EDITOR, $this->getRoles(), true);
+    }
+
+    public function isClientAccount(): bool
+    {
+        return in_array(self::ROLE_CLIENT, $this->getRoles(), true);
+    }
+
+    /**
+     * @return Collection<int, Client>
+     */
+    public function getClientAccesses(): Collection
+    {
+        return $this->clientAccesses;
+    }
+
+    public function clearClientAccesses(): static
+    {
+        $this->clientAccesses->clear();
+
+        return $this;
+    }
+
+    public function addClientAccess(Client $client): static
+    {
+        if (!$this->clientAccesses->contains($client)) {
+            $this->clientAccesses->add($client);
+        }
+
+        return $this;
+    }
+
+    public function removeClientAccess(Client $client): static
+    {
+        $this->clientAccesses->removeElement($client);
+
+        return $this;
     }
 
     public function getAsanaUserGid(): ?string

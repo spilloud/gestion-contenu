@@ -1,0 +1,197 @@
+{# extrait du planning annuel client, version lecture seule (pas de liens) #}
+<style>
+    .year-planning-wrap {
+        overflow-x: auto;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 0.5rem;
+    }
+    .year-planning-table {
+        width: 100%;
+        min-width: 1200px;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 0.74rem;
+        line-height: 1.25;
+    }
+    .year-planning-table thead th {
+        background: var(--surface-inset);
+        border: 1px solid var(--card-border);
+        padding: 0.5rem 0.25rem;
+        font-weight: 700;
+        text-align: center;
+        font-size: 0.82rem;
+    }
+    .year-week-cell {
+        border: 1px solid var(--card-border);
+        vertical-align: top;
+        padding: 0;
+        height: 9rem;
+        min-height: 9rem;
+        width: 8.33%;
+        background: var(--card-bg);
+        position: relative;
+    }
+    .year-week-cell--empty { background: rgba(148, 163, 184, 0.06); }
+    body.theme-dark .year-week-cell--empty { background: rgba(15, 23, 42, 0.4); }
+    .year-week-cell__inner {
+        position: relative;
+        height: 100%;
+        min-height: 9rem;
+        padding: 1.2rem 0.28rem 0.35rem;
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: minmax(0, 38%) minmax(0, 62%);
+        grid-template-rows: minmax(0, 1fr);
+        grid-template-areas: "events contents";
+        gap: 0.15rem;
+        overflow: hidden;
+    }
+    .year-week-num {
+        position: absolute;
+        top: 0.2rem;
+        right: 0.3rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--muted);
+        line-height: 1;
+        z-index: 2;
+    }
+    .year-week-contents {
+        grid-area: contents;
+        min-width: 0;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        align-self: stretch;
+    }
+    .year-week-contents ul { margin: 0; padding: 0; list-style: none; }
+    .year-week-contents li { margin-bottom: 0.2rem; }
+    .year-content-link {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.3rem;
+        color: var(--text);
+        text-decoration: none;
+        min-width: 0;
+    }
+    .year-content-format {
+        flex-shrink: 0;
+        width: 0.5rem;
+        height: 0.5rem;
+        margin-top: 0.12rem;
+        border-radius: 2px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+    .year-content-title {
+        flex: 1;
+        min-width: 0;
+        line-height: 1.2;
+        white-space: normal;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        word-break: break-word;
+    }
+    .year-week-events {
+        grid-area: events;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        gap: 0.25rem;
+        min-width: 0;
+        min-height: 0;
+        overflow: hidden;
+    }
+    .year-week-events--empty { display: none; }
+    .year-event {
+        display: block;
+        text-decoration: none;
+        border-radius: 3px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        line-height: 1.15;
+        box-sizing: border-box;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #fff;
+    }
+    .year-event--inline {
+        padding: 0.12rem 0.28rem;
+        max-width: 100%;
+        white-space: normal;
+        overflow: hidden;
+        word-break: break-word;
+    }
+    .year-event--vertical {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        padding: 0.35rem 0.28rem;
+        min-width: 1.1rem;
+        max-width: 100%;
+        min-height: calc(2.2rem + var(--event-span, 2) * 0.85rem);
+        max-height: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex-shrink: 0;
+        font-size: 0.72rem;
+        line-height: 1.2;
+        letter-spacing: 0.02em;
+    }
+</style>
+
+<div class="year-planning-wrap">
+    <table class="year-planning-table">
+        <thead>
+            <tr>
+                {% for monthNum, monthLabel in grid.months %}
+                    <th>{{ monthLabel }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in 0..(grid.rowCount - 1) %}
+                <tr>
+                    {% for monthNum, monthLabel in grid.months %}
+                        {% set cell = grid.grid[monthNum][row] ?? null %}
+                        <td class="year-week-cell{{ cell ? '' : ' year-week-cell--empty' }}">
+                            {% if cell %}
+                                <div class="year-week-cell__inner">
+                                    <span class="year-week-num" title="Semaine {{ cell.isoWeek }}">S{{ '%02d'|format(cell.isoWeek) }}</span>
+                                    <div class="year-week-events{{ cell.events is empty ? ' year-week-events--empty' : '' }}">
+                                        {% for event in cell.events %}
+                                            <span
+                                                class="year-event {{ event.vertical ? 'year-event--vertical' : 'year-event--inline' }}"
+                                                style="background: {{ event.color }};{% if event.vertical %} --event-span: {{ event.daySpan }};{% endif %}"
+                                                title="{{ event.title }} ({{ event.daySpan }} j)"
+                                            >{{ event.title }}</span>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="year-week-contents">
+                                        {% if cell.contents is not empty %}
+                                            <ul>
+                                                {% for content in cell.contents %}
+                                                    <li>
+                                                        <span class="year-content-link" title="{{ content.title }}{% if content.formatName %} ({{ content.formatName }}){% endif %}">
+                                                            <span class="year-content-format" style="background: {{ content.formatColor }};" aria-hidden="true"></span>
+                                                            <span class="year-content-title">{{ content.title }}</span>
+                                                        </span>
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+

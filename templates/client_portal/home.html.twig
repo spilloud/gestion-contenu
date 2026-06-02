@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Agenda{% endblock %}
+
+{% block body %}
+<h1>Agenda</h1>
+<p style="color: var(--muted); max-width: 820px;">
+    Sélectionne un client pour consulter l’agenda (lecture seule).
+</p>
+
+<div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem; max-width: 980px;">
+    {% for c in clients %}
+        <a href="{{ path('app_client_agenda_month', {id: c.id, year: 'now'|date('Y'), month: 'now'|date('n')}) }}"
+           class="btn"
+           style="display:flex; justify-content: space-between; align-items:center; padding: 0.9rem 1rem; background: var(--card-bg); border: 1px solid var(--card-border);">
+            <span style="font-weight: 800;">{{ c.name }}</span>
+            <span style="color: var(--muted);">Voir →</span>
+        </a>
+    {% else %}
+        <div style="padding: 1rem; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg); color: var(--muted);">
+            Aucun client n’est associé à ce compte.
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+

@@ -1,0 +1,136 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Agenda — {{ client.name }}{% endblock %}
+
+{% block body %}
+<style>
+    .portal-toolbar {
+        display:flex;
+        align-items:center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .portal-nav {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 0.25rem 0.55rem;
+    }
+    .portal-nav a {
+        text-decoration: none;
+        color: var(--text);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--input-bg);
+        font-weight: 700;
+    }
+    .portal-nav a:hover {
+        background: var(--sidebar-active);
+        color: #fff;
+    }
+    .portal-label {
+        font-weight: 800;
+        min-width: 160px;
+        text-align: center;
+    }
+    .portal-calendar table { width: 100%; border-collapse: collapse; }
+    .portal-calendar th, .portal-calendar td {
+        border: 1px solid var(--card-border);
+        vertical-align: top;
+        padding: 0.35rem;
+        background: var(--card-bg);
+        height: 110px;
+    }
+    .portal-calendar th { background: var(--surface-inset); font-weight: 800; }
+    .day-head { display:flex; justify-content: space-between; color: var(--muted); font-size: 0.85rem; }
+    .day-event {
+        margin-top: 0.35rem;
+        padding: 0.35rem 0.45rem;
+        border-radius: 10px;
+        border: 1px solid var(--card-border);
+        background: var(--surface-inset);
+    }
+    .day-event strong { display:block; margin-bottom: 0.15rem; }
+    .day-event .meta { color: var(--muted); font-size: 0.85rem; }
+</style>
+
+<div class="portal-toolbar">
+    <div>
+        <h1 style="margin:0;">{{ client.name }}</h1>
+        <div style="color: var(--muted);">Agenda — lecture seule</div>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap: 0.5rem; align-items:center;">
+        <div class="portal-nav">
+            <a href="{{ path('app_client_agenda_month', {id: client.id, year: prevMonth|date('Y'), month: prevMonth|date('n')}) }}" title="Mois précédent">‹</a>
+            <span class="portal-label">{{ calendarMonthStart|date('F Y')|capitalize }}</span>
+            <a href="{{ path('app_client_agenda_month', {id: client.id, year: nextMonth|date('Y'), month: nextMonth|date('n')}) }}" title="Mois suivant">›</a>
+        </div>
+        <a class="btn btn-sm" style="background:#64748b;" href="{{ path('app_client_agenda_year', {id: client.id, year: calendarYear}) }}">Vue annuelle {{ calendarYear }}</a>
+        <a class="btn btn-sm" style="background:#64748b;" href="{{ path('app_client_agenda_home') }}">Changer de client</a>
+    </div>
+</div>
+
+{% set gridStart = calendarMonthStart|date_modify('monday this week') %}
+<div class="portal-calendar">
+    <table>
+        <thead>
+            <tr>
+                <th>Lundi</th>
+                <th>Mardi</th>
+                <th>Mercredi</th>
+                <th>Jeudi</th>
+                <th>Vendredi</th>
+                <th>Samedi</th>
+                <th>Dimanche</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in 0..5 %}
+                <tr>
+                    {% for weekday in 0..6 %}
+                        {% set offset = week * 7 + weekday %}
+                        {% set dayObj = gridStart|date_modify('+' ~ offset ~ ' days') %}
+                        {% set dayDate = dayObj|date('Y-m-d') %}
+                        {% set inCurrentMonth = dayObj|date('m') == calendarMonthStart|date('m') %}
+                        {% set dayContents = calendarContents|filter(c => c.scheduledDate and c.scheduledDate|date('Y-m-d') == dayDate) %}
+                        <td style="{{ not inCurrentMonth ? 'opacity:0.55;' : '' }}">
+                            <div class="day-head">
+                                <strong style="color: var(--text);">{{ dayObj|date('d') }}</strong>
+                                <span>{{ dayObj|date('d/m') }}</span>
+                            </div>
+
+                            {% for event in calendarEvents|filter(e => e.startDate|date('Y-m-d') <= dayDate and e.endDate|date('Y-m-d') >= dayDate) %}
+                                <div class="day-event" style="border-left: 4px solid {{ event.color ?: '#94a3b8' }};">
+                                    <strong>{{ event.title }}</strong>
+                                    <div class="meta">Événement</div>
+                                </div>
+                            {% endfor %}
+
+                            {% for content in dayContents %}
+                                <div class="day-event">
+                                    <strong>{{ content.title }}</strong>
+                                    <div class="meta">
+                                        {{ content.format ? content.format.name : '—' }}
+                                        {% if content.status %} · {{ content.status.name }}{% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

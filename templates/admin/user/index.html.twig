@@ -10,6 +10,7 @@
 </p>
 <p><a href="{{ path('app_admin_user_new') }}" class="btn">+ Nouveau</a></p>
 
+<h2 style="margin: 1.25rem 0 0.5rem;">Users Osmose</h2>
 <table class="data-sheet">
     <thead>
         <tr>
@@ -20,7 +21,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for u in users %}
+        {% for u in osmoseUsers %}
             <tr>
                 <td style="padding: 0.75rem;">{{ u.name }}</td>
                 <td style="padding: 0.75rem;">{{ u.email }}</td>
@@ -49,6 +50,51 @@
             </tr>
         {% else %}
             <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun utilisateur.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2 style="margin: 1.75rem 0 0.5rem;">Comptes clients (lecture seule agenda)</h2>
+<p style="color: var(--muted); max-width: 900px; font-size: 0.92rem; margin-top: 0;">
+    Ces comptes ont uniquement accès à <strong>l’agenda</strong> (mois + année) des clients cochés.
+</p>
+<table class="data-sheet">
+    <thead>
+        <tr>
+            <th style="padding: 0.75rem; text-align: left;">Nom</th>
+            <th style="padding: 0.75rem; text-align: left;">Email</th>
+            <th style="padding: 0.75rem; text-align: left;">Clients</th>
+            <th style="padding: 0.75rem; text-align: left;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in clientUsers %}
+            <tr>
+                <td style="padding: 0.75rem;">{{ u.name }}</td>
+                <td style="padding: 0.75rem;">{{ u.email }}</td>
+                <td style="padding: 0.75rem; color: var(--muted); font-size: 0.9rem;">
+                    {% if u.clientAccesses is empty %}
+                        —
+                    {% else %}
+                        {{ u.clientAccesses|map(c => c.name)|join(', ') }}
+                    {% endif %}
+                </td>
+                <td style="padding: 0.75rem;">
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
+                        <a href="{{ path('app_admin_user_edit', {id: u.id}) }}" class="btn btn-sm">Modifier</a>
+                        {% if app.user and app.user.id is same as(u.id) %}
+                            <span style="font-size: 0.82rem; color: var(--muted);">— (vous)</span>
+                        {% else %}
+                            <form method="post" action="{{ path('app_admin_user_delete', {id: u.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer cet utilisateur ? Cette action est définitive.');">
+                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
+                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun compte client.</td></tr>
         {% endfor %}
     </tbody>
 </table>

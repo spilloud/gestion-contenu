@@ -16,10 +16,33 @@
     <label for="password">{{ user.id ? 'Mot de passe (laisser vide pour ne pas changer)' : 'Mot de passe' }}</label>
     <input type="password" id="password" name="password" value="">
 
+    {% set roles = user.roles %}
+    <div style="margin: 1rem 0 0.5rem; padding: 0.85rem; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
+        <strong>Compte client (lecture seule)</strong>
+        <div style="display:grid; gap: 0.35rem; margin-top: 0.5rem;">
+            <label class="check-item" style="display:flex; align-items:center; gap: 0.5rem;">
+                <input type="checkbox" id="isClientAccount" name="isClientAccount" value="1" {{ 'ROLE_CLIENT' in roles ? 'checked' : '' }}>
+                <span>Activer ce compte comme <strong>client</strong> (accès uniquement à l’agenda)</span>
+            </label>
+        </div>
+
+        <div id="clientAccessBlock" style="margin-top: 0.75rem; display: none;">
+            <label for="client_ids"><strong>Clients accessibles</strong></label>
+            <select id="client_ids" name="client_ids[]" multiple size="10" style="width: 100%; min-height: 220px;">
+                {% set selectedIds = user.clientAccesses|map(c => c.id) %}
+                {% for c in clients %}
+                    <option value="{{ c.id }}" {{ c.id in selectedIds ? 'selected' : '' }}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <div style="color: var(--muted); font-size: 0.85rem; margin-top: 0.35rem;">
+                Astuce : maintiens Ctrl (Windows) pour sélectionner plusieurs clients.
+            </div>
+        </div>
+    </div>
+
     <div style="margin: 1rem 0 0.5rem;">
         <strong>Rôles</strong>
         <div style="display:grid; gap: 0.35rem; margin-top: 0.5rem;">
-            {% set roles = user.roles %}
             <label class="check-item" style="display:flex; align-items:center; gap: 0.5rem;">
                 <input type="checkbox" name="isAdmin" value="1" {{ 'ROLE_ADMIN' in roles ? 'checked' : '' }}>
                 <span>Admin (voit tout + peut valider PROD)</span>
@@ -48,5 +71,21 @@
 
     <button type="submit" class="btn">Enregistrer</button>
 </form>
+
+<script>
+    (function initClientAccountForm() {
+        var chk = document.getElementById('isClientAccount');
+        var block = document.getElementById('clientAccessBlock');
+        if (!chk || !block) return;
+
+        function sync() {
+            var isClient = !!chk.checked;
+            block.style.display = isClient ? 'block' : 'none';
+        }
+
+        chk.addEventListener('change', sync);
+        sync();
+    })();
+</script>
 {% endblock %}
 

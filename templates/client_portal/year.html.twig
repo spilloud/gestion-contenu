@@ -1,0 +1,25 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Planning {{ year }} — {{ client.name }}{% endblock %}
+
+{% block body %}
+<div style="display:flex; flex-wrap:wrap; align-items:center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem;">
+    <div>
+        <h1 style="margin:0;">{{ client.name }}</h1>
+        <div style="color: var(--muted);">Planning annuel {{ year }} — lecture seule</div>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap: 0.5rem; align-items:center;">
+        <div class="year-nav no-print" style="display:inline-flex; align-items:center; gap:0.45rem; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 999px; padding: 0.25rem 0.55rem;">
+            <a href="{{ path('app_client_agenda_year', {id: client.id, year: prevYear}) }}" title="Année précédente" style="text-decoration:none;">‹</a>
+            <span style="font-weight:800; min-width: 3.5rem; text-align:center;">{{ year }}</span>
+            <a href="{{ path('app_client_agenda_year', {id: client.id, year: nextYear}) }}" title="Année suivante" style="text-decoration:none;">›</a>
+        </div>
+        <a class="btn btn-sm" style="background:#64748b;" href="{{ path('app_client_agenda_month', {id: client.id, year: 'now'|date('Y'), month: 'now'|date('n')}) }}">Vue mois</a>
+        <a class="btn btn-sm" style="background:#64748b;" href="{{ path('app_client_agenda_home') }}">Changer de client</a>
+    </div>
+</div>
+
+{# Reprend le rendu existant, mais sans liens d’édition #}
+{% include 'client/_year_planning_readonly.html.twig' with {client: client, year: year, prevYear: prevYear, nextYear: nextYear, grid: grid, formatLegend: formatLegend} %}
+{% endblock %}
+

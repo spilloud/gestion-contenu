@@ -60,6 +60,27 @@
         border: 1px solid var(--card-border);
         background: var(--surface-inset);
     }
+    .day-event--event {
+        border-style: dashed;
+        border-color: rgba(148, 163, 184, 0.8);
+        background: rgba(99, 102, 241, 0.08);
+    }
+    body.theme-dark .day-event--event {
+        background: rgba(99, 102, 241, 0.12);
+        border-color: rgba(148, 163, 184, 0.45);
+    }
+    .day-event__kind {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 0.15rem;
+    }
+    .day-event__kind svg { width: 14px; height: 14px; flex-shrink: 0; }
     .day-event strong { display:block; margin-bottom: 0.15rem; }
     .day-event .meta { color: var(--muted); font-size: 0.85rem; }
 </style>
@@ -110,14 +131,27 @@
                             </div>
 
                             {% for event in calendarEvents|filter(e => e.startDate|date('Y-m-d') <= dayDate and e.endDate|date('Y-m-d') >= dayDate) %}
-                                <div class="day-event" style="border-left: 4px solid {{ event.color ?: '#94a3b8' }};">
+                                <div class="day-event day-event--event" style="border-left: 4px solid {{ event.color ?: '#94a3b8' }};">
+                                    <div class="day-event__kind">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                            <path d="M16 2v4M8 2v4M3 10h18"></path>
+                                        </svg>
+                                        Événement
+                                    </div>
                                     <strong>{{ event.title }}</strong>
-                                    <div class="meta">Événement</div>
                                 </div>
                             {% endfor %}
 
                             {% for content in dayContents %}
                                 <div class="day-event">
+                                    <div class="day-event__kind">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                            <path d="M14 2v6h6"></path>
+                                        </svg>
+                                        Contenu
+                                    </div>
                                     <strong>{{ content.title }}</strong>
                                     <div class="meta">
                                         {{ content.format ? content.format.name : '—' }}

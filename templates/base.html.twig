@@ -549,7 +549,87 @@
         {% block importmap %}{{ importmap('app') }}{% endblock %}
     {% endblock %}
 </head>
-<body data-turbo="false">
+{% set isClientPortal = app.user and ('ROLE_CLIENT' in app.user.roles) %}
+<body data-turbo="false" class="{{ isClientPortal ? 'client-portal' : '' }}">
+    {% if isClientPortal %}
+        <style>
+            .client-portal-header {
+                background: linear-gradient(135deg, #140b2e, #1c1040 55%, #3b1c78);
+                color: #fff;
+                padding: 1rem 1.25rem;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            }
+            .client-portal-header__inner {
+                max-width: 1200px;
+                margin: 0 auto;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.75rem;
+                flex-wrap: wrap;
+            }
+            .client-portal-brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.75rem;
+                text-decoration: none;
+                color: inherit;
+            }
+            .client-portal-brand img { width: 160px; height: auto; object-fit: contain; }
+            .client-portal-actions {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
+            .client-portal-actions a {
+                color: #fff;
+                text-decoration: none;
+                border: 1px solid rgba(255, 255, 255, 0.22);
+                background: rgba(255, 255, 255, 0.08);
+                padding: 0.45rem 0.65rem;
+                border-radius: 10px;
+                font-weight: 700;
+                font-size: 0.9rem;
+            }
+            .client-portal-actions a:hover {
+                background: rgba(255, 255, 255, 0.14);
+                border-color: rgba(255, 255, 255, 0.3);
+            }
+            .client-portal-main {
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 1.25rem;
+            }
+            .client-portal .layout { display: block; }
+            .client-portal .page-content { padding: 0; }
+        </style>
+
+        <header class="client-portal-header">
+            <div class="client-portal-header__inner">
+                <a class="client-portal-brand" href="{{ path('app_client_agenda_home') }}">
+                    <img src="{{ asset('logo-login-noir-violet.svg') }}" alt="Osmose Marketing">
+                </a>
+                <div class="client-portal-actions">
+                    <a href="{{ path('app_client_agenda_home') }}">Agenda</a>
+                    <a href="{{ path('app_logout') }}">Déconnexion</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="client-portal-main">
+            {% for message in app.flashes('success') %}
+                <div class="flash-success">{{ message }}</div>
+            {% endfor %}
+            {% for message in app.flashes('error') %}
+                <div class="flash-error">{{ message }}</div>
+            {% endfor %}
+            {% block body %}{% endblock %}
+        </div>
+    {% else %}
     <div class="layout">
         <nav class="sidebar">
             <div class="brand">
@@ -733,5 +813,6 @@
             }
         })();
     </script>
+    {% endif %}
 </body>
 </html>

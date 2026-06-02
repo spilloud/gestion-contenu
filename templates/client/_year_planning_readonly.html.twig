@@ -118,6 +118,22 @@
         border: 1px solid rgba(0, 0, 0, 0.1);
         color: #fff;
     }
+    .year-event__tag {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 0.35rem;
+        padding: 0.05rem 0.32rem;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.78);
+        color: #0f172a;
+        font-weight: 900;
+        font-size: 0.6rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        flex-shrink: 0;
+    }
     .year-event--inline {
         padding: 0.12rem 0.28rem;
         max-width: 100%;
@@ -168,7 +184,7 @@
                                                 class="year-event {{ event.vertical ? 'year-event--vertical' : 'year-event--inline' }}"
                                                 style="background: {{ event.color }};{% if event.vertical %} --event-span: {{ event.daySpan }};{% endif %}"
                                                 title="{{ event.title }} ({{ event.daySpan }} j)"
-                                            >{{ event.title }}</span>
+                                            ><span class="year-event__tag">Év.</span>{{ event.title }}</span>
                                         {% endfor %}
                                     </div>
                                     <div class="year-week-contents">

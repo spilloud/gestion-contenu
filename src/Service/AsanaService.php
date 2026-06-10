@@ -454,14 +454,15 @@ class AsanaService
             return -1;
         }
 
-        $taskName = $this->normalizeTitleForMatch((string) ($task['name'] ?? ''));
-        if ($taskName === '') {
+        $rawTaskName = mb_strtolower(trim((string) ($task['name'] ?? '')));
+        $isMontageName = str_contains($rawTaskName, 'montage')
+            || str_contains($rawTaskName, 'monter vid');
+        if (!$isMontageName) {
             return -1;
         }
 
-        $isMontageName = str_contains($taskName, 'montage')
-            || str_contains($taskName, 'monter vid');
-        if (!$isMontageName) {
+        $taskName = $this->normalizeTitleForMatch((string) ($task['name'] ?? ''));
+        if ($taskName === '') {
             return -1;
         }
 

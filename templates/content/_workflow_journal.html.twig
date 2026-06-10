@@ -22,7 +22,7 @@
                         <p class="vw-journal__meta">
                             <time datetime="{{ entry.createdAt|date('c') }}">{{ entry.createdAt|date('d/m/Y à H:i') }}</time>
                             {% if entry.userName and entry.detailLines is empty %}
-                                <span>· {{ entry.userName }}{% if entry.userEmail|default('') %} ({{ entry.userEmail }}){% endif %}</span>
+                                <span>· {{ entry.userName }}</span>
                             {% endif %}
                         </p>
                     </div>

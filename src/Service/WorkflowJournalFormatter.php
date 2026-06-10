@@ -6,16 +6,10 @@ use App\Entity\Content;
 use App\Entity\User;
 
 /**
- * Formate les entrées du journal de parcours (acteur, login, délégation).
+ * Formate les entrées du journal de parcours (acteur, délégation via fiche).
  */
 final class WorkflowJournalFormatter
 {
-    public function __construct(
-        private readonly ContentFormatHelper $formatHelper,
-        private readonly VideoAssigneeResolver $assigneeResolver,
-    ) {
-    }
-
     public function formatActor(?User $user): string
     {
         if ($user === null) {
@@ -23,40 +17,19 @@ final class WorkflowJournalFormatter
         }
 
         $name = trim((string) ($user->getName() ?? ''));
-        $email = trim((string) ($user->getEmail() ?? ''));
-
-        if ($name !== '' && $email !== '') {
-            return $name.' ('.$email.')';
+        if ($name !== '') {
+            return $name;
         }
 
-        return $name !== '' ? $name : ($email !== '' ? $email : '—');
+        $email = trim((string) ($user->getEmail() ?? ''));
+
+        return $email !== '' ? $email : '—';
     }
 
     public function enrichTransitionDetail(Content $content, string $from, string $to, ?User $actor): string
     {
         $lines = [sprintf('%s → %s', $from, $to)];
         $lines[] = 'Par : '.$this->formatActor($actor);
-
-        if (!$this->formatHelper->isVideoContent($content)) {
-            return implode("\n", $lines);
-        }
-
-        $monteur = $content->getVideoEditor();
-        $cm = $this->assigneeResolver->resolveCommunityManagerForDisplay($content);
-
-        if ($this->isMontageRelated($from, $to) && $monteur !== null) {
-            $lines[] = 'Monteur assigné : '.$this->formatActor($monteur);
-            if ($actor !== null && $monteur->getId() !== $actor->getId()) {
-                $lines[] = 'Délégation : '.$this->formatActor($actor).' fait avancer pour le monteur';
-            }
-        }
-
-        if ($this->isCmRelated($from, $to) && $cm !== null) {
-            $lines[] = 'CM assignée : '.$this->formatActor($cm);
-            if ($actor !== null && $cm->getId() !== $actor->getId()) {
-                $lines[] = 'Délégation : '.$this->formatActor($actor).' fait avancer pour la CM';
-            }
-        }
 
         return implode("\n", $lines);
     }
@@ -102,29 +75,5 @@ final class WorkflowJournalFormatter
             preg_split('/\r\n|\r|\n/', trim($detail)) ?: [],
             static fn (string $line): bool => trim($line) !== '',
         ));
-    }
-
-    private function isMontageRelated(string $from, string $to): bool
-    {
-        $montageStatuses = [
-            'Montage à faire',
-            'Montage en cours',
-            'Retouches (Monteur)',
-            'À valider (Prod)',
-        ];
-
-        return in_array($from, $montageStatuses, true) || in_array($to, $montageStatuses, true);
-    }
-
-    private function isCmRelated(string $from, string $to): bool
-    {
-        $cmStatuses = [
-            'Sous-titrage (SubMagic)',
-            'Sous-titres à valider',
-            'À valider (CM)',
-            'Prépa CM (sans sous-titres)',
-        ];
-
-        return in_array($from, $cmStatuses, true) || in_array($to, $cmStatuses, true);
     }
 }

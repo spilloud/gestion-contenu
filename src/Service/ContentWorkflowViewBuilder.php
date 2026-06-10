@@ -28,7 +28,6 @@ final class ContentWorkflowViewBuilder
                 'detailLines' => $this->journalFormatter->splitDetailLines($log->getDetail()),
                 'createdAt' => $log->getCreatedAt(),
                 'userName' => $log->getUser()?->getName(),
-                'userEmail' => $log->getUser()?->getEmail(),
                 'actionType' => $log->getActionType(),
             ];
         }

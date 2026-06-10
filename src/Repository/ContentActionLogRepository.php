@@ -63,7 +63,6 @@ class ContentActionLogRepository extends ServiceEntityRepository
         foreach (array_reverse($logs) as $log) {
             if (!in_array($log->getActionType(), [
                 ContentActionLog::TYPE_TRANSITION,
-                ContentActionLog::TYPE_STEP_BACK,
                 ContentActionLog::TYPE_MANUAL_STATUS,
                 ContentActionLog::TYPE_STATUS_CHANGED,
             ], true)) {
@@ -94,8 +93,9 @@ class ContentActionLogRepository extends ServiceEntityRepository
         }
 
         $detail = trim($detail);
+        $firstLine = trim(strtok($detail, "\r\n"));
 
-        if (preg_match('/^(.+?)\s*→\s*(.+?)(?:\s*\([^)]*\))?\s*$/u', $detail, $matches) !== 1) {
+        if ($firstLine === '' || preg_match('/^(.+?)\s*→\s*(.+?)(?:\s*\([^)]*\))?\s*$/u', $firstLine, $matches) !== 1) {
             return null;
         }
 

@@ -79,7 +79,7 @@ final class ContentAuditSubscriber
 
         if (isset($changeSet['videoEditor'])) {
             [$old, $new] = $changeSet['videoEditor'];
-            $this->logUserChange($entity, 'Délégation montage', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED, $actor);
+            $this->logUserChange($entity, 'Délégation montage', 'Monteur', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED, $actor);
             $this->asanaSyncQueue[] = [
                 'content' => $entity,
                 'type' => 'montage',
@@ -90,7 +90,7 @@ final class ContentAuditSubscriber
 
         if (isset($changeSet['videoCommunityManager'])) {
             [$old, $new] = $changeSet['videoCommunityManager'];
-            $this->logUserChange($entity, 'Délégation CM', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED, $actor);
+            $this->logUserChange($entity, 'Délégation CM', 'Community manager', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED, $actor);
             $this->asanaSyncQueue[] = [
                 'content' => $entity,
                 'type' => 'cm',
@@ -126,8 +126,15 @@ final class ContentAuditSubscriber
         }
     }
 
-    private function logUserChange(Content $entity, string $label, mixed $old, mixed $new, string $actionType, ?User $actor): void
-    {
+    private function logUserChange(
+        Content $entity,
+        string $journalLabel,
+        string $roleLabel,
+        mixed $old,
+        mixed $new,
+        string $actionType,
+        ?User $actor,
+    ): void {
         $oldUser = $old instanceof User ? $old : null;
         $newUser = $new instanceof User ? $new : null;
         if ($oldUser?->getId() === $newUser?->getId()) {
@@ -137,8 +144,8 @@ final class ContentAuditSubscriber
         $this->workflowService->logFieldChange(
             $entity,
             $actionType,
-            $label,
-            $this->journalFormatter->enrichDelegationDetail($label, $oldUser, $newUser, $actor),
+            $journalLabel,
+            $this->journalFormatter->enrichDelegationDetail($roleLabel, $oldUser, $newUser, $actor),
             false,
         );
     }

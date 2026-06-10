@@ -105,7 +105,7 @@ final class AsanaInboundSyncService
                 $content,
                 'Délégation montage (Asana)',
                 $this->journalFormatter->enrichDelegationDetail(
-                    'Asana a réassigné le monteur',
+                    'Monteur',
                     $previous,
                     $user ?? null,
                     null,
@@ -130,7 +130,7 @@ final class AsanaInboundSyncService
             $content,
             'Délégation CM (Asana)',
             $this->journalFormatter->enrichDelegationDetail(
-                'Asana a réassigné la CM',
+                'Community manager',
                 $previous,
                 $user ?? null,
                 null,

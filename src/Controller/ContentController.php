@@ -316,26 +316,13 @@ class ContentController extends AbstractController
         return $this->redirectToRoute('app_calendar');
     }
 
-    #[Route('/{id}/workflow/{action}', name: 'app_content_workflow_transition', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function workflowTransition(Content $content, string $action, Request $request): Response
-    {
-        if (!$this->isCsrfTokenValid('workflow'.$content->getId(), $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Jeton CSRF invalide.');
-
-            return $this->redirectWorkflowBack($content, $request);
-        }
-
-        $result = $this->contentWorkflowService->applyTransition($content, $action);
-        if ($result['ok']) {
-            $this->addFlash('success', 'Étape enregistrée.');
-        } else {
-            $this->addFlash('error', $result['message'] ?? 'Action impossible.');
-        }
-
-        return $this->redirectWorkflowBack($content, $request);
-    }
-
-    #[Route('/{id}/workflow/reculer', name: 'app_content_workflow_step_back', requirements: ['id' => '\d+'], methods: ['POST'])]
+    #[Route(
+        '/{id}/workflow/reculer',
+        name: 'app_content_workflow_step_back',
+        requirements: ['id' => '\d+'],
+        methods: ['POST'],
+        priority: 10,
+    )]
     public function workflowStepBack(Content $content, Request $request): Response
     {
         if (!$this->isCsrfTokenValid('workflow'.$content->getId(), $request->request->getString('_token'))) {
@@ -349,6 +336,30 @@ class ContentController extends AbstractController
             $this->addFlash('success', 'Retour à l\'étape précédente.');
         } else {
             $this->addFlash('error', $result['message'] ?? 'Recul impossible.');
+        }
+
+        return $this->redirectWorkflowBack($content, $request);
+    }
+
+    #[Route(
+        '/{id}/workflow/{action}',
+        name: 'app_content_workflow_transition',
+        requirements: ['id' => '\d+', 'action' => '(?!reculer$)[a-z0-9_]+'],
+        methods: ['POST'],
+    )]
+    public function workflowTransition(Content $content, string $action, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('workflow'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectWorkflowBack($content, $request);
+        }
+
+        $result = $this->contentWorkflowService->applyTransition($content, $action);
+        if ($result['ok']) {
+            $this->addFlash('success', 'Étape enregistrée.');
+        } else {
+            $this->addFlash('error', $result['message'] ?? 'Action impossible.');
         }
 
         return $this->redirectWorkflowBack($content, $request);

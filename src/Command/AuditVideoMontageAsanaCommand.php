@@ -95,19 +95,20 @@ final class AuditVideoMontageAsanaCommand extends Command
 
             $before = $stored;
             $resolved = $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
-            if ($resolved !== null && $resolved !== $before) {
+            $after = $content->getAsanaTaskGid();
+            if ($after !== $before) {
                 $this->entityManager->flush();
-                $io->writeln('  → corrigé : lié à '.$resolved);
-                ++$fixed;
-                continue;
-            }
-            if ($resolved !== null) {
-                $io->writeln('  → corrigé : GID valide '.$resolved);
+                if ($resolved !== null) {
+                    $io->writeln('  → corrigé : lié à '.$resolved);
+                } else {
+                    $io->writeln('  → corrigé : GID invalide effacé (re-liaison au passage en montage)');
+                }
                 ++$fixed;
                 continue;
             }
 
             if ($status === 'Montage à faire' && $this->montageAsanaTrigger->ensureWhenMontageQueued($content)) {
+                $this->entityManager->flush();
                 $io->writeln('  → corrigé : tâche créée '.$content->getAsanaTaskGid());
                 ++$fixed;
             } else {

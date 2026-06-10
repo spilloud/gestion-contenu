@@ -17,6 +17,7 @@ use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowService;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
+use App\Service\VideoMontageAsanaTrigger;
 use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -43,6 +44,7 @@ class ContentController extends AbstractController
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly FormatRepository $formatRepository,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
+        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
     ) {
     }
 
@@ -379,7 +381,9 @@ class ContentController extends AbstractController
             $this->entityManager->flush();
 
             // Synchronisation Asana (best-effort) : ajout du commentaire sur la tâche liée
-            $taskGid = $content->getAsanaTaskGid();
+            $taskGid = $this->isVideoContent($content)
+                ? $this->montageAsanaTrigger->resolveMontageTaskLink($content, true)
+                : $content->getAsanaTaskGid();
             if ($taskGid && $this->isVideoContent($content) && $this->asanaService->isEnabled()) {
                 $authorName = ($user instanceof \App\Entity\User) ? ($user->getName() ?? $user->getUserIdentifier()) : '—';
                 $mention = $authorName ? '@'.$authorName : '';

@@ -22,6 +22,57 @@ final class VideoMontageAsanaTrigger
     }
 
     /**
+     * Valide le GID stocké ou rattache une tâche Asana existante (ex. créée manuellement).
+     *
+     * @return string|null GID Asana utilisable
+     */
+    public function resolveMontageTaskLink(Content $content, bool $flush = false): ?string
+    {
+        if (!$this->formatHelper->isVideoContent($content) || !$this->asanaService->isEnabled()) {
+            return $content->getAsanaTaskGid();
+        }
+
+        if ($content->getId() === null) {
+            return $content->getAsanaTaskGid();
+        }
+
+        $videoUrl = $this->urlGenerator->generate(
+            'app_video_show',
+            ['id' => $content->getId()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        $stored = $content->getAsanaTaskGid();
+        if ($stored !== null && $this->asanaService->isTaskAccessible($stored)) {
+            return $stored;
+        }
+
+        $changed = false;
+        if ($stored !== null) {
+            $content->setAsanaTaskGid(null);
+            $changed = true;
+        }
+
+        $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
+        if ($found !== null) {
+            $content->setAsanaTaskGid($found);
+            $changed = true;
+
+            if ($flush) {
+                $this->entityManager->flush();
+            }
+
+            return $found;
+        }
+
+        if ($changed && $flush) {
+            $this->entityManager->flush();
+        }
+
+        return null;
+    }
+
+    /**
      * Applique le monteur/CM client si manquant, puis crée la tâche Asana montage si besoin.
      *
      * @return bool true si une nouvelle tâche Asana a été créée
@@ -37,7 +88,16 @@ final class VideoMontageAsanaTrigger
 
         $this->assigneeResolver->applyClientTeamDefaultsForForm($content);
 
-        if (!$this->asanaService->isEnabled() || $content->getAsanaTaskGid()) {
+        if (!$this->asanaService->isEnabled()) {
+            if ($flush) {
+                $this->entityManager->flush();
+            }
+
+            return false;
+        }
+
+        $this->resolveMontageTaskLink($content, false);
+        if ($content->getAsanaTaskGid()) {
             if ($flush) {
                 $this->entityManager->flush();
             }

@@ -164,7 +164,7 @@ final class ContentWorkflowService
 
     private function completeMontageAsanaTask(Content $content): void
     {
-        $gid = $content->getAsanaTaskGid();
+        $gid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
         if (!$gid || !$this->asanaService->isEnabled()) {
             return;
         }
@@ -189,7 +189,7 @@ final class ContentWorkflowService
             $this->montageAsanaTrigger->ensureWhenMontageQueued($content, false);
         }
 
-        $gid = $content->getAsanaTaskGid();
+        $gid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
         if ($gid) {
             $user = $this->currentUser();
             $actor = $user instanceof User ? ($user->getName() ?? $user->getUserIdentifier()) : '—';

@@ -14,6 +14,7 @@ final class VideoAsanaAssigneeSync
         private readonly AsanaService $asanaService,
         private readonly VideoAssigneeResolver $assigneeResolver,
         private readonly ContentFormatHelper $formatHelper,
+        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
     ) {
     }
 
@@ -26,7 +27,7 @@ final class VideoAsanaAssigneeSync
             return;
         }
 
-        $taskGid = $content->getAsanaTaskGid();
+        $taskGid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
         if ($taskGid === null || !$this->asanaService->isEnabled()) {
             return;
         }

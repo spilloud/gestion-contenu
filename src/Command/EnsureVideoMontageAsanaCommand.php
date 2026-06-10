@@ -61,7 +61,6 @@ final class EnsureVideoMontageAsanaCommand extends Command
                 ->leftJoin('c.client', 'cl')->addSelect('cl')
                 ->leftJoin('c.videoEditor', 'e')->addSelect('e')
                 ->andWhere('s.name = :status')
-                ->andWhere('c.asanaTaskGid IS NULL')
                 ->setParameter('status', 'Montage à faire');
             if ($clientId > 0) {
                 $qb->andWhere('c.client = :client')->setParameter('client', $clientId);
@@ -78,6 +77,7 @@ final class EnsureVideoMontageAsanaCommand extends Command
         }
 
         $created = 0;
+        $linked = 0;
         $skipped = 0;
         foreach ($contents as $content) {
             if (!$this->formatHelper->isVideoContent($content)) {
@@ -106,14 +106,28 @@ final class EnsureVideoMontageAsanaCommand extends Command
                 ++$skipped;
                 continue;
             }
-            if ($content->getAsanaTaskGid()) {
-                $io->writeln('  → déjà une tâche Asana');
-                ++$skipped;
+            $beforeGid = $content->getAsanaTaskGid();
+            if ($dryRun) {
+                $resolved = $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
+                if ($resolved !== null && $resolved !== $beforeGid) {
+                    $io->writeln('  → dry-run : lierait la tâche Asana '.$resolved);
+                } elseif ($resolved !== null) {
+                    $io->writeln('  → déjà liée à Asana : '.$resolved);
+                } else {
+                    $io->writeln('  → dry-run : tâche Asana à créer');
+                }
                 continue;
             }
 
-            if ($dryRun) {
-                $io->writeln('  → dry-run : tâche Asana à créer');
+            $resolved = $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+            if ($resolved !== null && $resolved !== $beforeGid) {
+                $io->writeln('  → tâche Asana liée : '.$resolved);
+                ++$linked;
+                continue;
+            }
+            if ($resolved !== null) {
+                $io->writeln('  → déjà une tâche Asana valide : '.$resolved);
+                ++$skipped;
                 continue;
             }
 
@@ -126,7 +140,7 @@ final class EnsureVideoMontageAsanaCommand extends Command
             }
         }
 
-        $io->success(sprintf('%d tâche(s) créée(s), %d ignorée(s)/échouée(s).', $created, $skipped));
+        $io->success(sprintf('%d créée(s), %d liée(s), %d ignorée(s)/échouée(s).', $created, $linked, $skipped));
 
         return $created > 0 || $skipped > 0 ? Command::SUCCESS : Command::FAILURE;
     }

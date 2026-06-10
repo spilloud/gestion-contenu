@@ -21,6 +21,13 @@ final class ContentWorkflowRegistry
         ['À valider (Client)', 'À faire valider au client'],
     ];
 
+    /** Statuts conservés en base mais hors parcours standard (recul, barre de progression). */
+    private const VIDEO_LEGACY_STEP_STATUSES = [
+        'Brouillon (Dérush)',
+        'Rushs / à dispatcher',
+        'Montage en cours',
+    ];
+
     /**
      * Phases affichées dans la barre de progression (fiche vidéo).
      *
@@ -28,8 +35,7 @@ final class ContentWorkflowRegistry
      */
     public const VIDEO_PHASES = [
         ['label' => 'Planif.', 'statuses' => ['Tournage à prévoir']],
-        ['label' => 'Dérush', 'statuses' => ['Brouillon (Dérush)', 'Rushs / à dispatcher']],
-        ['label' => 'Montage', 'statuses' => ['Montage à faire', 'Montage en cours', 'Retouches (Monteur)']],
+        ['label' => 'Montage', 'statuses' => ['Montage à faire', 'Retouches (Monteur)', 'Montage en cours', 'Brouillon (Dérush)', 'Rushs / à dispatcher']],
         ['label' => 'Production', 'statuses' => ['À valider (Prod)', 'Sous-titrage (SubMagic)', 'Prépa CM (sans sous-titres)']],
         ['label' => 'Qualité', 'statuses' => ['Sous-titres à valider', 'À valider (CM)']],
         ['label' => 'Client', 'statuses' => ['À valider (Client)', 'À faire valider au client']],
@@ -165,18 +171,29 @@ final class ContentWorkflowRegistry
             return null;
         }
 
-        $previous = $order[$index - 1];
-
-        // Si l'étape précédente est un libellé équivalent, on saute au vrai précédent.
         if ($this->formatHelper->isVideoContent($content)) {
-            foreach (self::VIDEO_EQUIVALENT_STATUS_GROUPS as $group) {
-                if (in_array($previous, $group, true) && $index - 2 >= 0) {
-                    return $order[$index - 2];
-                }
-            }
+            return $this->walkBackInVideoOrder($order, $index);
         }
 
-        return $previous;
+        return $order[$index - 1];
+    }
+
+    /**
+     * @param list<string> $order
+     */
+    private function walkBackInVideoOrder(array $order, int $index): ?string
+    {
+        while ($index > 0) {
+            --$index;
+            $candidate = $order[$index];
+            if (in_array($candidate, self::VIDEO_LEGACY_STEP_STATUSES, true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
     }
 
     /**
@@ -235,67 +252,42 @@ final class ContentWorkflowRegistry
         return match ($statusName) {
             'Tournage à prévoir' => [
                 [
-                    'id' => 'derush_launch_montage',
-                    'label' => 'Demander le montage',
-                    'subtitle' => 'À cliquer dès que les rushs sont sur le KDrive. Crée la tâche Asana pour le monteur assigné.',
+                    'id' => 'montage_request',
+                    'label' => 'Demande de montage (créer la tâche)',
+                    'subtitle' => 'Après le tournage : rushs sur le KDrive. Crée la tâche Asana pour le monteur assigné.',
                     'variant' => 'primary',
                     'group' => null,
                 ],
             ],
-            'Brouillon (Dérush)' => [
+            'Brouillon (Dérush)', 'Rushs / à dispatcher' => [
                 [
-                    'id' => 'rushes_ready',
-                    'label' => 'Rushs prêtes — à dispatcher',
-                    'subtitle' => 'Les rushs sont classées. Étape suivante : demander le montage.',
+                    'id' => 'montage_request',
+                    'label' => 'Demande de montage (créer la tâche)',
+                    'subtitle' => 'Crée la tâche Asana pour le monteur assigné.',
                     'variant' => 'primary',
                     'group' => null,
                 ],
             ],
-            'Rushs / à dispatcher' => [
-                [
-                    'id' => 'montage_queued',
-                    'label' => 'Demander le montage',
-                    'subtitle' => 'Crée la tâche Asana pour le monteur. Ne cliquez pas si le montage n\'est pas encore à lancer.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
-            ],
-            'Montage à faire' => [
-                [
-                    'id' => 'montage_started',
-                    'label' => 'Le monteur a démarré',
-                    'subtitle' => 'Le monteur (ou la prod pour lui) confirme que le montage est en cours.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
+            'Montage à faire', 'Montage en cours' => [
                 [
                     'id' => 'montage_done',
-                    'label' => 'Montage terminé — valider en prod',
-                    'subtitle' => 'Clôture la tâche Asana montage. À cliquer quand le fichier est prêt pour la prod.',
+                    'label' => 'Montage terminé',
+                    'subtitle' => 'Clôture la tâche Asana montage. Fichier prêt pour la validation prod.',
                     'variant' => 'primary',
                     'group' => null,
                 ],
-            ],
-            'Montage en cours' => [
                 [
                     'id' => 'retouches',
-                    'label' => 'Retouches monteur',
+                    'label' => 'Demande de retouches',
                     'subtitle' => 'Le monteur doit corriger avant validation prod.',
                     'variant' => 'secondary',
-                    'group' => null,
-                ],
-                [
-                    'id' => 'montage_done',
-                    'label' => 'Montage terminé — valider en prod',
-                    'subtitle' => 'Clôture la tâche Asana montage.',
-                    'variant' => 'primary',
                     'group' => null,
                 ],
             ],
             'Retouches (Monteur)' => [
                 [
                     'id' => 'montage_done',
-                    'label' => 'Montage terminé — valider en prod',
+                    'label' => 'Montage terminé',
                     'subtitle' => 'Clôture la tâche Asana montage après retouches.',
                     'variant' => 'primary',
                     'group' => null,
@@ -304,15 +296,15 @@ final class ContentWorkflowRegistry
             'À valider (Prod)' => [
                 [
                     'id' => 'subtitles_yes',
-                    'label' => 'Passer au sous-titrage (SubMagic)',
-                    'subtitle' => 'La tâche Asana CM sera créée à l\'étape « Demander la relecture CM ».',
+                    'label' => 'Avec sous-titres (SubMagic)',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => 'subtitles',
                 ],
                 [
                     'id' => 'subtitles_no',
-                    'label' => 'Sans sous-titres — prépa CM',
-                    'subtitle' => 'Pas de SubMagic. Passe directement en préparation CM.',
+                    'label' => 'Sans sous-titres',
+                    'subtitle' => null,
                     'variant' => 'secondary',
                     'group' => 'subtitles',
                 ],
@@ -320,8 +312,8 @@ final class ContentWorkflowRegistry
             'Sous-titrage (SubMagic)' => [
                 [
                     'id' => 'subtitles_review',
-                    'label' => 'Demander la relecture CM',
-                    'subtitle' => 'Crée la tâche Asana pour la CM. Cliquer quand SubMagic est terminé.',
+                    'label' => 'Sous-titres à valider (CM)',
+                    'subtitle' => 'Crée la tâche Asana pour la CM.',
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -329,8 +321,8 @@ final class ContentWorkflowRegistry
             'Prépa CM (sans sous-titres)' => [
                 [
                     'id' => 'cm_validation',
-                    'label' => 'Envoyer en validation CM',
-                    'subtitle' => 'La CM peut relire le contenu avant le client.',
+                    'label' => 'À valider (CM)',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -338,8 +330,8 @@ final class ContentWorkflowRegistry
             'Sous-titres à valider' => [
                 [
                     'id' => 'subtitles_validated',
-                    'label' => 'Valider les sous-titres',
-                    'subtitle' => 'La CM confirme que les sous-titres sont OK.',
+                    'label' => 'Sous-titres validés',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -347,8 +339,8 @@ final class ContentWorkflowRegistry
             'À valider (CM)' => [
                 [
                     'id' => 'client_validation',
-                    'label' => 'Demander la validation client',
-                    'subtitle' => 'Envoie la vidéo au client pour validation.',
+                    'label' => 'À valider par le client',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -357,7 +349,7 @@ final class ContentWorkflowRegistry
                 [
                     'id' => 'ready_to_schedule',
                     'label' => 'Prête à programmer',
-                    'subtitle' => 'Le client a validé — prête pour le calendrier.',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -365,8 +357,8 @@ final class ContentWorkflowRegistry
             'Prête à programmer' => [
                 [
                     'id' => 'scheduled',
-                    'label' => 'Programmer la publication',
-                    'subtitle' => 'Date de publication confirmée dans le calendrier.',
+                    'label' => 'Programmée',
+                    'subtitle' => null,
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -374,8 +366,8 @@ final class ContentWorkflowRegistry
             'Programmée' => [
                 [
                     'id' => 'published',
-                    'label' => 'Marquer comme publiée',
-                    'subtitle' => 'La vidéo est en ligne.',
+                    'label' => 'Publiée',
+                    'subtitle' => null,
                     'variant' => 'success',
                     'group' => null,
                 ],
@@ -423,10 +415,17 @@ final class ContentWorkflowRegistry
     private function videoTransitions(): array
     {
         return [
+            'montage_request' => [
+                'from' => ['Tournage à prévoir', 'Brouillon (Dérush)', 'Rushs / à dispatcher'],
+                'to' => 'Montage à faire',
+                'label' => 'Demande de montage (créer la tâche)',
+                'effects' => [],
+            ],
+            // Transitions historiques (recul journal, anciennes fiches).
             'derush_launch_montage' => [
                 'from' => ['Tournage à prévoir'],
                 'to' => 'Montage à faire',
-                'label' => 'Demander le montage',
+                'label' => 'Demande de montage (créer la tâche)',
                 'effects' => [],
             ],
             'rushes_ready' => [
@@ -438,7 +437,7 @@ final class ContentWorkflowRegistry
             'montage_queued' => [
                 'from' => ['Rushs / à dispatcher'],
                 'to' => 'Montage à faire',
-                'label' => 'Demander le montage',
+                'label' => 'Demande de montage (créer la tâche)',
                 'effects' => [],
             ],
             'montage_started' => [
@@ -448,51 +447,51 @@ final class ContentWorkflowRegistry
                 'effects' => [],
             ],
             'retouches' => [
-                'from' => ['Montage en cours'],
+                'from' => ['Montage à faire', 'Montage en cours'],
                 'to' => 'Retouches (Monteur)',
-                'label' => 'Retouches monteur',
+                'label' => 'Demande de retouches',
                 'effects' => [],
             ],
             'montage_done' => [
                 'from' => ['Montage à faire', 'Montage en cours', 'Retouches (Monteur)'],
                 'to' => 'À valider (Prod)',
-                'label' => 'Montage terminé — valider en prod',
+                'label' => 'Montage terminé',
                 'effects' => ['complete_asana_montage'],
             ],
             'subtitles_yes' => [
                 'from' => ['À valider (Prod)'],
                 'to' => 'Sous-titrage (SubMagic)',
-                'label' => 'Passer au sous-titrage (SubMagic)',
+                'label' => 'Avec sous-titres (SubMagic)',
                 'effects' => ['set_subtitles_yes'],
             ],
             'subtitles_no' => [
                 'from' => ['À valider (Prod)'],
                 'to' => 'Prépa CM (sans sous-titres)',
-                'label' => 'Sans sous-titres — prépa CM',
+                'label' => 'Sans sous-titres',
                 'effects' => ['set_subtitles_no'],
             ],
             'subtitles_review' => [
                 'from' => ['Sous-titrage (SubMagic)'],
                 'to' => 'Sous-titres à valider',
-                'label' => 'Demander la relecture CM',
+                'label' => 'Sous-titres à valider (CM)',
                 'effects' => ['trigger_subtitles_asana'],
             ],
             'subtitles_validated' => [
                 'from' => ['Sous-titres à valider'],
                 'to' => 'À valider (CM)',
-                'label' => 'Valider les sous-titres',
+                'label' => 'Sous-titres validés',
                 'effects' => [],
             ],
             'cm_validation' => [
                 'from' => ['Prépa CM (sans sous-titres)'],
                 'to' => 'À valider (CM)',
-                'label' => 'Envoyer en validation CM',
+                'label' => 'À valider (CM)',
                 'effects' => [],
             ],
             'client_validation' => [
                 'from' => ['À valider (CM)'],
                 'to' => 'À faire valider au client',
-                'label' => 'Demander la validation client',
+                'label' => 'À valider par le client',
                 'effects' => [],
             ],
             'ready_to_schedule' => [

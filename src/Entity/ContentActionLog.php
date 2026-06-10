@@ -20,6 +20,7 @@ class ContentActionLog
     public const TYPE_CM_USER_CHANGED = 'cm_user_changed';
     public const TYPE_SUBTITLES_REVIEWER_CHANGED = 'subtitles_reviewer_changed';
     public const TYPE_MANUAL_STATUS = 'manual_status';
+    public const TYPE_ASANA_SYNC = 'asana_sync';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

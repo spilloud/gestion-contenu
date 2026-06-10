@@ -9,12 +9,13 @@ use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
-use App\Repository\ContentActionLogRepository;
 use App\Repository\UserRepository;
+use App\Service\AsanaInboundSyncService;
 use App\Service\ContentFormatHelper;
+use App\Service\ContentWorkflowViewBuilder;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
-use App\Workflow\ContentWorkflowRegistry;
+use App\Service\VideoMontageAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -33,8 +34,9 @@ class VideoController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
-        private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
-        private readonly ContentActionLogRepository $contentActionLogRepository,
+        private readonly ContentWorkflowViewBuilder $workflowViewBuilder,
+        private readonly AsanaInboundSyncService $asanaInboundSync,
+        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
@@ -123,6 +125,8 @@ class VideoController extends AbstractController
                 $content->setUpdatedAt(new \DateTimeImmutable());
                 $this->entityManager->flush();
             }
+            $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
+            $this->asanaInboundSync->syncContent($content, true);
         }
 
         $form = $this->createForm(VideoContentType::class, $content);
@@ -146,31 +150,7 @@ class VideoController extends AbstractController
             'form' => $form,
             'returnTo' => $defaultReturnTo,
             'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
-        ], $this->buildWorkflowViewData($content)));
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildWorkflowViewData(Content $content): array
-    {
-        $journey = [];
-        foreach ($this->contentActionLogRepository->findVisibleJourneyForContent($content) as $log) {
-            $journey[] = [
-                'label' => $log->getLabel(),
-                'detail' => $log->getDetail(),
-                'createdAt' => $log->getCreatedAt(),
-                'userName' => $log->getUser()?->getName(),
-            ];
-        }
-
-        return [
-            'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
-            'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
-            'workflow_journey' => $journey,
-            'workflow_phases' => $this->contentWorkflowRegistry->phasesFor($content),
-            'workflow_phase_index' => $this->contentWorkflowRegistry->phaseIndexFor($content),
-        ];
+        ], $this->workflowViewBuilder->build($content)));
     }
 
     private function findVideoFormat(): Format

@@ -6,16 +6,24 @@
     {% if workflow_journey is not empty %}
         <ol class="vw-journal__timeline">
             {% for entry in workflow_journey %}
-                <li class="vw-journal__entry{% if loop.last %} vw-journal__entry--latest{% endif %}">
+                <li class="vw-journal__entry{% if loop.last %} vw-journal__entry--latest{% endif %}{% if entry.actionType|default('') == 'asana_sync' %} vw-journal__entry--asana{% endif %}">
                     <div class="vw-journal__marker" aria-hidden="true"></div>
                     <div class="vw-journal__body">
                         <p class="vw-journal__label">{{ entry.label }}</p>
-                        {% if entry.detail %}
+                        {% if entry.detailLines is defined and entry.detailLines is not empty %}
+                            <ul class="vw-journal__facts">
+                                {% for line in entry.detailLines %}
+                                    <li>{{ line }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% elseif entry.detail %}
                             <p class="vw-journal__detail">{{ entry.detail }}</p>
                         {% endif %}
                         <p class="vw-journal__meta">
                             <time datetime="{{ entry.createdAt|date('c') }}">{{ entry.createdAt|date('d/m/Y à H:i') }}</time>
-                            {% if entry.userName %}<span>· {{ entry.userName }}</span>{% endif %}
+                            {% if entry.userName and entry.detailLines is empty %}
+                                <span>· {{ entry.userName }}{% if entry.userEmail|default('') %} ({{ entry.userEmail }}){% endif %}</span>
+                            {% endif %}
                         </p>
                     </div>
                 </li>
@@ -24,7 +32,7 @@
     {% else %}
         <div class="vw-journal__empty">
             <p>Aucune étape enregistrée pour l’instant.</p>
-            <p class="vw-journal__empty-hint">Chaque bouton d’avancement ou recul alimentera ce journal.</p>
+            <p class="vw-journal__empty-hint">Chaque bouton d’avancement, délégation ou synchro Asana alimentera ce journal.</p>
         </div>
     {% endif %}
 </aside>

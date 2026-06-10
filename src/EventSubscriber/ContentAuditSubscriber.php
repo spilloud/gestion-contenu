@@ -7,10 +7,12 @@ use App\Entity\ContentActionLog;
 use App\Entity\User;
 use App\Service\ContentWorkflowService;
 use App\Service\VideoAsanaAssigneeSync;
+use App\Service\WorkflowJournalFormatter;
 use Doctrine\Bundle\DoctrineBundle\Attribute\AsDoctrineListener;
 use Doctrine\ORM\Event\PostFlushEventArgs;
 use Doctrine\ORM\Event\PreUpdateEventArgs;
 use Doctrine\ORM\Events;
+use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 
 #[AsDoctrineListener(event: Events::preUpdate)]
@@ -23,6 +25,8 @@ final class ContentAuditSubscriber
     public function __construct(
         private readonly ContentWorkflowService $workflowService,
         private readonly VideoAsanaAssigneeSync $videoAsanaAssigneeSync,
+        private readonly WorkflowJournalFormatter $journalFormatter,
+        private readonly Security $security,
         private readonly RequestStack $requestStack,
     ) {
     }
@@ -39,6 +43,7 @@ final class ContentAuditSubscriber
         }
 
         $changeSet = $args->getEntityChangeSet();
+        $actor = $this->currentUser();
 
         if (isset($changeSet['status'])) {
             [$oldStatus, $newStatus] = $changeSet['status'];
@@ -49,7 +54,7 @@ final class ContentAuditSubscriber
                     $entity,
                     ContentActionLog::TYPE_MANUAL_STATUS,
                     'Statut modifié (fiche)',
-                    sprintf('%s → %s', $oldName, $newName),
+                    $this->journalFormatter->enrichTransitionDetail($entity, $oldName, $newName, $actor),
                     false,
                 );
             }
@@ -61,10 +66,12 @@ final class ContentAuditSubscriber
                 $entity,
                 ContentActionLog::TYPE_SCHEDULED_DATE_CHANGED,
                 'Date de publication modifiée',
-                sprintf(
-                    '%s → %s',
+                $this->journalFormatter->enrichDateChangeDetail(
+                    'Publication',
                     $old instanceof \DateTimeInterface ? $old->format('d/m/Y') : '—',
                     $new instanceof \DateTimeInterface ? $new->format('d/m/Y') : '—',
+                    $actor,
+                    'Fiche vidéo',
                 ),
                 false,
             );
@@ -72,7 +79,7 @@ final class ContentAuditSubscriber
 
         if (isset($changeSet['videoEditor'])) {
             [$old, $new] = $changeSet['videoEditor'];
-            $this->logUserChange($entity, 'Monteur modifié', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED);
+            $this->logUserChange($entity, 'Délégation montage', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED, $actor);
             $this->asanaSyncQueue[] = [
                 'content' => $entity,
                 'type' => 'montage',
@@ -83,7 +90,7 @@ final class ContentAuditSubscriber
 
         if (isset($changeSet['videoCommunityManager'])) {
             [$old, $new] = $changeSet['videoCommunityManager'];
-            $this->logUserChange($entity, 'Community manager modifiée', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED);
+            $this->logUserChange($entity, 'Délégation CM', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED, $actor);
             $this->asanaSyncQueue[] = [
                 'content' => $entity,
                 'type' => 'cm',
@@ -119,11 +126,11 @@ final class ContentAuditSubscriber
         }
     }
 
-    private function logUserChange(Content $entity, string $label, mixed $old, mixed $new, string $actionType): void
+    private function logUserChange(Content $entity, string $label, mixed $old, mixed $new, string $actionType, ?User $actor): void
     {
-        $oldName = $old instanceof User ? ($old->getName() ?? '—') : '—';
-        $newName = $new instanceof User ? ($new->getName() ?? '—') : '—';
-        if ($oldName === $newName) {
+        $oldUser = $old instanceof User ? $old : null;
+        $newUser = $new instanceof User ? $new : null;
+        if ($oldUser?->getId() === $newUser?->getId()) {
             return;
         }
 
@@ -131,7 +138,7 @@ final class ContentAuditSubscriber
             $entity,
             $actionType,
             $label,
-            sprintf('%s → %s', $oldName, $newName),
+            $this->journalFormatter->enrichDelegationDetail($label, $oldUser, $newUser, $actor),
             false,
         );
     }
@@ -144,5 +151,12 @@ final class ContentAuditSubscriber
         }
 
         return (bool) $request->attributes->get('_content_workflow_handled_'.$content->getId());
+    }
+
+    private function currentUser(): ?User
+    {
+        $user = $this->security->getUser();
+
+        return $user instanceof User ? $user : null;
     }
 }

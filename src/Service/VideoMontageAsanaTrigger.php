@@ -44,6 +44,8 @@ final class VideoMontageAsanaTrigger
 
         $stored = $content->getAsanaTaskGid();
         if ($stored !== null && $this->asanaService->isTaskAccessible($stored)) {
+            $this->syncMontageDueFromAsana($content, $stored);
+
             return $stored;
         }
 
@@ -56,6 +58,7 @@ final class VideoMontageAsanaTrigger
         $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
         if ($found !== null) {
             $content->setAsanaTaskGid($found);
+            $this->syncMontageDueFromAsana($content, $found);
             $changed = true;
 
             if ($flush) {
@@ -124,10 +127,24 @@ final class VideoMontageAsanaTrigger
         }
 
         $content->setAsanaTaskGid($gid);
+        $this->syncMontageDueFromAsana($content, $gid);
         if ($flush) {
             $this->entityManager->flush();
         }
 
         return true;
+    }
+
+    private function syncMontageDueFromAsana(Content $content, string $taskGid): void
+    {
+        $task = $this->asanaService->fetchTask($taskGid);
+        if (!is_array($task) || empty($task['due_on'])) {
+            return;
+        }
+
+        try {
+            $content->setAsanaMontageDueOn(new \DateTimeImmutable((string) $task['due_on']));
+        } catch (\Throwable) {
+        }
     }
 }

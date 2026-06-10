@@ -34,6 +34,10 @@ class ContentActionLogRepository extends ServiceEntityRepository
                 ContentActionLog::TYPE_TRANSITION,
                 ContentActionLog::TYPE_STEP_BACK,
                 ContentActionLog::TYPE_MANUAL_STATUS,
+                ContentActionLog::TYPE_EDITOR_CHANGED,
+                ContentActionLog::TYPE_CM_USER_CHANGED,
+                ContentActionLog::TYPE_SCHEDULED_DATE_CHANGED,
+                ContentActionLog::TYPE_ASANA_SYNC,
             ])
             ->orderBy('l.createdAt', 'ASC')
             ->addOrderBy('l.id', 'ASC')

@@ -22,6 +22,8 @@ final class ContentWorkflowService
         private readonly AsanaService $asanaService,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
+        private readonly VideoAssigneeResolver $assigneeResolver,
+        private readonly WorkflowJournalFormatter $journalFormatter,
         private readonly Security $security,
         private readonly RequestStack $requestStack,
     ) {
@@ -30,11 +32,12 @@ final class ContentWorkflowService
     public function logCreation(Content $content): void
     {
         $statusName = $content->getStatus()?->getName() ?? '—';
+        $lines = ['Statut initial : '.$statusName, 'Par : '.$this->journalFormatter->formatActor($this->currentUser())];
         $this->persistLog(
             $content,
             ContentActionLog::TYPE_CREATED,
             'Contenu créé',
-            sprintf('Statut initial : %s', $statusName),
+            implode("\n", $lines),
         );
     }
 
@@ -71,7 +74,12 @@ final class ContentWorkflowService
             $content,
             ContentActionLog::TYPE_TRANSITION,
             $transition['label'],
-            sprintf('%s → %s', $oldName, $newStatus->getName()),
+            $this->journalFormatter->enrichTransitionDetail(
+                $content,
+                $oldName,
+                $newStatus->getName() ?? '',
+                $this->currentUser(),
+            ),
         );
 
         $this->entityManager->flush();
@@ -104,7 +112,12 @@ final class ContentWorkflowService
             $content,
             ContentActionLog::TYPE_STEP_BACK,
             'Recul d\'une étape',
-            sprintf('%s → %s', $oldName, $previousName),
+            $this->journalFormatter->enrichTransitionDetail(
+                $content,
+                $oldName,
+                $previousName,
+                $this->currentUser(),
+            ),
         );
 
         $this->entityManager->flush();
@@ -128,7 +141,12 @@ final class ContentWorkflowService
             $content,
             ContentActionLog::TYPE_MANUAL_STATUS,
             'Changement de statut (manuel)',
-            sprintf('%s → %s (%s)', $oldName, $newStatus->getName(), $source),
+            $this->journalFormatter->enrichTransitionDetail(
+                $content,
+                $oldName,
+                $newStatus->getName() ?? '',
+                $this->currentUser(),
+            )."\nSource : ".$source,
         );
 
         $this->entityManager->flush();
@@ -186,7 +204,9 @@ final class ContentWorkflowService
         }
 
         if ($to === 'Montage à faire') {
+            $montageGidBefore = $content->getAsanaTaskGid();
             $this->montageAsanaTrigger->ensureWhenMontageQueued($content, false);
+            $this->logAsanaSideEffect($content, $montageGidBefore, $content->getAsanaTaskGid(), 'montage');
         }
 
         $gid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
@@ -197,9 +217,35 @@ final class ContentWorkflowService
             $this->asanaService->addCommentToTask($gid, $text);
         }
 
+        $subtitlesGidBefore = $content->getAsanaSubtitlesTaskGid();
         $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
+        $this->logAsanaSideEffect($content, $subtitlesGidBefore, $content->getAsanaSubtitlesTaskGid(), 'subtitles');
 
         $this->entityManager->flush();
+    }
+
+    private function logAsanaSideEffect(Content $content, ?string $beforeGid, ?string $afterGid, string $kind): void
+    {
+        if ($afterGid === null || $afterGid === $beforeGid) {
+            return;
+        }
+
+        $assignee = $kind === 'montage'
+            ? $content->getVideoEditor()
+            : $this->assigneeResolver->resolveCommunityManagerForDisplay($content);
+
+        $lines = [
+            'Tâche Asana : '.$afterGid,
+            'Pour : '.$this->journalFormatter->formatActor($assignee),
+            'Par : '.$this->journalFormatter->formatActor($this->currentUser()),
+        ];
+
+        $this->persistLog(
+            $content,
+            ContentActionLog::TYPE_ASANA_SYNC,
+            $kind === 'montage' ? 'Tâche Asana montage créée' : 'Tâche Asana relecture CM créée',
+            implode("\n", $lines),
+        );
     }
 
     private function persistLog(Content $content, string $type, string $label, ?string $detail): void

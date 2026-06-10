@@ -61,6 +61,21 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         return count($this->findCommunityManagersOrdered());
     }
 
+    public function findOneByAsanaUserGid(string $asanaUserGid): ?User
+    {
+        $asanaUserGid = trim($asanaUserGid);
+        if ($asanaUserGid === '') {
+            return null;
+        }
+
+        return $this->createQueryBuilder('u')
+            ->andWhere('u.asanaUserGid = :gid')
+            ->setParameter('gid', $asanaUserGid)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     /**
      * @param User[] $users
      *

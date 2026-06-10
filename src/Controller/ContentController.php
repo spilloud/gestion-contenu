@@ -11,14 +11,12 @@ use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
-use App\Repository\ContentActionLogRepository;
 use App\Service\AsanaService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowService;
-use App\Service\SubtitlesReviewAsanaTrigger;
+use App\Service\ContentWorkflowViewBuilder;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
-use App\Workflow\ContentWorkflowRegistry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -39,8 +37,7 @@ class ContentController extends AbstractController
         private readonly AsanaService $asanaService,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowService $contentWorkflowService,
-        private readonly ContentWorkflowRegistry $contentWorkflowRegistry,
-        private readonly ContentActionLogRepository $contentActionLogRepository,
+        private readonly ContentWorkflowViewBuilder $workflowViewBuilder,
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly FormatRepository $formatRepository,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
@@ -251,7 +248,7 @@ class ContentController extends AbstractController
             'form' => $form,
             'returnTo' => $defaultReturnTo,
             'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
-        ], $this->buildWorkflowViewData($content)));
+        ], $this->workflowViewBuilder->build($content)));
     }
 
     #[Route('/{id}/supprimer', name: 'app_content_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -468,30 +465,6 @@ class ContentController extends AbstractController
     private function isVideoContent(Content $content): bool
     {
         return $this->contentFormatHelper->isVideoContent($content);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildWorkflowViewData(Content $content): array
-    {
-        $journey = [];
-        foreach ($this->contentActionLogRepository->findVisibleJourneyForContent($content) as $log) {
-            $journey[] = [
-                'label' => $log->getLabel(),
-                'detail' => $log->getDetail(),
-                'createdAt' => $log->getCreatedAt(),
-                'userName' => $log->getUser()?->getName(),
-            ];
-        }
-
-        return [
-            'workflow_actions' => $this->contentWorkflowRegistry->availableActions($content),
-            'workflow_can_step_back' => $this->contentWorkflowRegistry->previousStatusName($content) !== null,
-            'workflow_journey' => $journey,
-            'workflow_phases' => $this->contentWorkflowRegistry->phasesFor($content),
-            'workflow_phase_index' => $this->contentWorkflowRegistry->phaseIndexFor($content),
-        ];
     }
 
     private function redirectWorkflowBack(Content $content, Request $request): Response

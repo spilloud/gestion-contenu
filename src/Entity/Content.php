@@ -86,6 +86,9 @@ class Content
     #[ORM\Column(length: 32, nullable: true, unique: true)]
     private ?string $asanaSubtitlesTaskGid = null;
 
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $asanaMontageDueOn = null;
+
     /**
      * @var Collection<int, ContentComment>
      */
@@ -355,6 +358,18 @@ class Content
     public function setAsanaSubtitlesTaskGid(?string $asanaSubtitlesTaskGid): static
     {
         $this->asanaSubtitlesTaskGid = $asanaSubtitlesTaskGid === null ? null : trim($asanaSubtitlesTaskGid);
+
+        return $this;
+    }
+
+    public function getAsanaMontageDueOn(): ?\DateTimeImmutable
+    {
+        return $this->asanaMontageDueOn;
+    }
+
+    public function setAsanaMontageDueOn(?\DateTimeImmutable $asanaMontageDueOn): static
+    {
+        $this->asanaMontageDueOn = $asanaMontageDueOn;
 
         return $this;
     }

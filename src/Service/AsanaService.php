@@ -443,10 +443,26 @@ class AsanaService
         $notes = (string) ($task['notes'] ?? '');
         $contentId = $content->getId();
         if ($contentId !== null && str_contains($notes, '/videos/fiche/'.$contentId)) {
-            return 100;
+            $score = 100;
+            if (str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
+                $score -= 30;
+            }
+            if (!empty($task['completed'])) {
+                $score -= 20;
+            }
+
+            return $score;
         }
         if ($videoUrl !== '' && str_contains($notes, $videoUrl)) {
-            return 95;
+            $score = 95;
+            if (str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
+                $score -= 30;
+            }
+            if (!empty($task['completed'])) {
+                $score -= 20;
+            }
+
+            return $score;
         }
 
         $title = $this->normalizeTitleForMatch((string) ($content->getTitle() ?? ''));

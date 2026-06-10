@@ -15,6 +15,7 @@ use App\Service\AsanaService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowService;
 use App\Service\ContentWorkflowViewBuilder;
+use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;

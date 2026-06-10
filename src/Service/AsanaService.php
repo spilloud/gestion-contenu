@@ -484,6 +484,10 @@ class AsanaService
             $score -= 20;
         }
 
+        if (str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
+            $score -= 30;
+        }
+
         return $score;
     }
 

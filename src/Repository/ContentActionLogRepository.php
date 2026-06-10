@@ -84,6 +84,34 @@ class ContentActionLogRepository extends ServiceEntityRepository
     }
 
     /**
+     * La vidéo est-elle passée par ce statut (enregistré comme destination d'une transition) ?
+     */
+    public function hasTransitionToStatus(Content $content, string $statusName): bool
+    {
+        foreach ($this->findVisibleJourneyForContent($content) as $log) {
+            if (!in_array($log->getActionType(), [
+                ContentActionLog::TYPE_TRANSITION,
+                ContentActionLog::TYPE_MANUAL_STATUS,
+                ContentActionLog::TYPE_STATUS_CHANGED,
+            ], true)) {
+                continue;
+            }
+
+            $parsed = self::parseStatusChangeDetail($log->getDetail());
+            if ($parsed === null) {
+                continue;
+            }
+
+            [, $to] = $parsed;
+            if ($to === $statusName) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return array{0: string, 1: string}|null [from, to]
      */
     public static function parseStatusChangeDetail(?string $detail): ?array

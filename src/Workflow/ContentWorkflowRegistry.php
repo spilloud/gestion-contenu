@@ -161,6 +161,9 @@ final class ContentWorkflowRegistry
         }
 
         $fromJournal = $this->actionLogRepository->resolvePreviousStatusName($content);
+        if ($this->formatHelper->isVideoContent($content)) {
+            $fromJournal = $this->normalizeVideoStepBackCandidate($content, $fromJournal);
+        }
         if ($fromJournal !== null) {
             return $fromJournal;
         }
@@ -176,6 +179,33 @@ final class ContentWorkflowRegistry
         }
 
         return $order[$index - 1];
+    }
+
+    /**
+     * Évite les étapes legacy ou « fantômes » (ex. Montage à faire jamais enregistré avant Montage en cours).
+     */
+    private function normalizeVideoStepBackCandidate(Content $content, ?string $candidate): ?string
+    {
+        if ($candidate === null) {
+            return null;
+        }
+
+        if (in_array($candidate, self::VIDEO_LEGACY_STEP_STATUSES, true)) {
+            $index = array_search($candidate, self::VIDEO_ORDER, true);
+
+            return $index !== false ? $this->walkBackInVideoOrder(self::VIDEO_ORDER, $index) : null;
+        }
+
+        if (
+            $candidate === 'Montage à faire'
+            && !$this->actionLogRepository->hasTransitionToStatus($content, 'Montage à faire')
+        ) {
+            $index = array_search('Montage à faire', self::VIDEO_ORDER, true);
+
+            return $index !== false ? $this->walkBackInVideoOrder(self::VIDEO_ORDER, $index) : null;
+        }
+
+        return $candidate;
     }
 
     /**

@@ -362,6 +362,35 @@ class AsanaService
     }
 
     /**
+     * Supprime une tâche Asana.
+     */
+    public function deleteTask(string $taskGid): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request('DELETE', 'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid), [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                ],
+            ]);
+            $status = $resp->getStatusCode();
+
+            return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
      * Marque une tâche Asana comme terminée.
      */
     public function completeTask(string $taskGid): bool

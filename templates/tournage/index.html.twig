@@ -45,7 +45,13 @@
                             {{ r.createdAt ? r.createdAt|date('d/m/Y H:i') : '—' }}
                         </td>
                         <td style="padding: 0.75rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
-                            <a href="{{ path('app_shooting_request_show', {id: r.id}) }}" class="btn btn-sm">Voir</a>
+                            <div style="display:flex; gap: 0.35rem; flex-wrap: wrap;">
+                                <a href="{{ path('app_shooting_request_show', {id: r.id}) }}" class="btn btn-sm">Voir</a>
+                                <form method="post" action="{{ path('app_shooting_request_delete', {id: r.id}) }}" onsubmit="return confirm('Supprimer cette demande ? Les vidéos repasseront en « Tournage à prévoir » et la tâche Asana sera supprimée.');">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('shooting_delete_' ~ r.id) }}">
+                                    <button type="submit" class="btn btn-sm" style="background:#b91c1c;">Supprimer</button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                 {% endfor %}

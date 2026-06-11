@@ -14,6 +14,7 @@ use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\AsanaService;
 use App\Service\RichTextSanitizer;
+use App\Service\ShootingRequestDeletionService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -34,6 +35,7 @@ class ShootingRequestController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly AsanaService $asanaService,
         private readonly RichTextSanitizer $richTextSanitizer,
+        private readonly ShootingRequestDeletionService $shootingRequestDeletionService,
     ) {
     }
 
@@ -55,6 +57,41 @@ class ShootingRequestController extends AbstractController
         }
 
         return $this->renderNewForm($defaultClientId);
+    }
+
+    #[Route('/{id}/supprimer', name: 'app_shooting_request_delete', requirements: ['id' => '\d+'], methods: ['POST'], priority: 10)]
+    public function delete(int $id, Request $request): Response
+    {
+        $shootingRequest = $this->shootingRequestRepository->findOneForShow($id);
+        if ($shootingRequest === null) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid('shooting_delete_'.$id, $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectToRoute('app_shooting_request_index');
+        }
+
+        $clientName = $shootingRequest->getClient()?->getName() ?? '—';
+        $hadAsanaTask = trim((string) ($shootingRequest->getAsanaTaskGid() ?? '')) !== '';
+        $result = $this->shootingRequestDeletionService->delete($shootingRequest);
+
+        if (!$result['ok']) {
+            $this->addFlash('error', $result['message'] ?? 'Suppression impossible.');
+
+            return $this->redirectToRoute('app_shooting_request_index');
+        }
+
+        $this->addFlash('success', sprintf('Demande de tournage « %s » supprimée.', $clientName));
+        if ($result['videosReset'] > 0) {
+            $this->addFlash('success', sprintf('%d vidéo(s) remise(s) en planification (Tournage à prévoir).', $result['videosReset']));
+        }
+        if ($hadAsanaTask && !$result['asanaDeleted']) {
+            $this->addFlash('warning', 'La tâche Asana n\'a pas pu être supprimée (vérifiez dans Asana).');
+        }
+
+        return $this->redirectToRoute('app_shooting_request_index');
     }
 
     #[Route('/{id}/infos-videaste', name: 'app_shooting_request_videographer_notes', requirements: ['id' => '\d+'], methods: ['POST'])]

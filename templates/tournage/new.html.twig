@@ -1,0 +1,92 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle demande de tournage{% endblock %}
+
+{% block body %}
+<h1>Nouvelle demande de tournage</h1>
+<p style="color: var(--muted); max-width: 900px;">
+    Choisissez le client, cochez les vidéos planifiées par la CM (statut « Tournage à prévoir »), puis renseignez la date, le lieu et la personne en charge du tournage.
+</p>
+
+<form method="get" style="display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 1rem;">
+    <div>
+        <label for="shooting-client" class="field-label">Client</label>
+        <select id="shooting-client" name="client" style="min-width: 320px;" required>
+            <option value="">— Sélectionner —</option>
+            {% for c in clients %}
+                <option value="{{ c.id }}" {{ defaultClientId and c.id == defaultClientId ? 'selected' : '' }}>{{ c.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn">Charger les vidéos</button>
+    <a href="{{ path('app_shooting_request_index') }}" class="btn" style="background:#64748b;">Liste</a>
+</form>
+
+{% if not defaultClientId %}
+    <p style="color: var(--muted);">Sélectionnez un client pour afficher les vidéos à commander.</p>
+{% else %}
+<form method="post" style="display: grid; gap: 1rem;">
+    <input type="hidden" name="_token" value="{{ csrf_token('shooting_request') }}">
+    <input type="hidden" name="client_id" value="{{ defaultClientId }}">
+
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Vidéos planifiées (CM)</h2>
+        {% if plannedVideos is empty %}
+            <p style="color: var(--muted); margin: 0;">Aucune vidéo « Tournage à prévoir » pour ce client. La CM peut d’abord planifier des vidéos dans le calendrier ou la fiche contenu.</p>
+        {% else %}
+            <div style="display:grid; gap: 0.45rem;">
+                {% for v in plannedVideos %}
+                    <label style="display:flex; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--card-border); border-radius: 10px; padding: 0.6rem; background: var(--surface-inset);">
+                        <input type="checkbox" name="video_ids[]" value="{{ v.id }}" style="margin-top: 0.25rem;">
+                        <div style="min-width:0; flex:1;">
+                            <div style="font-weight: 700;">{{ v.title }}</div>
+                            <div style="color: var(--muted); font-size: 0.85rem;">
+                                Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
+                                {% if v.videoCommunityManager %}· CM {{ v.videoCommunityManager.name }}{% endif %}
+                            </div>
+                            {% if v.notes %}
+                                <div style="margin-top: 0.35rem; font-size: 0.88rem; white-space: pre-wrap;">{{ v.notes }}</div>
+                            {% endif %}
+                        </div>
+                        <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm" style="background:#64748b; flex-shrink:0;">Fiche</a>
+                    </label>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px; display: grid; gap: 0.85rem;">
+        <h2 style="margin:0;">Informations du tournage</h2>
+
+        <div style="display:grid; gap: 0.85rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <label for="shooting_date" class="field-label">Date du tournage</label>
+                <input id="shooting_date" name="shooting_date" type="date" required style="width: 100%;">
+            </div>
+            <div>
+                <label for="assigned_to_id" class="field-label">Réalisé par</label>
+                <select id="assigned_to_id" name="assigned_to_id" required style="width: 100%;">
+                    <option value="">— Sélectionner —</option>
+                    {% for e in employees %}
+                        <option value="{{ e.id }}">{{ e.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="location" class="field-label">Lieu</label>
+                <input id="location" name="location" type="text" placeholder="Adresse, studio, chez le client…" style="width: 100%;">
+            </div>
+        </div>
+
+        <div>
+            <label for="description" class="field-label">Description / consignes du tournage</label>
+            <textarea id="description" name="description" rows="5" placeholder="Matériel, contacts sur place, angles à prévoir, contraintes horaires…" style="width: 100%; resize: vertical;"></textarea>
+        </div>
+    </div>
+
+    <div>
+        <button type="submit" class="btn" {{ plannedVideos is empty ? 'disabled' : '' }}>Valider la demande de tournage</button>
+    </div>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demandes de tournage{% endblock %}
+
+{% block body %}
+<h1>Demandes de tournage</h1>
+<p style="color: var(--muted); max-width: 900px;">
+    Commandez un tournage pour un client : sélectionnez les vidéos planifiées par la CM, la date, le lieu et la personne en charge.
+    Une tâche Asana est créée pour le tournage.
+</p>
+
+<div style="display:flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.25rem;">
+    <a href="{{ path('app_shooting_request_new') }}" class="btn">+ Demande de tournage</a>
+    <a href="{{ path('app_videos_index') }}" class="btn" style="background:#64748b;">Vidéos</a>
+    <a href="{{ path('app_derush_index') }}" class="btn" style="background:#64748b;">Dérush</a>
+</div>
+
+{% if requests is empty %}
+    <p style="color: var(--muted);">Aucune demande de tournage pour le moment.</p>
+{% else %}
+    <div style="overflow-x: auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
+        <table style="width: 100%; min-width: 820px; border-collapse: collapse;">
+            <thead>
+                <tr style="background: rgba(148, 163, 184, 0.12);">
+                    <th style="text-align:left; padding: 0.75rem;">Date tournage</th>
+                    <th style="text-align:left; padding: 0.75rem;">Client</th>
+                    <th style="text-align:left; padding: 0.75rem;">Vidéos</th>
+                    <th style="text-align:left; padding: 0.75rem;">Tournage par</th>
+                    <th style="text-align:left; padding: 0.75rem;">Lieu</th>
+                    <th style="text-align:left; padding: 0.75rem;">Créée le</th>
+                    <th style="padding: 0.75rem; width: 1%;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in requests %}
+                    <tr>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
+                            {{ r.shootingDate ? r.shootingDate|date('d/m/Y') : '—' }}
+                        </td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border);">{{ r.client ? r.client.name : '—' }}</td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border);">{{ r.videos|length }}</td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border);">{{ r.assignedTo ? r.assignedTo.name : '—' }}</td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border);">{{ r.location|default('—') }}</td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
+                            {{ r.createdAt ? r.createdAt|date('d/m/Y H:i') : '—' }}
+                        </td>
+                        <td style="padding: 0.75rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
+                            <a href="{{ path('app_shooting_request_show', {id: r.id}) }}" class="btn btn-sm">Voir</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}
+{% endblock %}

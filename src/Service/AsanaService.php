@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Content;
+use App\Entity\ShootingRequest;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AsanaService
@@ -515,6 +516,110 @@ class AsanaService
         $normalized = (string) preg_replace('/\s+/u', ' ', $normalized);
 
         return trim($normalized);
+    }
+
+    /**
+     * Crée une tâche Asana pour une demande de tournage.
+     */
+    public function createShootingRequestTask(ShootingRequest $request, string $requestUrl, ?string $fallbackAssigneeGid): ?string
+    {
+        if (!$this->isEnabled()) {
+            return null;
+        }
+
+        $stored = $request->getAsanaTaskGid();
+        if ($stored !== null && $this->isTaskAccessible($stored)) {
+            return $stored;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+        $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
+        $client = $request->getClient();
+        $projectGid = trim((string) ($client?->getAsanaProjectGid() ?? ''));
+
+        if ($workspaceGid === '' || $projectGid === '') {
+            return null;
+        }
+
+        $assignee = $request->getAssignedTo();
+        $assigneeGid = $assignee?->getAsanaUserGid();
+        if (($assigneeGid === null || trim($assigneeGid) === '') && $fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '') {
+            $assigneeGid = trim($fallbackAssigneeGid);
+        }
+
+        $clientName = $client?->getName() ?? 'Sans client';
+        $shootingDate = $request->getShootingDate();
+        $dueOn = $shootingDate instanceof \DateTimeInterface ? $shootingDate->format('Y-m-d') : null;
+        $dateLabel = $shootingDate instanceof \DateTimeInterface ? $shootingDate->format('d/m/Y') : '—';
+
+        $name = sprintf('Tournage — %s — %s', $clientName, $dateLabel);
+
+        $videoLines = [];
+        foreach ($request->getVideos() as $video) {
+            if (!$video instanceof Content) {
+                continue;
+            }
+            $title = trim((string) ($video->getTitle() ?? ''));
+            if ($title === '') {
+                $title = 'Vidéo #'.($video->getId() ?? '?');
+            }
+            $pub = $video->getScheduledDate() instanceof \DateTimeInterface
+                ? $video->getScheduledDate()->format('d/m/Y')
+                : '—';
+            $notes = trim((string) ($video->getNotes() ?? ''));
+            $line = sprintf('- %s (publication prévue : %s)', $title, $pub);
+            if ($notes !== '') {
+                $line .= "\n  Idées / notes : ".$notes;
+            }
+            $videoLines[] = $line;
+        }
+
+        $description = trim((string) ($request->getDescription() ?? ''));
+        $location = trim((string) ($request->getLocation() ?? ''));
+
+        $notes = implode("\n", array_filter([
+            'Demande de tournage créée depuis Gestion des contenus.',
+            '',
+            'Client : '.$clientName,
+            'Date du tournage : '.$dateLabel,
+            $location !== '' ? 'Lieu : '.$location : null,
+            '',
+            $description !== '' ? "Description / consignes :\n".$description : null,
+            $description !== '' ? '' : null,
+            $videoLines !== [] ? "Vidéos à tourner :\n".implode("\n", $videoLines) : 'Vidéos à tourner : —',
+            '',
+            'Fiche demande : '.$requestUrl,
+        ]));
+
+        $taskData = [
+            'name' => $name,
+            'notes' => $notes,
+            'workspace' => $workspaceGid,
+            'projects' => [$projectGid],
+        ];
+        if ($dueOn !== null) {
+            $taskData['due_on'] = $dueOn;
+        }
+        if ($assigneeGid !== null && trim($assigneeGid) !== '') {
+            $taskData['assignee'] = trim($assigneeGid);
+        }
+
+        try {
+            $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => ['data' => $taskData],
+            ]);
+            $data = $resp->toArray(false);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $gid = $data['data']['gid'] ?? null;
+
+        return is_string($gid) && trim($gid) !== '' ? trim($gid) : null;
     }
 }
 

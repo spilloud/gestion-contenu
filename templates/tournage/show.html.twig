@@ -1,0 +1,78 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demande de tournage — {{ request.client ? request.client.name : '' }}{% endblock %}
+
+{% block body %}
+<div style="display:flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.75rem;">
+    <a href="{{ path('app_shooting_request_index') }}" class="btn" style="background:#64748b;">← Demandes de tournage</a>
+    {% if request.asanaTaskGid %}
+        <a href="https://app.asana.com/0/0/{{ request.asanaTaskGid }}" target="_blank" rel="noopener" class="btn">Ouvrir dans Asana</a>
+    {% endif %}
+</div>
+
+<h1>Demande de tournage</h1>
+<p style="color: var(--muted); margin-top: -0.25rem;">
+    Créée le {{ request.createdAt ? request.createdAt|date('d/m/Y à H:i') : '—' }}
+    {% if request.createdBy %}par {{ request.createdBy.name }}{% endif %}
+</p>
+
+<div style="display:grid; gap: 1rem; max-width: 980px;">
+    <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Client &amp; tournage</h2>
+        <dl style="display:grid; grid-template-columns: 160px 1fr; gap: 0.5rem 1rem; margin:0;">
+            <dt style="color: var(--muted);">Client</dt>
+            <dd style="margin:0; font-weight:700;">{{ request.client ? request.client.name : '—' }}</dd>
+            <dt style="color: var(--muted);">Date</dt>
+            <dd style="margin:0;">{{ request.shootingDate ? request.shootingDate|date('d/m/Y') : '—' }}</dd>
+            <dt style="color: var(--muted);">Lieu</dt>
+            <dd style="margin:0;">{{ request.location|default('—') }}</dd>
+            <dt style="color: var(--muted);">Réalisé par</dt>
+            <dd style="margin:0;">{{ request.assignedTo ? request.assignedTo.name : '—' }}</dd>
+            <dt style="color: var(--muted);">Tâche Asana</dt>
+            <dd style="margin:0;">
+                {% if request.asanaTaskGid %}
+                    <code>{{ request.asanaTaskGid }}</code>
+                {% else %}
+                    <span style="color: var(--muted);">Non créée</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </section>
+
+    {% if request.description %}
+        <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+            <h2 style="margin-top:0;">Description / consignes</h2>
+            <div style="white-space: pre-wrap;">{{ request.description }}</div>
+        </section>
+    {% endif %}
+
+    <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <h2 style="margin-top:0;">Vidéos à tourner ({{ request.videos|length }})</h2>
+        {% if request.videos is empty %}
+            <p style="color: var(--muted); margin:0;">Aucune vidéo liée.</p>
+        {% else %}
+            <div style="display:grid; gap: 0.6rem;">
+                {% for v in request.videos %}
+                    <article style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--surface-inset);">
+                        <div style="display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                            <div>
+                                <div style="font-weight:700;">{{ v.title }}</div>
+                                <div style="color: var(--muted); font-size: 0.88rem;">
+                                    Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
+                                </div>
+                            </div>
+                            <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm">Fiche vidéo</a>
+                        </div>
+                        {% if v.notes %}
+                            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
+                                <strong>Idées / notes :</strong>
+                                <div style="white-space: pre-wrap; margin-top: 0.2rem;">{{ v.notes }}</div>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

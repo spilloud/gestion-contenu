@@ -56,6 +56,19 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         return $this->filterByRole($this->findBy([], ['name' => 'ASC']), User::ROLE_EDITOR);
     }
 
+    /**
+     * Employés internes (hors comptes client uniquement).
+     *
+     * @return User[]
+     */
+    public function findEmployeesOrdered(): array
+    {
+        return array_values(array_filter(
+            $this->findBy([], ['name' => 'ASC']),
+            static fn (User $user): bool => !in_array(User::ROLE_CLIENT, $user->getRoles(), true),
+        ));
+    }
+
     public function countCommunityManagers(): int
     {
         return count($this->findCommunityManagersOrdered());

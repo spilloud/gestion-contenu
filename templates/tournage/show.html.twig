@@ -123,6 +123,8 @@
 <div class="shooting-actions no-print">
     <a href="{{ path('app_shooting_request_index') }}" class="btn" style="background:#64748b;">← Demandes de tournage</a>
     <button type="button" class="btn" onclick="window.print()">Imprimer / PDF</button>
+    <button type="button" class="btn" id="btn-edit-infos-top">Modifier les infos</button>
+    <button type="button" class="btn" id="btn-edit-videos-top" style="background:#64748b;">Modifier les vidéos</button>
 </div>
 
 <div class="shooting-print-header">
@@ -147,7 +149,7 @@
     <section class="no-print">
         <div class="shooting-summary__head">
             <h2 style="margin:0;">Client &amp; tournage</h2>
-            <button type="button" class="btn btn-sm" id="btn-edit-infos" style="background:#64748b;">Modifier</button>
+            <button type="button" class="btn btn-sm" id="btn-edit-infos">Modifier</button>
         </div>
 
         <div class="shooting-summary__grid" id="shooting-summary-view">
@@ -299,18 +301,28 @@
 
 <script>
 (function () {
+    function openPanel(panelId) {
+        const panel = document.getElementById(panelId);
+        if (panel) {
+            panel.hidden = false;
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
     function bindToggle(btnId, panelId, cancelId) {
         const btn = document.getElementById(btnId);
         const panel = document.getElementById(panelId);
         const cancel = cancelId ? document.getElementById(cancelId) : null;
-        if (!btn || !panel) return;
-        btn.addEventListener('click', function () { panel.hidden = false; });
-        if (cancel) {
+        if (btn && panel) {
+            btn.addEventListener('click', function () { openPanel(panelId); });
+        }
+        if (cancel && panel) {
             cancel.addEventListener('click', function () { panel.hidden = true; });
         }
     }
     bindToggle('btn-edit-infos', 'panel-edit-infos', 'btn-cancel-infos');
+    bindToggle('btn-edit-infos-top', 'panel-edit-infos', null);
     bindToggle('btn-edit-videos', 'panel-edit-videos', 'btn-cancel-videos');
+    bindToggle('btn-edit-videos-top', 'panel-edit-videos', null);
 })();
 </script>
 

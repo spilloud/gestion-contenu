@@ -43,7 +43,7 @@ class ShootingRequestController extends AbstractController
     #[Route('', name: 'app_shooting_request_index', methods: ['GET'])]
     public function index(): Response
     {
-        return $this->render('tournage/index.html.twig', [
+        return $this->renderNoCache('tournage/index.html.twig', [
             'requests' => $this->shootingRequestRepository->findAllForList(),
         ]);
     }
@@ -245,7 +245,7 @@ class ShootingRequestController extends AbstractController
             }
         }
 
-        return $this->render('tournage/show.html.twig', [
+        return $this->renderNoCache('tournage/show.html.twig', [
             'request' => $shootingRequest,
             'employees' => $this->userRepository->findEmployeesOrdered(),
             'selectableVideos' => $this->findSelectableVideosForRequest($shootingRequest),
@@ -384,12 +384,25 @@ class ShootingRequestController extends AbstractController
 
         $plannedVideos = $selectedClient !== null ? $this->findPlannedVideosForClient($selectedClient) : [];
 
-        return $this->render('tournage/new.html.twig', [
+        return $this->renderNoCache('tournage/new.html.twig', [
             'clients' => $clients,
             'employees' => $employees,
             'defaultClientId' => $defaultClientId,
             'plannedVideos' => $plannedVideos,
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $parameters
+     */
+    private function renderNoCache(string $view, array $parameters = []): Response
+    {
+        $response = $this->render($view, $parameters);
+        $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+
+        return $response;
     }
 
     private function findVideoFormat(): ?Format

@@ -27,6 +27,10 @@ class ShootingRequest
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $description = null;
 
+    /** Consignes vidéaste (HTML léger : gras, listes…). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $videographerNotes = null;
+
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $location = null;
 
@@ -92,6 +96,18 @@ class ShootingRequest
     public function setDescription(?string $description): static
     {
         $this->description = $description;
+
+        return $this;
+    }
+
+    public function getVideographerNotes(): ?string
+    {
+        return $this->videographerNotes;
+    }
+
+    public function setVideographerNotes(?string $videographerNotes): static
+    {
+        $this->videographerNotes = $videographerNotes;
 
         return $this;
     }

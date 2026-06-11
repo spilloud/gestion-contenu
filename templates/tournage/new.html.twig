@@ -1,4 +1,5 @@
 {% extends 'base.html.twig' %}
+{% import 'tournage/_richtext_field.html.twig' as rte %}
 
 {% block title %}Nouvelle demande de tournage{% endblock %}
 
@@ -44,8 +45,11 @@
                                 Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
                                 {% if v.videoCommunityManager %}· CM {{ v.videoCommunityManager.name }}{% endif %}
                             </div>
-                            {% if v.notes %}
-                                <div style="margin-top: 0.35rem; font-size: 0.88rem; white-space: pre-wrap;">{{ v.notes }}</div>
+                            {% if v.notes|default('')|trim != '' %}
+                                <div style="margin-top: 0.35rem; font-size: 0.82rem;">
+                                    <span style="font-weight:700; color: var(--muted); font-size:0.75rem; text-transform:uppercase;">Note interne</span>
+                                    <div style="white-space: pre-wrap;">{{ v.notes }}</div>
+                                </div>
                             {% endif %}
                         </div>
                         <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm" style="background:#64748b; flex-shrink:0;">Fiche</a>
@@ -82,11 +86,14 @@
             <label for="description" class="field-label">Description / consignes du tournage</label>
             <textarea id="description" name="description" rows="5" placeholder="Matériel, contacts sur place, angles à prévoir, contraintes horaires…" style="width: 100%; resize: vertical;"></textarea>
         </div>
+
+        {{ rte.editor('videographer_notes', 'videographer_notes_new', '', 'Infos vidéaste (texte enrichi)', 'Ex. : matériel, déroulé, contacts… Listes à puces possibles.') }}
     </div>
 
     <div>
         <button type="submit" class="btn" {{ plannedVideos is empty ? 'disabled' : '' }}>Valider la demande de tournage</button>
     </div>
 </form>
+{{ rte.assets() }}
 {% endif %}
 {% endblock %}

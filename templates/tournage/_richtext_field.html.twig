@@ -1,0 +1,120 @@
+{% macro editor(fieldName, fieldId, content, label, placeholder) %}
+<div class="rte-wrap" data-rte-wrap>
+    <label for="{{ fieldId }}" class="field-label">{{ label }}</label>
+    <div class="rte-toolbar no-print" role="toolbar" aria-label="Mise en forme">
+        <button type="button" class="rte-btn" data-cmd="bold" title="Gras"><strong>B</strong></button>
+        <button type="button" class="rte-btn" data-cmd="italic" title="Italique"><em>I</em></button>
+        <button type="button" class="rte-btn" data-cmd="underline" title="Souligné"><u>U</u></button>
+        <span class="rte-toolbar__sep" aria-hidden="true"></span>
+        <button type="button" class="rte-btn" data-cmd="insertUnorderedList" title="Liste à puces">• Liste</button>
+        <button type="button" class="rte-btn" data-cmd="insertOrderedList" title="Liste numérotée">1. Liste</button>
+    </div>
+    <div
+        class="rte-editor rich-content"
+        contenteditable="true"
+        role="textbox"
+        aria-multiline="true"
+        data-rte-editor
+        data-target="{{ fieldId }}"
+        data-placeholder="{{ placeholder|default('')|e('html_attr') }}"
+    >{{ content|raw }}</div>
+    <input type="hidden" name="{{ fieldName }}" id="{{ fieldId }}" value="{{ content|e('html_attr') }}" data-rte-input>
+</div>
+{% endmacro %}
+
+{% macro assets() %}
+<style>
+    .rte-wrap { display: grid; gap: 0.45rem; }
+    .rte-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        padding: 0.35rem;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: var(--surface-inset);
+    }
+    .rte-toolbar__sep {
+        width: 1px;
+        height: 1.25rem;
+        background: var(--card-border);
+        margin: 0 0.15rem;
+    }
+    .rte-btn {
+        border: 1px solid var(--card-border);
+        background: var(--card-bg);
+        color: inherit;
+        border-radius: 6px;
+        padding: 0.25rem 0.55rem;
+        font-size: 0.82rem;
+        cursor: pointer;
+    }
+    .rte-btn:hover { background: var(--sidebar-hover, #eef2ff); }
+    .rte-editor {
+        min-height: 8rem;
+        padding: 0.75rem;
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        background: var(--card-bg);
+        line-height: 1.5;
+    }
+    .rte-editor:empty::before {
+        content: attr(data-placeholder);
+        color: var(--muted);
+        pointer-events: none;
+    }
+    .rte-editor:focus {
+        outline: 2px solid var(--sidebar-active, #4c1d95);
+        outline-offset: 1px;
+    }
+    .rich-content ul, .rich-content ol { margin: 0.35rem 0 0.35rem 1.25rem; padding: 0; }
+    .rich-content p { margin: 0 0 0.5rem; }
+    .rich-content p:last-child { margin-bottom: 0; }
+    .rich-content h2, .rich-content h3 { margin: 0.5rem 0 0.35rem; font-size: 1rem; }
+</style>
+<script>
+(function () {
+    function syncEditor(editor) {
+        const input = document.getElementById(editor.dataset.target);
+        if (!input) return;
+        const html = editor.innerHTML.trim();
+        input.value = (html === '' || html === '<br>') ? '' : html;
+    }
+
+    function initRte(root) {
+        root.querySelectorAll('[data-rte-editor]').forEach(function (editor) {
+            if (editor.dataset.rteReady) return;
+            editor.dataset.rteReady = '1';
+            syncEditor(editor);
+            editor.addEventListener('input', function () { syncEditor(editor); });
+            editor.addEventListener('blur', function () { syncEditor(editor); });
+        });
+
+        root.querySelectorAll('.rte-toolbar [data-cmd]').forEach(function (btn) {
+            if (btn.dataset.rteBtnReady) return;
+            btn.dataset.rteBtnReady = '1';
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const wrap = btn.closest('[data-rte-wrap]');
+                const editor = wrap ? wrap.querySelector('[data-rte-editor]') : null;
+                if (!editor) return;
+                editor.focus();
+                document.execCommand(btn.dataset.cmd, false, null);
+                syncEditor(editor);
+            });
+        });
+
+        root.querySelectorAll('form').forEach(function (form) {
+            if (form.dataset.rteFormReady) return;
+            form.dataset.rteFormReady = '1';
+            form.addEventListener('submit', function () {
+                form.querySelectorAll('[data-rte-editor]').forEach(syncEditor);
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () { initRte(document); });
+})();
+</script>
+{% endmacro %}

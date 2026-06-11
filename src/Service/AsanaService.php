@@ -10,6 +10,7 @@ class AsanaService
 {
     public function __construct(
         private readonly HttpClientInterface $httpClient,
+        private readonly RichTextSanitizer $richTextSanitizer,
     ) {
     }
 
@@ -569,13 +570,14 @@ class AsanaService
             $notes = trim((string) ($video->getNotes() ?? ''));
             $line = sprintf('- %s (publication prévue : %s)', $title, $pub);
             if ($notes !== '') {
-                $line .= "\n  Idées / notes : ".$notes;
+                $line .= "\n  Note interne : ".$notes;
             }
             $videoLines[] = $line;
         }
 
         $description = trim((string) ($request->getDescription() ?? ''));
         $location = trim((string) ($request->getLocation() ?? ''));
+        $videographerPlain = $this->richTextSanitizer->toPlainText($request->getVideographerNotes());
 
         $notes = implode("\n", array_filter([
             'Demande de tournage créée depuis Gestion des contenus.',
@@ -586,6 +588,8 @@ class AsanaService
             '',
             $description !== '' ? "Description / consignes :\n".$description : null,
             $description !== '' ? '' : null,
+            $videographerPlain !== '' ? "Infos vidéaste :\n".$videographerPlain : null,
+            $videographerPlain !== '' ? '' : null,
             $videoLines !== [] ? "Vidéos à tourner :\n".implode("\n", $videoLines) : 'Vidéos à tourner : —',
             '',
             'Fiche demande : '.$requestUrl,

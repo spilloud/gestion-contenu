@@ -13,6 +13,7 @@ use App\Repository\ShootingRequestRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\AsanaService;
+use App\Service\RichTextSanitizer;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -32,6 +33,7 @@ class ShootingRequestController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly UserRepository $userRepository,
         private readonly AsanaService $asanaService,
+        private readonly RichTextSanitizer $richTextSanitizer,
     ) {
     }
 
@@ -53,6 +55,30 @@ class ShootingRequestController extends AbstractController
         }
 
         return $this->renderNewForm($defaultClientId);
+    }
+
+    #[Route('/{id}/infos-videaste', name: 'app_shooting_request_videographer_notes', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function updateVideographerNotes(int $id, Request $request): Response
+    {
+        $shootingRequest = $this->shootingRequestRepository->findOneForShow($id);
+        if ($shootingRequest === null) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid('shooting_videographer_'.$id, $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectToRoute('app_shooting_request_show', ['id' => $id]);
+        }
+
+        $shootingRequest->setVideographerNotes(
+            $this->richTextSanitizer->sanitize($request->request->getString('videographer_notes')),
+        );
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'Infos vidéaste enregistrées.');
+
+        return $this->redirectToRoute('app_shooting_request_show', ['id' => $id]);
     }
 
     #[Route('/{id}', name: 'app_shooting_request_show', requirements: ['id' => '\d+'], methods: ['GET'])]
@@ -146,6 +172,7 @@ class ShootingRequestController extends AbstractController
             ->setClient($client)
             ->setShootingDate($shootingDate)
             ->setDescription(trim($request->request->getString('description')) ?: null)
+            ->setVideographerNotes($this->richTextSanitizer->sanitize($request->request->getString('videographer_notes')))
             ->setLocation(trim($request->request->getString('location')) ?: null)
             ->setAssignedTo($assignedTo);
 

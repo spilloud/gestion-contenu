@@ -1,23 +1,126 @@
 {% extends 'base.html.twig' %}
+{% import 'tournage/_richtext_field.html.twig' as rte %}
 
 {% block title %}Demande de tournage — {{ request.client ? request.client.name : '' }}{% endblock %}
 
 {% block body %}
-<div style="display:flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin-bottom: 0.75rem;">
+<style>
+    .shooting-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    .shooting-print-header {
+        display: none;
+    }
+    .video-internal-note {
+        margin-top: 0.65rem;
+        padding: 0.55rem 0.65rem;
+        border-left: 3px solid var(--sidebar-active, #4c1d95);
+        background: rgba(148, 163, 184, 0.08);
+        border-radius: 0 8px 8px 0;
+        font-size: 0.92rem;
+    }
+    .video-internal-note__label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        margin-bottom: 0.25rem;
+    }
+    .video-internal-note__body {
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    .shooting-sheet section {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        padding: 1rem;
+        border-radius: 12px;
+    }
+    .shooting-sheet {
+        display: grid;
+        gap: 1rem;
+        max-width: 980px;
+    }
+    .shooting-videographer-print {
+        display: none;
+    }
+    @page {
+        margin: 12mm 14mm;
+    }
+    @media print {
+        .sidebar, .no-print { display: none !important; }
+        .main {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: none !important;
+        }
+        body { background: #fff !important; color: #111 !important; }
+        .shooting-print-header {
+            display: block;
+            margin-bottom: 8mm;
+            padding-bottom: 4mm;
+            border-bottom: 2px solid #333;
+        }
+        .shooting-print-header h1 {
+            margin: 0 0 2mm;
+            font-size: 16pt;
+        }
+        .shooting-print-header p {
+            margin: 0;
+            font-size: 10pt;
+            color: #444;
+        }
+        .shooting-sheet section {
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+        .shooting-sheet { max-width: none; }
+        .shooting-videographer-print { display: block; }
+        .video-internal-note {
+            background: #f3f4f6;
+            border-left-color: #333;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        a[href]::after { content: none !important; }
+        .btn, .rte-toolbar { display: none !important; }
+    }
+</style>
+
+<div class="shooting-actions no-print">
     <a href="{{ path('app_shooting_request_index') }}" class="btn" style="background:#64748b;">← Demandes de tournage</a>
+    <button type="button" class="btn" onclick="window.print()">Imprimer / PDF</button>
     {% if request.asanaTaskGid %}
         <a href="https://app.asana.com/0/0/{{ request.asanaTaskGid }}" target="_blank" rel="noopener" class="btn">Ouvrir dans Asana</a>
     {% endif %}
 </div>
 
-<h1>Demande de tournage</h1>
-<p style="color: var(--muted); margin-top: -0.25rem;">
+<div class="shooting-print-header">
+    <h1>Demande de tournage — {{ request.client ? request.client.name : '—' }}</h1>
+    <p>
+        Date du tournage : {{ request.shootingDate ? request.shootingDate|date('d/m/Y') : '—' }}
+        · Lieu : {{ request.location|default('—') }}
+        · Réalisé par : {{ request.assignedTo ? request.assignedTo.name : '—' }}
+    </p>
+</div>
+
+<h1 class="no-print">Demande de tournage</h1>
+<p class="no-print" style="color: var(--muted); margin-top: -0.25rem;">
     Créée le {{ request.createdAt ? request.createdAt|date('d/m/Y à H:i') : '—' }}
     {% if request.createdBy %}par {{ request.createdBy.name }}{% endif %}
 </p>
 
-<div style="display:grid; gap: 1rem; max-width: 980px;">
-    <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+<div class="shooting-sheet">
+    <section>
         <h2 style="margin-top:0;">Client &amp; tournage</h2>
         <dl style="display:grid; grid-template-columns: 160px 1fr; gap: 0.5rem 1rem; margin:0;">
             <dt style="color: var(--muted);">Client</dt>
@@ -28,8 +131,8 @@
             <dd style="margin:0;">{{ request.location|default('—') }}</dd>
             <dt style="color: var(--muted);">Réalisé par</dt>
             <dd style="margin:0;">{{ request.assignedTo ? request.assignedTo.name : '—' }}</dd>
-            <dt style="color: var(--muted);">Tâche Asana</dt>
-            <dd style="margin:0;">
+            <dt style="color: var(--muted);" class="no-print">Tâche Asana</dt>
+            <dd style="margin:0;" class="no-print">
                 {% if request.asanaTaskGid %}
                     <code>{{ request.asanaTaskGid }}</code>
                 {% else %}
@@ -40,13 +143,34 @@
     </section>
 
     {% if request.description %}
-        <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+        <section>
             <h2 style="margin-top:0;">Description / consignes</h2>
             <div style="white-space: pre-wrap;">{{ request.description }}</div>
         </section>
     {% endif %}
 
-    <section style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+    <section class="no-print">
+        <h2 style="margin-top:0;">Infos vidéaste</h2>
+        <p style="color: var(--muted); font-size: 0.88rem; margin-top: -0.25rem;">
+            Consignes pour la personne qui tourne : matériel, déroulé, contacts, listes à puces, etc.
+        </p>
+        <form method="post" action="{{ path('app_shooting_request_videographer_notes', {id: request.id}) }}" style="display:grid; gap: 0.75rem;">
+            <input type="hidden" name="_token" value="{{ csrf_token('shooting_videographer_' ~ request.id) }}">
+            {{ rte.editor('videographer_notes', 'videographer_notes', request.videographerNotes|default(''), 'Texte enrichi', 'Ex. : \n• Apporter micro cravate\n• Arriver 15 min avant\n• Contact sur place : …') }}
+            <div>
+                <button type="submit" class="btn">Enregistrer les infos vidéaste</button>
+            </div>
+        </form>
+    </section>
+
+    {% if request.videographerNotes %}
+        <section class="shooting-videographer-print">
+            <h2 style="margin-top:0;">Infos vidéaste</h2>
+            <div class="rich-content">{{ request.videographerNotes|raw }}</div>
+        </section>
+    {% endif %}
+
+    <section>
         <h2 style="margin-top:0;">Vidéos à tourner ({{ request.videos|length }})</h2>
         {% if request.videos is empty %}
             <p style="color: var(--muted); margin:0;">Aucune vidéo liée.</p>
@@ -61,18 +185,22 @@
                                     Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
                                 </div>
                             </div>
-                            <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm">Fiche vidéo</a>
+                            <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm no-print">Fiche vidéo</a>
                         </div>
-                        {% if v.notes %}
-                            <div style="margin-top: 0.5rem; font-size: 0.9rem;">
-                                <strong>Idées / notes :</strong>
-                                <div style="white-space: pre-wrap; margin-top: 0.2rem;">{{ v.notes }}</div>
-                            </div>
-                        {% endif %}
+                        <div class="video-internal-note">
+                            <span class="video-internal-note__label">Note interne</span>
+                            {% if v.notes|default('')|trim != '' %}
+                                <div class="video-internal-note__body">{{ v.notes }}</div>
+                            {% else %}
+                                <div class="video-internal-note__body" style="color: var(--muted); font-style: italic;">—</div>
+                            {% endif %}
+                        </div>
                     </article>
                 {% endfor %}
             </div>
         {% endif %}
     </section>
 </div>
+
+{{ rte.assets() }}
 {% endblock %}

@@ -12,9 +12,43 @@
         align-items: center;
         margin-bottom: 0.75rem;
     }
-    .shooting-print-header {
-        display: none;
+    .shooting-print-header { display: none; }
+    .shooting-summary__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
     }
+    .shooting-summary__grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 1fr) minmax(260px, 1.2fr);
+        gap: 1.25rem;
+        align-items: start;
+    }
+    @media (max-width: 720px) {
+        .shooting-summary__grid { grid-template-columns: 1fr; }
+    }
+    .shooting-summary__desc-title {
+        margin: 0 0 0.4rem;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+    }
+    .shooting-summary__desc-body {
+        white-space: pre-wrap;
+        word-break: break-word;
+        margin: 0;
+    }
+    .shooting-panel {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--card-border);
+    }
+    .shooting-panel[hidden] { display: none !important; }
     .video-internal-note {
         margin-top: 0.65rem;
         padding: 0.55rem 0.65rem;
@@ -42,25 +76,21 @@
         padding: 1rem;
         border-radius: 12px;
     }
-    .shooting-sheet {
-        display: grid;
-        gap: 1rem;
-        max-width: 980px;
+    .shooting-sheet { display: grid; gap: 1rem; max-width: 980px; }
+    .shooting-videographer-print { display: none; }
+    .shooting-videos__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.75rem;
     }
-    .shooting-videographer-print {
-        display: none;
-    }
-    @page {
-        margin: 12mm 14mm;
-    }
+    .shooting-videos__head h2 { margin: 0; }
+    @page { margin: 12mm 14mm; }
     @media print {
         .sidebar, .no-print { display: none !important; }
-        .main {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: none !important;
-        }
+        .main { margin: 0 !important; padding: 0 !important; width: 100% !important; max-width: none !important; }
         body { background: #fff !important; color: #111 !important; }
         .shooting-print-header {
             display: block;
@@ -68,15 +98,9 @@
             padding-bottom: 4mm;
             border-bottom: 2px solid #333;
         }
-        .shooting-print-header h1 {
-            margin: 0 0 2mm;
-            font-size: 16pt;
-        }
-        .shooting-print-header p {
-            margin: 0;
-            font-size: 10pt;
-            color: #444;
-        }
+        .shooting-print-header h1 { margin: 0 0 2mm; font-size: 16pt; }
+        .shooting-print-header p { margin: 0 0 2mm; font-size: 10pt; color: #444; }
+        .shooting-print-header__desc { margin: 2mm 0 0; font-size: 10pt; white-space: pre-wrap; }
         .shooting-sheet section {
             border: 1px solid #bbb;
             border-radius: 4px;
@@ -99,9 +123,6 @@
 <div class="shooting-actions no-print">
     <a href="{{ path('app_shooting_request_index') }}" class="btn" style="background:#64748b;">← Demandes de tournage</a>
     <button type="button" class="btn" onclick="window.print()">Imprimer / PDF</button>
-    {% if request.asanaTaskGid %}
-        <a href="https://app.asana.com/0/0/{{ request.asanaTaskGid }}" target="_blank" rel="noopener" class="btn">Ouvrir dans Asana</a>
-    {% endif %}
 </div>
 
 <div class="shooting-print-header">
@@ -109,8 +130,11 @@
     <p>
         Date du tournage : {{ request.shootingDate ? request.shootingDate|date('d/m/Y') : '—' }}
         · Lieu : {{ request.location|default('—') }}
-        · Réalisé par : {{ request.assignedTo ? request.assignedTo.name : '—' }}
+        · Vidéaste : {{ request.assignedTo ? request.assignedTo.name : '—' }}
     </p>
+    {% if request.description %}
+        <p class="shooting-print-header__desc"><strong>Description / consignes du tournage —</strong> {{ request.description }}</p>
+    {% endif %}
 </div>
 
 <h1 class="no-print">Demande de tournage</h1>
@@ -121,44 +145,80 @@
 
 <div class="shooting-sheet">
     <section class="no-print">
-        <h2 style="margin-top:0;">Client &amp; tournage</h2>
-        <dl style="display:grid; grid-template-columns: 160px 1fr; gap: 0.5rem 1rem; margin:0;">
-            <dt style="color: var(--muted);">Client</dt>
-            <dd style="margin:0; font-weight:700;">{{ request.client ? request.client.name : '—' }}</dd>
-            <dt style="color: var(--muted);">Date</dt>
-            <dd style="margin:0;">{{ request.shootingDate ? request.shootingDate|date('d/m/Y') : '—' }}</dd>
-            <dt style="color: var(--muted);">Lieu</dt>
-            <dd style="margin:0;">{{ request.location|default('—') }}</dd>
-            <dt style="color: var(--muted);">Réalisé par</dt>
-            <dd style="margin:0;">{{ request.assignedTo ? request.assignedTo.name : '—' }}</dd>
-            <dt style="color: var(--muted);" class="no-print">Tâche Asana</dt>
-            <dd style="margin:0;" class="no-print">
-                {% if request.asanaTaskGid %}
-                    <code>{{ request.asanaTaskGid }}</code>
-                {% else %}
-                    <span style="color: var(--muted);">Non créée</span>
-                {% endif %}
-            </dd>
-        </dl>
-    </section>
+        <div class="shooting-summary__head">
+            <h2 style="margin:0;">Client &amp; tournage</h2>
+            <button type="button" class="btn btn-sm" id="btn-edit-infos" style="background:#64748b;">Modifier</button>
+        </div>
 
-    {% if request.description %}
-        <section>
-            <h2 style="margin-top:0;">Description / consignes</h2>
-            <div style="white-space: pre-wrap;">{{ request.description }}</div>
-        </section>
-    {% endif %}
+        <div class="shooting-summary__grid" id="shooting-summary-view">
+            <dl style="display:grid; grid-template-columns: 110px 1fr; gap: 0.45rem 0.75rem; margin:0;">
+                <dt style="color: var(--muted);">Client</dt>
+                <dd style="margin:0; font-weight:700;">{{ request.client ? request.client.name : '—' }}</dd>
+                <dt style="color: var(--muted);">Date</dt>
+                <dd style="margin:0;">{{ request.shootingDate ? request.shootingDate|date('d/m/Y') : '—' }}</dd>
+                <dt style="color: var(--muted);">Lieu</dt>
+                <dd style="margin:0;">{{ request.location|default('—') }}</dd>
+                <dt style="color: var(--muted);">Vidéaste</dt>
+                <dd style="margin:0;">{{ request.assignedTo ? request.assignedTo.name : '—' }}</dd>
+                <dt style="color: var(--muted);">Asana</dt>
+                <dd style="margin:0;">
+                    {% if request.asanaTaskGid %}
+                        <a href="https://app.asana.com/0/0/{{ request.asanaTaskGid }}" target="_blank" rel="noopener">Ouvrir la tâche Asana</a>
+                    {% else %}
+                        <span style="color: var(--muted);">Non créée</span>
+                    {% endif %}
+                </dd>
+            </dl>
+            <div>
+                <p class="shooting-summary__desc-title">Description / consignes du tournage</p>
+                {% if request.description %}
+                    <p class="shooting-summary__desc-body">{{ request.description }}</p>
+                {% else %}
+                    <p class="shooting-summary__desc-body" style="color: var(--muted); font-style: italic;">—</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="shooting-panel" id="panel-edit-infos" {% if not editInfos %}hidden{% endif %}>
+            <form method="post" action="{{ path('app_shooting_request_update_details', {id: request.id}) }}" style="display:grid; gap: 0.75rem;">
+                <input type="hidden" name="_token" value="{{ csrf_token('shooting_details_' ~ request.id) }}">
+                <div style="display:grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                    <div>
+                        <label for="shooting_date" class="field-label">Date du tournage</label>
+                        <input id="shooting_date" name="shooting_date" type="date" required style="width:100%;" value="{{ request.shootingDate ? request.shootingDate|date('Y-m-d') : '' }}">
+                    </div>
+                    <div>
+                        <label for="assigned_to_id" class="field-label">Vidéaste</label>
+                        <select id="assigned_to_id" name="assigned_to_id" required style="width:100%;">
+                            {% for e in employees %}
+                                <option value="{{ e.id }}" {{ request.assignedTo and request.assignedTo.id == e.id ? 'selected' : '' }}>{{ e.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="location" class="field-label">Lieu</label>
+                        <input id="location" name="location" type="text" style="width:100%;" value="{{ request.location|default('') }}">
+                    </div>
+                </div>
+                <div>
+                    <label for="description" class="field-label">Description / consignes du tournage</label>
+                    <textarea id="description" name="description" rows="4" style="width:100%; resize:vertical;">{{ request.description|default('') }}</textarea>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="submit" class="btn">Enregistrer</button>
+                    <button type="button" class="btn" style="background:#64748b;" id="btn-cancel-infos">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </section>
 
     <section class="no-print">
         <h2 style="margin-top:0;">Infos vidéaste</h2>
-        <p style="color: var(--muted); font-size: 0.88rem; margin-top: -0.25rem;">
-            Consignes pour la personne qui tourne : matériel, déroulé, contacts, listes à puces, etc.
-        </p>
         <form method="post" action="{{ path('app_shooting_request_videographer_notes', {id: request.id}) }}" style="display:grid; gap: 0.75rem;">
             <input type="hidden" name="_token" value="{{ csrf_token('shooting_videographer_' ~ request.id) }}">
-            {{ rte.editor('videographer_notes', 'videographer_notes', request.videographerNotes|default(''), 'Texte enrichi', 'Ex. : \n• Apporter micro cravate\n• Arriver 15 min avant\n• Contact sur place : …') }}
+            {{ rte.editor('videographer_notes', 'videographer_notes', request.videographerNotes|default(''), '', 'Matériel, déroulé, contacts…') }}
             <div>
-                <button type="submit" class="btn">Enregistrer les infos vidéaste</button>
+                <button type="submit" class="btn">Enregistrer</button>
             </div>
         </form>
     </section>
@@ -171,36 +231,88 @@
     {% endif %}
 
     <section>
-        <h2 style="margin-top:0;">Vidéos à tourner ({{ request.videos|length }})</h2>
-        {% if request.videos is empty %}
-            <p style="color: var(--muted); margin:0;">Aucune vidéo liée.</p>
-        {% else %}
-            <div style="display:grid; gap: 0.6rem;">
-                {% for v in request.videos %}
-                    <article style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--surface-inset);">
-                        <div style="display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
-                            <div>
+        <div class="shooting-videos__head no-print">
+            <h2>Vidéos à tourner ({{ request.videos|length }})</h2>
+            <button type="button" class="btn btn-sm" id="btn-edit-videos" style="background:#64748b;">Modifier les vidéos</button>
+        </div>
+        <h2 class="shooting-videographer-print" style="margin-top:0;">Vidéos à tourner ({{ request.videos|length }})</h2>
+
+        <div class="shooting-panel no-print" id="panel-edit-videos" {% if not editVideos %}hidden{% endif %}>
+            <form method="post" action="{{ path('app_shooting_request_update_videos', {id: request.id}) }}" style="display:grid; gap: 0.65rem;">
+                <input type="hidden" name="_token" value="{{ csrf_token('shooting_videos_' ~ request.id) }}">
+                {% if selectableVideos is empty %}
+                    <p style="color: var(--muted); margin:0;">Aucune vidéo planifiée disponible pour ce client.</p>
+                {% else %}
+                    {% for v in selectableVideos %}
+                        <label style="display:flex; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--card-border); border-radius: 10px; padding: 0.6rem; background: var(--surface-inset);">
+                            <input type="checkbox" name="video_ids[]" value="{{ v.id }}" style="margin-top:0.25rem;" {{ currentVideoIds[v.id] is defined ? 'checked' : '' }}>
+                            <div style="min-width:0; flex:1;">
                                 <div style="font-weight:700;">{{ v.title }}</div>
-                                <div style="color: var(--muted); font-size: 0.88rem;">
-                                    Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
+                                <div style="color: var(--muted); font-size: 0.85rem;">
+                                    Publication {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
                                 </div>
+                                {% if v.notes|default('')|trim != '' %}
+                                    <div style="margin-top:0.3rem; font-size:0.85rem; white-space:pre-wrap;">{{ v.notes }}</div>
+                                {% endif %}
                             </div>
-                            <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm no-print">Fiche vidéo</a>
-                        </div>
-                        <div class="video-internal-note">
-                            <span class="video-internal-note__label">Note interne</span>
-                            {% if v.notes|default('')|trim != '' %}
-                                <div class="video-internal-note__body">{{ v.notes }}</div>
-                            {% else %}
-                                <div class="video-internal-note__body" style="color: var(--muted); font-style: italic;">—</div>
-                            {% endif %}
-                        </div>
-                    </article>
-                {% endfor %}
-            </div>
-        {% endif %}
+                        </label>
+                    {% endfor %}
+                {% endif %}
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.25rem;">
+                    <button type="submit" class="btn" {{ selectableVideos is empty ? 'disabled' : '' }}>Enregistrer la liste</button>
+                    <button type="button" class="btn" style="background:#64748b;" id="btn-cancel-videos">Annuler</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="shooting-videos-view">
+            {% if request.videos is empty %}
+                <p style="color: var(--muted); margin:0;">Aucune vidéo liée.</p>
+            {% else %}
+                <div style="display:grid; gap: 0.6rem;">
+                    {% for v in request.videos %}
+                        <article style="border: 1px solid var(--card-border); border-radius: 10px; padding: 0.75rem; background: var(--surface-inset);">
+                            <div style="display:flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                                <div>
+                                    <div style="font-weight:700;">{{ v.title }}</div>
+                                    <div style="color: var(--muted); font-size: 0.88rem;">
+                                        Publication prévue {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
+                                    </div>
+                                </div>
+                                <a href="{{ path('app_video_show', {id: v.id}) }}" class="btn btn-sm no-print">Fiche vidéo</a>
+                            </div>
+                            <div class="video-internal-note">
+                                <span class="video-internal-note__label">Note interne</span>
+                                {% if v.notes|default('')|trim != '' %}
+                                    <div class="video-internal-note__body">{{ v.notes }}</div>
+                                {% else %}
+                                    <div class="video-internal-note__body" style="color: var(--muted); font-style: italic;">—</div>
+                                {% endif %}
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
     </section>
 </div>
+
+<script>
+(function () {
+    function bindToggle(btnId, panelId, cancelId) {
+        const btn = document.getElementById(btnId);
+        const panel = document.getElementById(panelId);
+        const cancel = cancelId ? document.getElementById(cancelId) : null;
+        if (!btn || !panel) return;
+        btn.addEventListener('click', function () { panel.hidden = false; });
+        if (cancel) {
+            cancel.addEventListener('click', function () { panel.hidden = true; });
+        }
+    }
+    bindToggle('btn-edit-infos', 'panel-edit-infos', 'btn-cancel-infos');
+    bindToggle('btn-edit-videos', 'panel-edit-videos', 'btn-cancel-videos');
+})();
+</script>
 
 {{ rte.assets() }}
 {% endblock %}

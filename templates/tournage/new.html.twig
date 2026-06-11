@@ -68,7 +68,7 @@
                 <input id="shooting_date" name="shooting_date" type="date" required style="width: 100%;">
             </div>
             <div>
-                <label for="assigned_to_id" class="field-label">Réalisé par</label>
+                <label for="assigned_to_id" class="field-label">Vidéaste</label>
                 <select id="assigned_to_id" name="assigned_to_id" required style="width: 100%;">
                     <option value="">— Sélectionner —</option>
                     {% for e in employees %}
@@ -87,7 +87,7 @@
             <textarea id="description" name="description" rows="5" placeholder="Matériel, contacts sur place, angles à prévoir, contraintes horaires…" style="width: 100%; resize: vertical;"></textarea>
         </div>
 
-        {{ rte.editor('videographer_notes', 'videographer_notes_new', '', 'Infos vidéaste (texte enrichi)', 'Ex. : matériel, déroulé, contacts… Listes à puces possibles.') }}
+        {{ rte.editor('videographer_notes', 'videographer_notes_new', '', 'Infos vidéaste', 'Matériel, déroulé, contacts…') }}
     </div>
 
     <div>

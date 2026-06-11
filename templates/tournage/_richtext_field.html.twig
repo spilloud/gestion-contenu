@@ -1,6 +1,8 @@
 {% macro editor(fieldName, fieldId, content, label, placeholder) %}
 <div class="rte-wrap" data-rte-wrap>
-    <label for="{{ fieldId }}" class="field-label">{{ label }}</label>
+    {% if label|default('') != '' %}
+        <label for="{{ fieldId }}" class="field-label">{{ label }}</label>
+    {% endif %}
     <div class="rte-toolbar no-print" role="toolbar" aria-label="Mise en forme">
         <button type="button" class="rte-btn" data-cmd="bold" title="Gras"><strong>B</strong></button>
         <button type="button" class="rte-btn" data-cmd="italic" title="Italique"><em>I</em></button>

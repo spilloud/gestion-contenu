@@ -81,6 +81,24 @@ final class ContentWorkflowRegistry
         'Publiée',
     ];
 
+    /**
+     * Statuts proposés dans les menus déroulants (filtres, correction manuelle).
+     * Exclut les étapes legacy vidéo et les anciens libellés hors parcours actuel.
+     *
+     * @return list<string>
+     */
+    public static function selectableStatusNames(string $workflow): array
+    {
+        if ($workflow === Status::WORKFLOW_VIDEO) {
+            return array_values(array_filter(
+                self::VIDEO_ORDER,
+                static fn (string $name): bool => !in_array($name, self::VIDEO_LEGACY_STEP_STATUSES, true),
+            ));
+        }
+
+        return self::STANDARD_ORDER;
+    }
+
     public function __construct(
         private readonly ContentFormatHelper $formatHelper,
         private readonly ContentActionLogRepository $actionLogRepository,

@@ -91,7 +91,7 @@ class ContentController extends AbstractController
         return $this->render('content/index.html.twig', [
             'contents' => $qb->getQuery()->getResult(),
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
-            'statuses' => $this->statusRepository->findForWorkflow(\App\Entity\Status::WORKFLOW_STANDARD),
+            'statuses' => $this->statusRepository->findSelectableForWorkflow(\App\Entity\Status::WORKFLOW_STANDARD),
             'formats' => $nonVideoFormats,
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],

@@ -70,7 +70,7 @@ class ContentType extends AbstractType
                 'label' => 'Statut (réglage manuel)',
                 'class' => Status::class,
                 'choice_label' => 'name',
-                'choices' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_STANDARD),
+                'choices' => [],
                 'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ])
             ->add('notes', TextareaType::class, [
@@ -97,6 +97,21 @@ class ContentType extends AbstractType
             if (!$content instanceof Content) {
                 return;
             }
+
+            $form = $event->getForm();
+            if ($form->has('status')) {
+                $form->remove('status');
+            }
+            $form->add('status', EntityType::class, [
+                'label' => 'Statut (réglage manuel)',
+                'class' => Status::class,
+                'choice_label' => 'name',
+                'choices' => $this->statusRepository->findSelectableForWorkflow(
+                    Status::WORKFLOW_STANDARD,
+                    $content->getStatus(),
+                ),
+                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
+            ]);
 
             if ($this->contentFormatHelper->isVideoContent($content)) {
                 return;

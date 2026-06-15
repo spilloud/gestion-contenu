@@ -65,12 +65,8 @@ class VideoContentType extends AbstractType
                 'label' => 'Statut (réglage manuel)',
                 'class' => Status::class,
                 'choice_label' => 'name',
-                'query_builder' => fn () => $this->statusRepository->createQueryBuilder('s')
-                    ->andWhere('s.workflow IN (:workflows)')
-                    ->setParameter('workflows', [Status::WORKFLOW_VIDEO, Status::WORKFLOW_BOTH])
-                    ->orderBy('s.sortOrder', 'ASC')
-                    ->addOrderBy('s.name', 'ASC'),
-                'help' => 'Préférez les boutons d\'avancement ci-dessus ; le menu sert aux corrections.',
+                'choices' => [],
+                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ])
             ->add('notes', TextareaType::class, [
                 'label' => 'Notes (interne)',
@@ -127,6 +123,20 @@ class VideoContentType extends AbstractType
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
 
             $form = $event->getForm();
+            if ($form->has('status')) {
+                $form->remove('status');
+            }
+            $form->add('status', EntityType::class, [
+                'label' => 'Statut (réglage manuel)',
+                'class' => Status::class,
+                'choice_label' => 'name',
+                'choices' => $this->statusRepository->findSelectableForWorkflow(
+                    Status::WORKFLOW_VIDEO,
+                    $content->getStatus(),
+                ),
+                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
+            ]);
+
             if ($form->has('videoEditor')) {
                 $form->remove('videoEditor');
             }

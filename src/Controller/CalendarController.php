@@ -76,8 +76,8 @@ class CalendarController extends AbstractController
             'showEvents' => $showEvents,
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
             // Deux listes : posts vs vidéos (sinon la liste devient trop longue).
-            'statuses' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_STANDARD),
-            'videoStatuses' => $this->statusRepository->findForWorkflow(Status::WORKFLOW_VIDEO),
+            'statuses' => $this->statusRepository->findSelectableForWorkflow(Status::WORKFLOW_STANDARD),
+            'videoStatuses' => $this->statusRepository->findSelectableForWorkflow(Status::WORKFLOW_VIDEO),
             'formats' => $this->formatRepository->findAllOrdered(),
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],

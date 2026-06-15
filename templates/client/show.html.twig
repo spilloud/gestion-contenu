@@ -297,14 +297,14 @@
                             >
                                 <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                                 <select name="statusId" style="min-width: 220px;">
-                                    {% for s in statuses %}
-                                        {% set ok = (fmt == 'vidéo' or fmt == 'video')
-                                            ? (s.workflow == 'video' or s.workflow == 'both')
-                                            : (s.workflow == 'standard' or s.workflow == 'both') %}
-                                        {% if ok %}
-                                            <option value="{{ s.id }}" {{ content.status and s.id == content.status.id ? 'selected' : '' }}>{{ s.name }}</option>
-                                        {% endif %}
+                                    {% set statusChoices = (fmt == 'vidéo' or fmt == 'video') ? videoStatuses : statuses %}
+                                    {% set choiceIds = statusChoices|map(s => s.id) %}
+                                    {% for s in statusChoices %}
+                                        <option value="{{ s.id }}" {{ content.status and s.id == content.status.id ? 'selected' : '' }}>{{ s.name }}</option>
                                     {% endfor %}
+                                    {% if content.status and content.status.id not in choiceIds %}
+                                        <option value="{{ content.status.id }}" selected>{{ content.status.name }}</option>
+                                    {% endif %}
                                 </select>
                                 <button type="submit" class="btn btn-sm">OK</button>
                             </form>
@@ -399,9 +399,15 @@ function toggleStatusEditorList(id) {
                                         <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor" style="display: none;">
                                             <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                                             <select name="statusId" class="status-inline-select" draggable="false">
-                                                {% for status in statuses %}
+                                                {% set isVideo = fmt == 'vidéo' or fmt == 'video' %}
+                                                {% set statusChoices = isVideo ? videoStatuses : statuses %}
+                                                {% set choiceIds = statusChoices|map(s => s.id) %}
+                                                {% for status in statusChoices %}
                                                     <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                                 {% endfor %}
+                                                {% if content.status.id not in choiceIds %}
+                                                    <option value="{{ content.status.id }}" selected>{{ content.status.name }}</option>
+                                                {% endif %}
                                             </select>
                                             <button type="submit" class="status-save-btn" draggable="false" title="Valider">✓</button>
                                         </form>

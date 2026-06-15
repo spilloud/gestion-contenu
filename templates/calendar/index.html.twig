@@ -387,7 +387,16 @@
                 <button type="button" onclick="toggleColumnChecks('status-check', false)">Tout décocher</button>
             </div>
             <div class="checklist">
+                <p style="margin: 0 0 0.35rem; font-size: 0.85rem; color: var(--muted); font-weight: 600;">Posts</p>
                 {% for status in statuses %}
+                    {% set checked = hasStatusFilter ? (status.id in selectedStatusIds) : true %}
+                    <label class="check-item">
+                        <input type="checkbox" class="status-check" name="statuses[]" value="{{ status.id }}" {{ checked ? 'checked' : '' }}>
+                        <span>{{ status.name }}</span>
+                    </label>
+                {% endfor %}
+                <p style="margin: 0.65rem 0 0.35rem; font-size: 0.85rem; color: var(--muted); font-weight: 600;">Vidéos</p>
+                {% for status in videoStatuses %}
                     {% set checked = hasStatusFilter ? (status.id in selectedStatusIds) : true %}
                     <label class="check-item">
                         <input type="checkbox" class="status-check" name="statuses[]" value="{{ status.id }}" {{ checked ? 'checked' : '' }}>
@@ -502,10 +511,14 @@
                                     <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
                                         <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                                         <select name="statusId" class="status-inline-select" draggable="false">
-                                            {% set statusChoices = isVideo ? (videoStatuses|default(statuses)) : statuses %}
+                                            {% set statusChoices = isVideo ? videoStatuses : statuses %}
+                                            {% set choiceIds = statusChoices|map(s => s.id) %}
                                             {% for status in statusChoices %}
                                                 <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                             {% endfor %}
+                                            {% if content.status.id not in choiceIds %}
+                                                <option value="{{ content.status.id }}" selected>{{ content.status.name }}</option>
+                                            {% endif %}
                                         </select>
                                         <button type="submit" class="status-save-btn" draggable="false" title="Valider">✓</button>
                                     </form>
@@ -567,10 +580,14 @@
                         <form method="post" action="{{ path('app_content_change_status', {id: content.id}) }}" id="status-editor-{{ content.id }}" class="status-editor">
                             <input type="hidden" name="_token" value="{{ csrf_token('status' ~ content.id) }}">
                             <select name="statusId" class="status-inline-select">
-                                {% set statusChoices = isVideo ? (videoStatuses|default(statuses)) : statuses %}
+                                {% set statusChoices = isVideo ? videoStatuses : statuses %}
+                                {% set choiceIds = statusChoices|map(s => s.id) %}
                                 {% for status in statusChoices %}
                                     <option value="{{ status.id }}" {{ content.status.id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                                 {% endfor %}
+                                {% if content.status.id not in choiceIds %}
+                                    <option value="{{ content.status.id }}" selected>{{ content.status.name }}</option>
+                                {% endif %}
                             </select>
                             <button type="submit" class="status-save-btn" title="Valider">✓</button>
                         </form>

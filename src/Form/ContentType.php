@@ -136,7 +136,7 @@ class ContentType extends AbstractType
                 'choice_label' => 'name',
                 'required' => false,
                 'placeholder' => $content->getVideoEditor() !== null ? false : '—',
-                'query_builder' => fn ($repo) => $repo->createQueryBuilder('u')->orderBy('u.name', 'ASC'),
+                'choices' => $this->userRepository->findEditorsOrdered($content->getVideoEditor()),
             ]);
 
             if ($form->has('videoCommunityManager')) {

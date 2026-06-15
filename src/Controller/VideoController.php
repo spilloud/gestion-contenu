@@ -83,7 +83,7 @@ class VideoController extends AbstractController
             'contents' => $qb->getQuery()->getResult(),
             'clients' => $this->clientRepository->findAllOrderedByClientName(),
             'statuses' => $this->statusRepository->findSelectableForWorkflow(\App\Entity\Status::WORKFLOW_VIDEO),
-            'editors' => $this->userRepository->findBy([], ['name' => 'ASC']),
+            'editors' => $this->userRepository->findEditorsOrdered(),
             'selectedClientIds' => $clientIds ?? [],
             'selectedStatusIds' => $statusIds ?? [],
             'selectedEditorIds' => $editorIds ?? [],

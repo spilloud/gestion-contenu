@@ -4,207 +4,234 @@
 
 {% block body %}
 <style>
-    .ep-intro { color: var(--muted); max-width: 920px; margin-bottom: 1.25rem; }
-    .ep-rules {
+    .ep-intro { color: var(--muted); max-width: 720px; margin-bottom: 1rem; line-height: 1.5; }
+    .ep-legend {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.65rem;
+        margin-bottom: 1.25rem;
+    }
+    .ep-legend__item {
         background: var(--card-bg);
         border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 0.85rem 1rem;
-        margin-bottom: 1.25rem;
-        font-size: 0.92rem;
-        color: var(--muted);
+        border-radius: 10px;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.88rem;
     }
-    .ep-totals {
+    .ep-legend__item strong { display: block; margin-bottom: 0.2rem; }
+    .ep-legend__item span { color: var(--muted); font-size: 0.82rem; }
+    .ep-stats {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-bottom: 1.25rem;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.9rem;
     }
-    .ep-total-pill {
+    .ep-stats span {
         background: var(--card-bg);
         border: 1px solid var(--card-border);
-        border-radius: 999px;
-        padding: 0.35rem 0.85rem;
-        font-size: 0.9rem;
+        border-radius: 8px;
+        padding: 0.35rem 0.7rem;
     }
     .ep-lane {
         margin-bottom: 2rem;
         border: 1px solid var(--card-border);
-        border-radius: 14px;
+        border-radius: 12px;
         background: var(--card-bg);
         overflow: hidden;
     }
     .ep-lane__head {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.75rem;
-        padding: 1rem 1.1rem;
+        padding: 1rem 1.15rem;
         border-bottom: 1px solid var(--card-border);
-        background: rgba(0,0,0,0.02);
+        background: rgba(0,0,0,0.03);
     }
-    body.theme-dark .ep-lane__head { background: rgba(255,255,255,0.03); }
-    .ep-lane__title { margin: 0; font-size: 1.15rem; }
-    .ep-summary {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.45rem;
-    }
-    .ep-summary span {
-        font-size: 0.82rem;
-        padding: 0.2rem 0.55rem;
-        border-radius: 999px;
-        background: var(--bg);
-        border: 1px solid var(--card-border);
-    }
-    .ep-summary .ep-summary--alert {
-        border-color: #f59e0b;
-        color: #b45309;
-        font-weight: 600;
-    }
-    body.theme-dark .ep-summary .ep-summary--alert { color: #fbbf24; }
+    body.theme-dark .ep-lane__head { background: rgba(255,255,255,0.04); }
+    .ep-lane__head h2 { margin: 0 0 0.35rem; font-size: 1.2rem; }
+    .ep-lane__counts { color: var(--muted); font-size: 0.88rem; }
+    .ep-lane__counts strong { color: var(--text); }
     .ep-shootings {
-        padding: 0.75rem 1.1rem;
+        padding: 0.65rem 1.15rem;
         border-bottom: 1px solid var(--card-border);
-        font-size: 0.9rem;
+        font-size: 0.86rem;
+        color: var(--muted);
     }
-    .ep-shootings ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
     .ep-alerts {
-        padding: 0.75rem 1.1rem;
+        padding: 0.65rem 1.15rem;
         border-bottom: 1px solid var(--card-border);
         background: #fff7ed;
+        font-size: 0.86rem;
     }
-    body.theme-dark .ep-alerts { background: rgba(245, 158, 11, 0.08); }
-    .ep-alerts ul { margin: 0; padding-left: 1.1rem; }
+    body.theme-dark .ep-alerts { background: rgba(245, 158, 11, 0.1); }
+    .ep-alerts ul { margin: 0.35rem 0 0; padding: 0; list-style: none; }
+    .ep-alerts li { padding: 0.15rem 0; }
     .ep-alerts li.danger { color: #b91c1c; font-weight: 600; }
-    body.theme-dark .ep-alerts li.danger { color: #f87171; }
-    .ep-columns {
+    .ep-grid {
         display: grid;
-        grid-template-columns: repeat(4, minmax(200px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 0;
     }
-    @media (max-width: 1100px) {
-        .ep-columns { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
-    }
-    @media (max-width: 640px) {
-        .ep-columns { grid-template-columns: 1fr; }
+    @media (max-width: 900px) {
+        .ep-grid { grid-template-columns: 1fr; }
+        .ep-col { border-right: none !important; border-bottom: 1px solid var(--card-border); }
     }
     .ep-col {
         border-right: 1px solid var(--card-border);
-        min-height: 120px;
+        min-width: 0;
     }
     .ep-col:last-child { border-right: none; }
-    .ep-col__title {
-        padding: 0.65rem 0.75rem;
-        font-weight: 700;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
+    .ep-col__head {
+        padding: 0.7rem 1rem;
         border-bottom: 1px solid var(--card-border);
         background: rgba(0,0,0,0.02);
     }
-    body.theme-dark .ep-col__title { background: rgba(255,255,255,0.03); }
-    .ep-col__items { padding: 0.5rem; display: grid; gap: 0.5rem; }
-    .ep-card {
-        border: 1px solid var(--card-border);
-        border-radius: 10px;
-        padding: 0.55rem 0.65rem;
-        font-size: 0.88rem;
-        background: var(--bg);
+    body.theme-dark .ep-col__head { background: rgba(255,255,255,0.03); }
+    .ep-col__head h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
     }
-    .ep-card--danger { border-color: #fca5a5; background: #fef2f2; }
-    .ep-card--warning { border-color: #fcd34d; background: #fffbeb; }
-    body.theme-dark .ep-card--danger { background: rgba(239, 68, 68, 0.1); }
-    body.theme-dark .ep-card--warning { background: rgba(245, 158, 11, 0.08); }
-    .ep-card a { color: inherit; font-weight: 600; text-decoration: underline; }
-    .ep-card__meta { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; line-height: 1.35; }
-    .ep-empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0.75rem; font-style: italic; }
+    .ep-col__head p {
+        margin: 0.2rem 0 0;
+        font-size: 0.78rem;
+        color: var(--muted);
+        line-height: 1.3;
+    }
+    .ep-col__count {
+        float: right;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--muted);
+        line-height: 1;
+    }
+    .ep-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+    }
+    .ep-table th {
+        text-align: left;
+        padding: 0.45rem 0.65rem;
+        font-weight: 600;
+        color: var(--muted);
+        border-bottom: 1px solid var(--card-border);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    .ep-table td {
+        padding: 0.5rem 0.65rem;
+        border-bottom: 1px solid var(--card-border);
+        vertical-align: top;
+    }
+    .ep-table tr:last-child td { border-bottom: none; }
+    .ep-table tr.ep-row--danger { background: #fef2f2; }
+    .ep-table tr.ep-row--warning { background: #fffbeb; }
+    body.theme-dark .ep-table tr.ep-row--danger { background: rgba(239,68,68,0.12); }
+    body.theme-dark .ep-table tr.ep-row--warning { background: rgba(245,158,11,0.1); }
+    .ep-table a { font-weight: 600; color: inherit; }
+    .ep-table .ep-dates { color: var(--muted); white-space: nowrap; font-size: 0.8rem; }
+    .ep-empty {
+        padding: 1rem;
+        color: var(--muted);
+        font-style: italic;
+        font-size: 0.85rem;
+        text-align: center;
+    }
 </style>
 
 <h1>Planning monteurs</h1>
 <p class="ep-intro">
-    Vue lecture seule de la charge montage : ce qui arrive, ce qui est en file, et les alertes.
-    Aucune action workflow supplémentaire — les données viennent des fiches vidéo, des clients et des demandes de tournage.
-    Lucy peut aussi consommer <a href="{{ path('app_api_ai_editor_planning') }}" target="_blank" rel="noopener">l’export JSON</a> (clé API).
+    Vue synthétique par monteur. Les contenus <strong>publiés</strong> ou datés avant le {{ planning.rules.pipelineCutoffDate|date('d/m/Y') }} n’apparaissent pas.
+    Export Lucy : <a href="{{ path('app_api_ai_editor_planning') }}" target="_blank" rel="noopener">/api/ai/editor-planning</a>.
 </p>
 
-<div class="ep-rules">{{ planning.rules.description }}</div>
-
-<div class="ep-totals">
-    <span class="ep-total-pill"><strong>{{ planning.totals.videosInPipeline }}</strong> vidéos dans le pipeline</span>
-    <span class="ep-total-pill"><strong>{{ planning.totals.alertCount }}</strong> alerte(s)</span>
-    <span class="ep-total-pill">Généré {{ planning.generatedAt|date('d/m/Y H:i') }}</span>
+<div class="ep-legend">
+    {% for key, label in planning.columnLabels %}
+        <div class="ep-legend__item">
+            <strong>{{ label }}</strong>
+            <span>{{ planning.columnHints[key] }}</span>
+        </div>
+    {% endfor %}
 </div>
 
-{% macro render_lane(lane, columnLabels) %}
+<div class="ep-stats">
+    <span><strong>{{ planning.totals.videosInPipeline }}</strong> vidéos actives</span>
+    {% if planning.totals.alertCount > 0 %}
+        <span style="border-color:#f59e0b;"><strong>{{ planning.totals.alertCount }}</strong> alerte(s)</span>
+    {% endif %}
+    <span>Màj {{ planning.generatedAt|date('d/m/Y H:i') }}</span>
+</div>
+
+{% macro render_lane(lane, columnLabels, columnHints) %}
     <section class="ep-lane">
         <div class="ep-lane__head">
-            <h2 class="ep-lane__title">{{ lane.editor ? lane.editor.name : 'Non assigné' }}</h2>
-            <div class="ep-summary">
-                <span>À venir : {{ lane.summary.anticipe }}</span>
-                <span>Rush : {{ lane.summary.rush }}</span>
-                <span>File : {{ lane.summary.file }}</span>
-                <span>Livré : {{ lane.summary.livre }}</span>
-                <span>Actif : {{ lane.summary.active }}</span>
-                {% if lane.summary.alerts > 0 %}
-                    <span class="ep-summary--alert">⚠ {{ lane.summary.alerts }} alerte(s)</span>
-                {% endif %}
+            <h2>{{ lane.editor ? lane.editor.name : 'Non assigné' }}</h2>
+            <div class="ep-lane__counts">
+                <strong>{{ lane.summary.upcoming }}</strong> à venir ·
+                <strong>{{ lane.summary.in_progress }}</strong> en cours ·
+                <strong>{{ lane.summary.delivered }}</strong> livrés
+                {% if lane.summary.alerts > 0 %} · <strong style="color:#b45309;">{{ lane.summary.alerts }} alerte(s)</strong>{% endif %}
             </div>
         </div>
 
         {% if lane.upcomingShootings is not empty %}
             <div class="ep-shootings">
-                <strong>Tournages à venir (monteur du client)</strong>
-                <ul>
-                    {% for s in lane.upcomingShootings %}
-                        <li>
-                            <strong>{{ s.shootingDate|date('d/m/Y') }}</strong>
-                            — {{ s.client }}
-                            ({{ s.videoCount }} vidéo{{ s.videoCount > 1 ? 's' : '' }}, rush ~{{ s.expectedRushDate|date('d/m/Y') }})
-                            {% if s.location %} · {{ s.location }}{% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
+                <strong>Tournages planifiés :</strong>
+                {% for s in lane.upcomingShootings %}
+                    {{ s.shootingDate|date('d/m') }} {{ s.client }} ({{ s.videoCount }} vid.){% if not loop.last %} · {% endif %}
+                {% endfor %}
             </div>
         {% endif %}
 
         {% if lane.alerts is not empty %}
             <div class="ep-alerts">
-                <strong>Alertes</strong>
+                <strong>⚠ À traiter en priorité</strong>
                 <ul>
                     {% for a in lane.alerts %}
                         <li class="{{ a.alertLevel }}">
                             <a href="{{ path('app_video_show', {id: a.id}) }}">{{ a.title }}</a>
                             — {{ a.alertReason }}
-                            {% if a.montageDeadline %}(éch. montage {{ a.montageDeadline|date('d/m/Y') }}){% endif %}
                         </li>
                     {% endfor %}
                 </ul>
             </div>
         {% endif %}
 
-        <div class="ep-columns">
+        <div class="ep-grid">
             {% for colKey, colLabel in columnLabels %}
                 <div class="ep-col">
-                    <div class="ep-col__title">{{ colLabel }} ({{ lane.columns[colKey]|length }})</div>
-                    <div class="ep-col__items">
-                        {% for item in lane.columns[colKey] %}
-                            <article class="ep-card {{ item.alertLevel ? 'ep-card--' ~ item.alertLevel : '' }}">
-                                <a href="{{ path('app_video_show', {id: item.id}) }}">{{ item.title }}</a>
-                                <div class="ep-card__meta">
-                                    {{ item.client }} · <span class="status-badge status-{{ item.statusColor }}">{{ item.status }}</span><br>
-                                    Pub. {{ item.publicationDate ? item.publicationDate|date('d/m/Y') : '—' }}
-                                    · Éch. montage {{ item.montageDeadline ? item.montageDeadline|date('d/m/Y') : '—' }}
-                                    {% if item.shootingDate %}<br>Tournage {{ item.shootingDate|date('d/m/Y') }}{% endif %}
-                                    {% if item.expectedRushDate %} · Rush ~{{ item.expectedRushDate|date('d/m/Y') }}{% endif %}
-                                    {% if item.hasAsanaMontage %} · Asana{% endif %}
-                                </div>
-                            </article>
-                        {% else %}
-                            <p class="ep-empty">—</p>
-                        {% endfor %}
+                    <div class="ep-col__head">
+                        <span class="ep-col__count">{{ lane.columns[colKey]|length }}</span>
+                        <h3>{{ colLabel }}</h3>
+                        <p>{{ columnHints[colKey] }}</p>
                     </div>
+                    {% if lane.columns[colKey] is not empty %}
+                        <table class="ep-table">
+                            <thead>
+                                <tr>
+                                    <th>Vidéo</th>
+                                    <th>Client</th>
+                                    <th>Éch. montage</th>
+                                    <th>Publication</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in lane.columns[colKey] %}
+                                    <tr class="{{ item.alertLevel ? 'ep-row--' ~ item.alertLevel : '' }}">
+                                        <td>
+                                            <a href="{{ path('app_video_show', {id: item.id}) }}" title="{{ item.status }}">{{ item.title }}</a>
+                                            <div class="status-badge status-{{ item.statusColor }}" style="display:inline-block;margin-top:0.2rem;font-size:0.72rem;">{{ item.status }}</div>
+                                        </td>
+                                        <td>{{ item.client }}</td>
+                                        <td class="ep-dates">{{ item.montageDeadline ? item.montageDeadline|date('d/m/Y') : '—' }}</td>
+                                        <td class="ep-dates">{{ item.publicationDate ? item.publicationDate|date('d/m/Y') : '—' }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <p class="ep-empty">Rien pour l’instant</p>
+                    {% endif %}
                 </div>
             {% endfor %}
         </div>
@@ -213,15 +240,19 @@
 
 {% import _self as ep %}
 
-{% for lane in planning.editors %}
-    {{ ep.render_lane(lane, planning.columnLabels) }}
-{% endfor %}
-
-{% if planning.unassigned.summary.active > 0 or planning.unassigned.summary.livre > 0 %}
-    {{ ep.render_lane(planning.unassigned, planning.columnLabels) }}
+{% if planning.editors is empty and planning.unassigned is null %}
+    <p style="color:var(--muted);">Aucune vidéo active dans le pipeline.</p>
 {% endif %}
 
-<div style="margin-top: 1rem;">
+{% for lane in planning.editors %}
+    {{ ep.render_lane(lane, planning.columnLabels, planning.columnHints) }}
+{% endfor %}
+
+{% if planning.unassigned %}
+    {{ ep.render_lane(planning.unassigned, planning.columnLabels, planning.columnHints) }}
+{% endif %}
+
+<p style="margin-top:1rem;">
     <a href="{{ path('app_videos_index') }}" class="btn" style="background:#64748b;">← Liste vidéos</a>
-</div>
+</p>
 {% endblock %}

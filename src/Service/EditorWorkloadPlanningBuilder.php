@@ -16,20 +16,24 @@ final class EditorWorkloadPlanningBuilder
     public const MONTAGE_LEAD_DAYS = 3;
     public const RUSH_AFTER_SHOOTING_DAYS = 1;
 
-    private const ANTICIPE_STATUSES = ['Tournage à prévoir'];
+    private const PIPELINE_CUTOFF = '2026-06-01';
 
-    private const RUSH_STATUSES = [
+    /** Tournage / rush / dérush — pas encore en montage actif. */
+    private const UPCOMING_STATUSES = [
+        'Tournage à prévoir',
         'Brouillon (Dérush)',
         'Rushs / à dispatcher',
     ];
 
-    private const FILE_MONTAGE_STATUSES = [
+    /** Montage en cours chez le monteur. */
+    private const IN_PROGRESS_STATUSES = [
         'Montage à faire',
         'Retouches (Monteur)',
         'Montage en cours',
     ];
 
-    private const LIVRE_MONTAGE_STATUSES = [
+    /** Montage livré : validations, sous-titres, programmation (hors Publiée). */
+    private const DELIVERED_STATUSES = [
         'À valider (Prod)',
         'Sous-titrage (SubMagic)',
         'Prépa CM (sans sous-titres)',
@@ -56,6 +60,7 @@ final class EditorWorkloadPlanningBuilder
     public function build(): array
     {
         $today = new \DateTimeImmutable('today');
+        $pipelineCutoff = new \DateTimeImmutable(self::PIPELINE_CUTOFF);
 
         /** @var array<int, array{shootingDate: \DateTimeInterface, requestId: int}> $shootingByVideoId */
         $shootingByVideoId = $this->buildShootingDatesByVideoId();
@@ -67,6 +72,8 @@ final class EditorWorkloadPlanningBuilder
         }
         $unassigned = $this->emptyLane(null);
 
+        $pipelineCount = 0;
+
         /** @var Content[] $videos */
         $videos = $this->contentRepository->findVideosForEditorPlanning();
 
@@ -76,31 +83,41 @@ final class EditorWorkloadPlanningBuilder
                 continue;
             }
 
+            $publication = $video->getScheduledDate();
+            if ($publication !== null) {
+                $pubDate = $publication instanceof \DateTimeImmutable
+                    ? $publication
+                    : \DateTimeImmutable::createFromInterface($publication);
+                if ($pubDate < $pipelineCutoff) {
+                    continue;
+                }
+            }
+
             $editor = $this->resolveEditor($video);
             $videoId = $video->getId();
             $shootingMeta = $videoId !== null ? ($shootingByVideoId[$videoId] ?? null) : null;
             $shootingDate = $shootingMeta['shootingDate'] ?? null;
 
             $item = $this->buildItem($video, $statusName, $shootingDate, $today);
-            $column = $this->resolveColumn($statusName, $shootingDate, $today);
+            $column = $this->resolveColumn($statusName);
+            ++$pipelineCount;
 
-            if ($editor === null) {
-                $unassigned['columns'][$column][] = $item;
-                if ($item['alertLevel'] !== null) {
-                    $unassigned['alerts'][] = $item;
+            $targetLane = &$unassigned;
+            if ($editor !== null) {
+                $editorId = $editor->getId();
+                if ($editorId !== null) {
+                    if (!isset($lanes[$editorId])) {
+                        $lanes[$editorId] = $this->emptyLane($editor);
+                    }
+                    $targetLane = &$lanes[$editorId];
                 }
-                continue;
             }
 
-            $editorId = $editor->getId();
-            if ($editorId === null || !isset($lanes[$editorId])) {
-                $lanes[$editorId] = $this->emptyLane($editor);
-            }
-
-            $lanes[$editorId]['columns'][$column][] = $item;
+            $targetLane['columns'][$column][] = $item;
             if ($item['alertLevel'] !== null) {
-                $lanes[$editorId]['alerts'][] = $item;
+                $targetLane['alerts'][] = $item;
             }
+            unset($targetLane);
         }
 
         $upcomingShootings = $this->buildUpcomingShootingsByEditorId($today);
@@ -114,37 +131,48 @@ final class EditorWorkloadPlanningBuilder
             $lane = $lanes[$id] ?? $this->emptyLane($editor);
             $lane['upcomingShootings'] = $upcomingShootings[$id] ?? [];
             $lane['summary'] = $this->summarizeLane($lane);
-            $editorLanes[] = $this->sortLane($lane);
+            if ($this->laneHasContent($lane)) {
+                $editorLanes[] = $this->sortLane($lane);
+            }
         }
 
         $unassigned['upcomingShootings'] = [];
         $unassigned['summary'] = $this->summarizeLane($unassigned);
-        $unassigned = $this->sortLane($unassigned);
+        if ($this->laneHasContent($unassigned)) {
+            $unassigned = $this->sortLane($unassigned);
+        } else {
+            $unassigned = null;
+        }
 
         return [
             'generatedAt' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
             'rules' => [
                 'montageLeadDays' => self::MONTAGE_LEAD_DAYS,
                 'rushAfterShootingDays' => self::RUSH_AFTER_SHOOTING_DAYS,
-                'description' => 'Échéance montage = date publication − '
+                'pipelineCutoffDate' => self::PIPELINE_CUTOFF,
+                'description' => 'Échéance montage = publication − '
                     .self::MONTAGE_LEAD_DAYS
-                    .' j. Rush attendu = date tournage + '
-                    .self::RUSH_AFTER_SHOOTING_DAYS
-                    .' j (si tournage planifié). Monteur = fiche vidéo ou client.',
+                    .' j. Contenus publiés ou datés avant le '
+                    .(new \DateTimeImmutable(self::PIPELINE_CUTOFF))->format('d/m/Y')
+                    .' sont exclus du planning.',
             ],
             'columnLabels' => [
-                'anticipe' => 'À venir',
-                'rush' => 'Rush / dérush',
-                'file' => 'File montage',
-                'livre' => 'Montage livré',
+                'upcoming' => 'À venir',
+                'in_progress' => 'Montage en cours',
+                'delivered' => 'Montages livrés',
+            ],
+            'columnHints' => [
+                'upcoming' => 'À tourner, dérush ou en attente de montage',
+                'in_progress' => 'Montage actif chez le monteur',
+                'delivered' => 'Validations, sous-titres, client, programmation',
             ],
             'editors' => $editorLanes,
             'unassigned' => $unassigned,
             'totals' => [
-                'videosInPipeline' => count($videos),
+                'videosInPipeline' => $pipelineCount,
                 'alertCount' => array_sum(array_map(
                     static fn (array $lane): int => count($lane['alerts']),
-                    array_merge($editorLanes, [$unassigned]),
+                    array_merge($editorLanes, $unassigned !== null ? [$unassigned] : []),
                 )),
             ],
         ];
@@ -236,32 +264,16 @@ final class EditorWorkloadPlanningBuilder
         return $video->getClient()?->getEditor();
     }
 
-    private function resolveColumn(string $statusName, ?\DateTimeInterface $shootingDate, \DateTimeImmutable $today): string
+    private function resolveColumn(string $statusName): string
     {
-        if (in_array($statusName, self::FILE_MONTAGE_STATUSES, true)) {
-            return 'file';
+        if (in_array($statusName, self::IN_PROGRESS_STATUSES, true)) {
+            return 'in_progress';
         }
-        if (in_array($statusName, self::LIVRE_MONTAGE_STATUSES, true)) {
-            return 'livre';
-        }
-        if (in_array($statusName, self::RUSH_STATUSES, true)) {
-            return 'rush';
-        }
-        if (in_array($statusName, self::ANTICIPE_STATUSES, true)) {
-            if ($shootingDate !== null) {
-                $rushExpected = ($shootingDate instanceof \DateTimeImmutable
-                    ? $shootingDate
-                    : \DateTimeImmutable::createFromInterface($shootingDate)
-                )->modify('+'.self::RUSH_AFTER_SHOOTING_DAYS.' day');
-                if ($rushExpected <= $today) {
-                    return 'rush';
-                }
-            }
-
-            return 'anticipe';
+        if (in_array($statusName, self::DELIVERED_STATUSES, true)) {
+            return 'delivered';
         }
 
-        return 'anticipe';
+        return 'upcoming';
     }
 
     /**
@@ -315,7 +327,6 @@ final class EditorWorkloadPlanningBuilder
                 : null,
             'expectedRushDate' => $expectedRush?->format('Y-m-d'),
             'hasAsanaMontage' => $video->getAsanaTaskGid() !== null,
-            'editorSource' => $video->getVideoEditor() !== null ? 'fiche' : ($video->getClient()?->getEditor() !== null ? 'client' : null),
             'alertLevel' => $alertLevel,
             'alertReason' => $alertReason,
         ];
@@ -330,7 +341,7 @@ final class EditorWorkloadPlanningBuilder
         ?\DateTimeImmutable $publicationDate,
         \DateTimeImmutable $today,
     ): array {
-        if (in_array($statusName, self::LIVRE_MONTAGE_STATUSES, true)
+        if (in_array($statusName, self::DELIVERED_STATUSES, true)
             || in_array($statusName, self::PUBLISHED_STATUSES, true)) {
             return [null, null];
         }
@@ -339,10 +350,8 @@ final class EditorWorkloadPlanningBuilder
             return ['danger', 'Échéance montage dépassée'];
         }
 
-        if ($publicationDate !== null
-            && $publicationDate <= $today->modify('+7 days')
-            && !in_array($statusName, self::LIVRE_MONTAGE_STATUSES, true)) {
-            return ['warning', 'Publication dans 7 j ou moins — montage pas livré'];
+        if ($publicationDate !== null && $publicationDate <= $today->modify('+7 days')) {
+            return ['warning', 'Publication proche — montage pas encore livré'];
         }
 
         if ($montageDeadline !== null && $montageDeadline <= $today->modify('+2 days')) {
@@ -363,15 +372,27 @@ final class EditorWorkloadPlanningBuilder
                 'name' => $editor->getName(),
             ] : null,
             'columns' => [
-                'anticipe' => [],
-                'rush' => [],
-                'file' => [],
-                'livre' => [],
+                'upcoming' => [],
+                'in_progress' => [],
+                'delivered' => [],
             ],
             'alerts' => [],
             'upcomingShootings' => [],
             'summary' => [],
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $lane
+     */
+    private function laneHasContent(array $lane): bool
+    {
+        $columns = $lane['columns'];
+
+        return count($columns['upcoming']) > 0
+            || count($columns['in_progress']) > 0
+            || count($columns['delivered']) > 0
+            || count($lane['upcomingShootings']) > 0;
     }
 
     /**
@@ -382,14 +403,12 @@ final class EditorWorkloadPlanningBuilder
     private function summarizeLane(array $lane): array
     {
         $columns = $lane['columns'];
-        $active = count($columns['anticipe']) + count($columns['rush']) + count($columns['file']);
 
         return [
-            'anticipe' => count($columns['anticipe']),
-            'rush' => count($columns['rush']),
-            'file' => count($columns['file']),
-            'livre' => count($columns['livre']),
-            'active' => $active,
+            'upcoming' => count($columns['upcoming']),
+            'in_progress' => count($columns['in_progress']),
+            'delivered' => count($columns['delivered']),
+            'active' => count($columns['upcoming']) + count($columns['in_progress']),
             'alerts' => count($lane['alerts']),
             'upcomingShootings' => count($lane['upcomingShootings']),
         ];

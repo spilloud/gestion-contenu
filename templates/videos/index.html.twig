@@ -12,6 +12,7 @@
 
 <div style="display:flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
     <a href="{{ path('app_derush_index') }}" class="btn">+ Dérush vidéo</a>
+    <a href="{{ path('app_editor_planning') }}" class="btn" style="background:#64748b;">Planning monteurs</a>
     <a href="{{ path('app_calendar', {formats: [videoFormat.id]}) }}" class="btn" style="background:#64748b;">Calendrier (vidéos)</a>
     {% if app.user %}
         <a href="{{ path('app_videos_index', {editors: [app.user.id]}) }}" class="btn" style="background:#64748b;">Mes vidéos</a>

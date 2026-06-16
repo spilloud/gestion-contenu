@@ -1,0 +1,227 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Planning monteurs{% endblock %}
+
+{% block body %}
+<style>
+    .ep-intro { color: var(--muted); max-width: 920px; margin-bottom: 1.25rem; }
+    .ep-rules {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        padding: 0.85rem 1rem;
+        margin-bottom: 1.25rem;
+        font-size: 0.92rem;
+        color: var(--muted);
+    }
+    .ep-totals {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+    }
+    .ep-total-pill {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 999px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.9rem;
+    }
+    .ep-lane {
+        margin-bottom: 2rem;
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        background: var(--card-bg);
+        overflow: hidden;
+    }
+    .ep-lane__head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem 1.1rem;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.02);
+    }
+    body.theme-dark .ep-lane__head { background: rgba(255,255,255,0.03); }
+    .ep-lane__title { margin: 0; font-size: 1.15rem; }
+    .ep-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+    }
+    .ep-summary span {
+        font-size: 0.82rem;
+        padding: 0.2rem 0.55rem;
+        border-radius: 999px;
+        background: var(--bg);
+        border: 1px solid var(--card-border);
+    }
+    .ep-summary .ep-summary--alert {
+        border-color: #f59e0b;
+        color: #b45309;
+        font-weight: 600;
+    }
+    body.theme-dark .ep-summary .ep-summary--alert { color: #fbbf24; }
+    .ep-shootings {
+        padding: 0.75rem 1.1rem;
+        border-bottom: 1px solid var(--card-border);
+        font-size: 0.9rem;
+    }
+    .ep-shootings ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+    .ep-alerts {
+        padding: 0.75rem 1.1rem;
+        border-bottom: 1px solid var(--card-border);
+        background: #fff7ed;
+    }
+    body.theme-dark .ep-alerts { background: rgba(245, 158, 11, 0.08); }
+    .ep-alerts ul { margin: 0; padding-left: 1.1rem; }
+    .ep-alerts li.danger { color: #b91c1c; font-weight: 600; }
+    body.theme-dark .ep-alerts li.danger { color: #f87171; }
+    .ep-columns {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(200px, 1fr));
+        gap: 0;
+    }
+    @media (max-width: 1100px) {
+        .ep-columns { grid-template-columns: repeat(2, minmax(200px, 1fr)); }
+    }
+    @media (max-width: 640px) {
+        .ep-columns { grid-template-columns: 1fr; }
+    }
+    .ep-col {
+        border-right: 1px solid var(--card-border);
+        min-height: 120px;
+    }
+    .ep-col:last-child { border-right: none; }
+    .ep-col__title {
+        padding: 0.65rem 0.75rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        border-bottom: 1px solid var(--card-border);
+        background: rgba(0,0,0,0.02);
+    }
+    body.theme-dark .ep-col__title { background: rgba(255,255,255,0.03); }
+    .ep-col__items { padding: 0.5rem; display: grid; gap: 0.5rem; }
+    .ep-card {
+        border: 1px solid var(--card-border);
+        border-radius: 10px;
+        padding: 0.55rem 0.65rem;
+        font-size: 0.88rem;
+        background: var(--bg);
+    }
+    .ep-card--danger { border-color: #fca5a5; background: #fef2f2; }
+    .ep-card--warning { border-color: #fcd34d; background: #fffbeb; }
+    body.theme-dark .ep-card--danger { background: rgba(239, 68, 68, 0.1); }
+    body.theme-dark .ep-card--warning { background: rgba(245, 158, 11, 0.08); }
+    .ep-card a { color: inherit; font-weight: 600; text-decoration: underline; }
+    .ep-card__meta { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; line-height: 1.35; }
+    .ep-empty { color: var(--muted); font-size: 0.85rem; padding: 0.5rem 0.75rem; font-style: italic; }
+</style>
+
+<h1>Planning monteurs</h1>
+<p class="ep-intro">
+    Vue lecture seule de la charge montage : ce qui arrive, ce qui est en file, et les alertes.
+    Aucune action workflow supplémentaire — les données viennent des fiches vidéo, des clients et des demandes de tournage.
+    Lucy peut aussi consommer <a href="{{ path('app_api_ai_editor_planning') }}" target="_blank" rel="noopener">l’export JSON</a> (clé API).
+</p>
+
+<div class="ep-rules">{{ planning.rules.description }}</div>
+
+<div class="ep-totals">
+    <span class="ep-total-pill"><strong>{{ planning.totals.videosInPipeline }}</strong> vidéos dans le pipeline</span>
+    <span class="ep-total-pill"><strong>{{ planning.totals.alertCount }}</strong> alerte(s)</span>
+    <span class="ep-total-pill">Généré {{ planning.generatedAt|date('d/m/Y H:i') }}</span>
+</div>
+
+{% macro render_lane(lane, columnLabels) %}
+    <section class="ep-lane">
+        <div class="ep-lane__head">
+            <h2 class="ep-lane__title">{{ lane.editor ? lane.editor.name : 'Non assigné' }}</h2>
+            <div class="ep-summary">
+                <span>À venir : {{ lane.summary.anticipe }}</span>
+                <span>Rush : {{ lane.summary.rush }}</span>
+                <span>File : {{ lane.summary.file }}</span>
+                <span>Livré : {{ lane.summary.livre }}</span>
+                <span>Actif : {{ lane.summary.active }}</span>
+                {% if lane.summary.alerts > 0 %}
+                    <span class="ep-summary--alert">⚠ {{ lane.summary.alerts }} alerte(s)</span>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if lane.upcomingShootings is not empty %}
+            <div class="ep-shootings">
+                <strong>Tournages à venir (monteur du client)</strong>
+                <ul>
+                    {% for s in lane.upcomingShootings %}
+                        <li>
+                            <strong>{{ s.shootingDate|date('d/m/Y') }}</strong>
+                            — {{ s.client }}
+                            ({{ s.videoCount }} vidéo{{ s.videoCount > 1 ? 's' : '' }}, rush ~{{ s.expectedRushDate|date('d/m/Y') }})
+                            {% if s.location %} · {{ s.location }}{% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        {% if lane.alerts is not empty %}
+            <div class="ep-alerts">
+                <strong>Alertes</strong>
+                <ul>
+                    {% for a in lane.alerts %}
+                        <li class="{{ a.alertLevel }}">
+                            <a href="{{ path('app_video_show', {id: a.id}) }}">{{ a.title }}</a>
+                            — {{ a.alertReason }}
+                            {% if a.montageDeadline %}(éch. montage {{ a.montageDeadline|date('d/m/Y') }}){% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+
+        <div class="ep-columns">
+            {% for colKey, colLabel in columnLabels %}
+                <div class="ep-col">
+                    <div class="ep-col__title">{{ colLabel }} ({{ lane.columns[colKey]|length }})</div>
+                    <div class="ep-col__items">
+                        {% for item in lane.columns[colKey] %}
+                            <article class="ep-card {{ item.alertLevel ? 'ep-card--' ~ item.alertLevel : '' }}">
+                                <a href="{{ path('app_video_show', {id: item.id}) }}">{{ item.title }}</a>
+                                <div class="ep-card__meta">
+                                    {{ item.client }} · <span class="status-badge status-{{ item.statusColor }}">{{ item.status }}</span><br>
+                                    Pub. {{ item.publicationDate ? item.publicationDate|date('d/m/Y') : '—' }}
+                                    · Éch. montage {{ item.montageDeadline ? item.montageDeadline|date('d/m/Y') : '—' }}
+                                    {% if item.shootingDate %}<br>Tournage {{ item.shootingDate|date('d/m/Y') }}{% endif %}
+                                    {% if item.expectedRushDate %} · Rush ~{{ item.expectedRushDate|date('d/m/Y') }}{% endif %}
+                                    {% if item.hasAsanaMontage %} · Asana{% endif %}
+                                </div>
+                            </article>
+                        {% else %}
+                            <p class="ep-empty">—</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endmacro %}
+
+{% import _self as ep %}
+
+{% for lane in planning.editors %}
+    {{ ep.render_lane(lane, planning.columnLabels) }}
+{% endfor %}
+
+{% if planning.unassigned.summary.active > 0 or planning.unassigned.summary.livre > 0 %}
+    {{ ep.render_lane(planning.unassigned, planning.columnLabels) }}
+{% endif %}
+
+<div style="margin-top: 1rem;">
+    <a href="{{ path('app_videos_index') }}" class="btn" style="background:#64748b;">← Liste vidéos</a>
+</div>
+{% endblock %}

@@ -133,4 +133,28 @@ class ContentRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Vidéos non publiées pour le planning monteur (hors archives implicites).
+     *
+     * @return Content[]
+     */
+    public function findVideosForEditorPlanning(): array
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->leftJoin('cl.editor', 'cle')->addSelect('cle')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.videoEditor', 've')->addSelect('ve')
+            ->andWhere('LOWER(f.name) IN (:videoNames)')
+            ->andWhere('s.name != :published')
+            ->setParameter('videoNames', ['vidéo', 'video'])
+            ->setParameter('published', 'Publiée')
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('cl.name', 'ASC')
+            ->addOrderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

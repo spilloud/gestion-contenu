@@ -5,6 +5,7 @@ namespace App\Controller\Api;
 use App\Entity\Status;
 use App\Repository\ContentRepository;
 use App\Service\AiApiAccessChecker;
+use App\Service\EditorWorkloadPlanningBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -16,6 +17,7 @@ class AiMetricsController extends AbstractController
     public function __construct(
         private readonly ContentRepository $contentRepository,
         private readonly AiApiAccessChecker $aiApiAccessChecker,
+        private readonly EditorWorkloadPlanningBuilder $editorPlanningBuilder,
     ) {
     }
 
@@ -153,6 +155,16 @@ class AiMetricsController extends AbstractController
                 ];
             }, $nextPosts),
         ]);
+    }
+
+    #[Route('/editor-planning', name: 'app_api_ai_editor_planning', methods: ['GET'])]
+    public function editorPlanning(Request $request): JsonResponse
+    {
+        if ($response = $this->aiApiAccessChecker->validate($request)) {
+            return $response;
+        }
+
+        return $this->json($this->editorPlanningBuilder->build());
     }
 
 }

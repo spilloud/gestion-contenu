@@ -52,6 +52,7 @@
         <div class="content-fiche__meta-chips">
             <span>{{ content.client.name }}</span>
             <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
+            <span>Montage <strong>{{ content.asanaMontageDueOn ? content.asanaMontageDueOn|date('d/m/Y') : '—' }}</strong></span>
             <span>Monteur <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
             <span>CM <strong>{{ cm_display_name }}</strong></span>
             <span>Sous-titres <strong>{{ content.videoHasSubtitles ? 'Oui' : 'Non' }}</strong></span>
@@ -127,6 +128,7 @@
                     {{ form_row(form.title) }}
                     {{ form_row(form.client) }}
                     {{ form_row(form.scheduledDate) }}
+                    {{ form_row(form.asanaMontageDueOn) }}
                     {{ form_row(form.format) }}
                     <div class="subtitles-field-row">
                         <span class="field-label" id="label-video-subtitles">Sous-titres</span>

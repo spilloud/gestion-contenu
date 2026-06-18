@@ -11,6 +11,7 @@ class AsanaService
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly RichTextSanitizer $richTextSanitizer,
+        private readonly VideoMontageDueOnResolver $montageDueOnResolver,
     ) {
     }
 
@@ -139,8 +140,7 @@ class AsanaService
         $videoTitle = trim((string) ($content->getTitle() ?? ''));
         $name = ($videoTitle !== '' ? $videoTitle : 'Vidéo').' - Montage vidéo';
 
-        // Délai montage: J+2 (indépendant de la date planifiée du calendrier).
-        $dueAt = (new \DateTimeImmutable('today'))->modify('+2 days');
+        $dueAt = $this->montageDueOnResolver->resolveForContent($content);
         $dueOn = $dueAt->format('Y-m-d');
         $dueLabelFr = $dueAt->format('d/m/Y');
 
@@ -155,7 +155,7 @@ class AsanaService
         $notes = implode("\n", array_filter([
             'Vidéo créée depuis Gestion des contenus.',
             'Client : '.$clientName,
-            'Échéance (J+2) : le '.$dueLabelFr.' — due_on Asana '.$dueOn.'.',
+            'Échéance montage souhaitée : le '.$dueLabelFr.' — due_on Asana '.$dueOn.'.',
             'Sous-titres : '.(($content->getVideoHasSubtitles() ?? false) ? 'Oui' : 'Non'),
             '',
             $links !== [] ? "Liens :\n- ".implode("\n- ", $links) : null,
@@ -318,6 +318,42 @@ class AsanaService
         }
 
         return trim($gid);
+    }
+
+    /**
+     * Met à jour l'échéance (due_on) d'une tâche Asana.
+     */
+    public function updateTaskDueOn(string $taskGid, \DateTimeInterface $dueOn): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request('PUT', 'https://app.asana.com/api/1.0/tasks/'.$taskGid, [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'data' => [
+                        'due_on' => $dueOn->format('Y-m-d'),
+                    ],
+                ],
+            ]);
+
+            $status = $resp->getStatusCode();
+
+            return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**

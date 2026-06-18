@@ -11,6 +11,7 @@ use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\ContentFormatHelper;
 use App\Service\VideoAssigneeResolver;
+use App\Service\VideoMontageDueOnResolver;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -27,8 +28,9 @@ class ContentType extends AbstractType
     public function __construct(
         private readonly StatusRepository $statusRepository,
         private readonly UserRepository $userRepository,
-        private readonly VideoAssigneeResolver $videoAssigneeResolver,
         private readonly ContentFormatHelper $contentFormatHelper,
+        private readonly VideoAssigneeResolver $videoAssigneeResolver,
+        private readonly VideoMontageDueOnResolver $montageDueOnResolver,
     ) {
     }
 
@@ -90,7 +92,36 @@ class ContentType extends AbstractType
             ->add('videoCaption', TextareaType::class, [
                 'label' => 'Texte / légende du post',
                 'required' => false,
+            ])
+            ->add('asanaMontageDueOn', DateType::class, [
+                'label' => 'Date de montage souhaitée',
+                'widget' => 'single_text',
+                'required' => false,
+                'attr' => [
+                    'style' => 'max-width: 320px; padding: 0.9rem 0.8rem; font-size: 1.05rem; min-height: 52px;',
+                    'class' => 'js-montage-due-input',
+                ],
+                'help' => 'Échéance de la tâche Asana pour le monteur (par défaut : publication − 3 jours).',
             ]);
+
+        $builder->addEventListener(FormEvents::SUBMIT, function (FormEvent $event): void {
+            $content = $event->getData();
+            if (!$content instanceof Content) {
+                return;
+            }
+
+            if (!$this->contentFormatHelper->isVideoContent($content)) {
+                $content->setAsanaMontageDueOn(null);
+
+                return;
+            }
+
+            if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
+                $content->setAsanaMontageDueOn(
+                    $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                );
+            }
+        });
 
         $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {
             $content = $event->getData();
@@ -114,7 +145,18 @@ class ContentType extends AbstractType
             ]);
 
             if ($this->contentFormatHelper->isVideoContent($content)) {
+                if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
+                    $content->setAsanaMontageDueOn(
+                        $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                    );
+                }
+
                 return;
+            }
+
+            $form = $event->getForm();
+            if ($form->has('asanaMontageDueOn')) {
+                $form->remove('asanaMontageDueOn');
             }
 
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);

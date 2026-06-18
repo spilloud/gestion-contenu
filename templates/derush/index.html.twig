@@ -46,19 +46,30 @@
         {% else %}
             <div style="display:grid; gap: 0.45rem;">
                 {% for v in plannedVideos %}
-                    <label style="display:flex; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--card-border); border-radius: 10px; padding: 0.6rem; background: var(--surface-inset);">
+                    {% set montageDefault = v.asanaMontageDueOn ?? montageDueOnResolver.resolveForContent(v) %}
+                    <div style="display:flex; gap: 0.6rem; align-items: flex-start; border: 1px solid var(--card-border); border-radius: 10px; padding: 0.6rem; background: var(--surface-inset);">
                         <input type="checkbox" name="planned_ids[]" value="{{ v.id }}" style="margin-top: 0.25rem;">
-                        <div style="min-width:0;">
+                        <div style="min-width:0; flex: 1;">
                             <div style="font-weight: 700;">{{ v.title }}</div>
                             <div style="color: var(--muted); font-size: 0.85rem;">
                                 Pub. {{ v.scheduledDate ? v.scheduledDate|date('d/m/Y') : '—' }}
                                 · Médiamaticien {{ v.videoEditor ? v.videoEditor.name : '—' }}
                             </div>
                         </div>
-                    </label>
+                        <div style="flex-shrink: 0;">
+                            <label class="field-label" for="planned-montage-{{ v.id }}" style="font-size: 0.8rem;">Montage souhaité</label>
+                            <input
+                                id="planned-montage-{{ v.id }}"
+                                name="planned_montage_due[{{ v.id }}]"
+                                type="date"
+                                value="{{ montageDefault|date('Y-m-d') }}"
+                                style="padding: 0.45rem 0.5rem; min-height: 40px;"
+                            >
+                        </div>
+                    </div>
                 {% endfor %}
             </div>
-            <p style="margin: 0.5rem 0 0; color: var(--muted); font-size: 0.85rem;">Cocher = dérush fait → passe en <strong>Montage à faire</strong>.</p>
+            <p style="margin: 0.5rem 0 0; color: var(--muted); font-size: 0.85rem;">Cocher = dérush fait → passe en <strong>Montage à faire</strong>. Les dates de montage sont enregistrées à la validation.</p>
         {% endif %}
     </div>
 
@@ -67,19 +78,29 @@
         <p style="color: var(--muted); margin-top: -0.3rem;">Utilise ce casier si une vidéo n’a pas été planifiée par la CM.</p>
 
         <div style="overflow-x: auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
-            <table style="width: 100%; min-width: 760px; border-collapse: collapse;">
+            <table style="width: 100%; min-width: 900px; border-collapse: collapse;">
                 <thead>
                     <tr style="background: rgba(148, 163, 184, 0.12);">
                         <th style="text-align:left; padding: 0.6rem;">Titre</th>
+                        <th style="text-align:left; padding: 0.6rem;">Montage souhaité</th>
                         <th style="text-align:left; padding: 0.6rem;">Sous-titres</th>
                         <th style="padding: 0.6rem; width: 1%; white-space: nowrap;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="rows">
+                    {% set casierMontageDefault = montageDueOnResolver.defaultFromPublication("now"|date_modify("+14 days")) %}
                     {% for i in 0..2 %}
                         <tr>
                             <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
                                 <input name="videos[{{ i }}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
+                            </td>
+                            <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                                <input
+                                    name="videos[{{ i }}][montage_due_on]"
+                                    type="date"
+                                    value="{{ casierMontageDefault|date('Y-m-d') }}"
+                                    style="width: 100%; padding: 0.45rem 0.5rem; min-height: 40px;"
+                                >
                             </td>
                             <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
                                 <input type="hidden" name="videos[{{ i }}][has_subtitles]" value="0">
@@ -115,6 +136,9 @@ function addRow() {
     tr.innerHTML = `
         <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
             <input name="videos[${i}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
+        </td>
+        <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+            <input name="videos[${i}][montage_due_on]" type="date" style="width: 100%; padding: 0.45rem 0.5rem; min-height: 40px;">
         </td>
         <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
             <input type="hidden" name="videos[${i}][has_subtitles]" value="0">

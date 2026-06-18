@@ -12,6 +12,7 @@ use App\Repository\StatusRepository;
 use App\Service\ContentWorkflowService;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
+use App\Service\VideoMontageDueOnResolver;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -31,6 +32,7 @@ class DerushController extends AbstractController
         private readonly ContentWorkflowService $contentWorkflowService,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
+        private readonly VideoMontageDueOnResolver $montageDueOnResolver,
     ) {
     }
 
@@ -58,14 +60,41 @@ class DerushController extends AbstractController
 
             $rows = $request->request->all('videos');
             $plannedIds = array_values(array_filter(array_map('intval', (array) $request->request->all('planned_ids'))));
+            $plannedMontageDue = $request->request->all('planned_montage_due');
             $globalRushesUrl = trim($request->request->getString('rushes_url_global')) ?: null;
             $created = 0;
             $plannedMoved = 0;
+            $plannedDatesUpdated = 0;
             $newContents = [];
             $touchedContents = [];
 
             $videoFormat = $this->findVideoFormat();
             $statusMontageAFaire = $this->findOrCreateVideoStatus('Montage à faire', Status::COLOR_ORANGE, 30);
+
+            // 0) Mise à jour des dates de montage souhaitées (vidéos planifiées affichées).
+            foreach ($plannedMontageDue as $idStr => $dateStr) {
+                $id = (int) $idStr;
+                if ($id <= 0) {
+                    continue;
+                }
+                $content = $this->contentRepository->find($id);
+                if (!$content instanceof Content) {
+                    continue;
+                }
+                if ($content->getClient()?->getId() !== $client->getId()) {
+                    continue;
+                }
+                if ($content->getFormat()?->getId() !== $videoFormat->getId()) {
+                    continue;
+                }
+
+                $due = $this->montageDueOnResolver->parseOrDefault(is_string($dateStr) ? $dateStr : null, $content);
+                if ($content->getAsanaMontageDueOn()?->format('Y-m-d') !== $due->format('Y-m-d')) {
+                    $content->setAsanaMontageDueOn($due);
+                    $touchedContents[$id] = $content;
+                    ++$plannedDatesUpdated;
+                }
+            }
 
             // 1) Vidéos planifiées par les CM : cocher = "dérush fait" => on passe directement à Montage à faire.
             foreach ($plannedIds as $id) {
@@ -85,7 +114,7 @@ class DerushController extends AbstractController
                     $content->setVideoRushesUrl($globalRushesUrl);
                 }
                 $this->contentWorkflowService->applyManualStatusChange($content, $statusMontageAFaire, 'derush');
-                $touchedContents[] = $content;
+                $touchedContents[$content->getId()] = $content;
                 $plannedMoved++;
             }
 
@@ -108,34 +137,54 @@ class DerushController extends AbstractController
                     ->setFormat($videoFormat)
                     ->setStatus($statusMontageAFaire)
                     ->setVideoHasSubtitles(($row['has_subtitles'] ?? '') === '1')
-                    ->setVideoRushesUrl($globalRushesUrl);
+                    ->setVideoRushesUrl($globalRushesUrl)
+                    ->setAsanaMontageDueOn(
+                        $this->montageDueOnResolver->parseOptional(isset($row['montage_due_on']) ? (string) $row['montage_due_on'] : null)
+                            ?? $this->montageDueOnResolver->defaultFromPublication($scheduledDate),
+                    );
 
                 $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
 
                 $this->entityManager->persist($content);
-                $touchedContents[] = $content;
                 $newContents[] = $content;
                 $created++;
             }
 
-            if ($touchedContents !== []) {
-                $this->entityManager->flush();
+            $touchedList = array_values($touchedContents);
+
+            if ($touchedList !== [] || $plannedDatesUpdated > 0) {
+                if ($touchedList === [] && $plannedDatesUpdated > 0) {
+                    $this->entityManager->flush();
+                    $this->addFlash('success', sprintf('%d date(s) de montage enregistrée(s).', $plannedDatesUpdated));
+
+                    return $this->redirectToRoute('app_derush_index', ['client' => $clientId]);
+                }
+
+                if ($touchedList !== []) {
+                    $this->entityManager->flush();
+                }
 
                 foreach ($newContents as $content) {
                     $this->contentWorkflowService->logCreation($content);
                 }
-                $this->entityManager->flush();
+                if ($newContents !== []) {
+                    $this->entityManager->flush();
+                }
 
                 $asanaCreated = 0;
-                foreach ($touchedContents as $content) {
-                    if ($this->montageAsanaTrigger->ensureWhenMontageQueued($content, false)) {
+                foreach ($touchedList as $content) {
+                    if ($content->getStatus()?->getName() === 'Montage à faire'
+                        && $this->montageAsanaTrigger->ensureWhenMontageQueued($content, false)) {
                         ++$asanaCreated;
                     }
                 }
-                if ($asanaCreated > 0) {
+                if ($asanaCreated > 0 || $plannedDatesUpdated > 0) {
                     $this->entityManager->flush();
                 }
                 $messages = [];
+                if ($plannedDatesUpdated > 0) {
+                    $messages[] = sprintf('%d date(s) de montage enregistrée(s).', $plannedDatesUpdated);
+                }
                 if ($plannedMoved > 0) {
                     $messages[] = sprintf('%d vidéo(s) planifiée(s) passée(s) en montage.', $plannedMoved);
                 }
@@ -149,7 +198,7 @@ class DerushController extends AbstractController
                     $this->addFlash('success', sprintf('%d tâche(s) Asana créée(s).', $asanaCreated));
                 } elseif (getenv('ASANA_ACCESS_TOKEN') !== false && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
                     $stillMissing = false;
-                    foreach ($touchedContents as $c) {
+                    foreach ($touchedList as $c) {
                         if ($c->getStatus()?->getName() === 'Montage à faire' && $c->getAsanaTaskGid() === null) {
                             $stillMissing = true;
                             break;
@@ -194,6 +243,7 @@ class DerushController extends AbstractController
             'clients' => $clients,
             'defaultClientId' => $defaultClientId,
             'plannedVideos' => $plannedVideos,
+            'montageDueOnResolver' => $this->montageDueOnResolver,
         ]);
     }
 

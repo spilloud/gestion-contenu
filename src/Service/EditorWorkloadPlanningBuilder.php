@@ -292,7 +292,8 @@ final class EditorWorkloadPlanningBuilder
                 : \DateTimeImmutable::createFromInterface($publication))
             : null;
 
-        $montageDeadline = $publicationImmutable?->modify('-'.self::MONTAGE_LEAD_DAYS.' days');
+        $montageDeadline = $video->getAsanaMontageDueOn()
+            ?? $publicationImmutable?->modify('-'.self::MONTAGE_LEAD_DAYS.' days');
 
         $expectedRush = null;
         if ($shootingDate !== null) {

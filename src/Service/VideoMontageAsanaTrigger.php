@@ -44,7 +44,7 @@ final class VideoMontageAsanaTrigger
 
         $stored = $content->getAsanaTaskGid();
         if ($stored !== null && $this->asanaService->isTaskAccessible($stored)) {
-            $this->syncMontageDueFromAsana($content, $stored);
+            $this->syncMontageDueFromAsanaIfUnset($content, $stored);
 
             return $stored;
         }
@@ -58,7 +58,7 @@ final class VideoMontageAsanaTrigger
         $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
         if ($found !== null) {
             $content->setAsanaTaskGid($found);
-            $this->syncMontageDueFromAsana($content, $found);
+            $this->syncMontageDueFromAsanaIfUnset($content, $found);
             $changed = true;
 
             if ($flush) {
@@ -101,6 +101,7 @@ final class VideoMontageAsanaTrigger
 
         $this->resolveMontageTaskLink($content, false);
         if ($content->getAsanaTaskGid()) {
+            $this->pushMontageDueToAsanaIfSet($content, $content->getAsanaTaskGid());
             if ($flush) {
                 $this->entityManager->flush();
             }
@@ -127,7 +128,9 @@ final class VideoMontageAsanaTrigger
         }
 
         $content->setAsanaTaskGid($gid);
-        $this->syncMontageDueFromAsana($content, $gid);
+        if ($content->getAsanaMontageDueOn() === null) {
+            $this->syncMontageDueFromAsanaIfUnset($content, $gid);
+        }
         if ($flush) {
             $this->entityManager->flush();
         }
@@ -135,8 +138,12 @@ final class VideoMontageAsanaTrigger
         return true;
     }
 
-    private function syncMontageDueFromAsana(Content $content, string $taskGid): void
+    private function syncMontageDueFromAsanaIfUnset(Content $content, string $taskGid): void
     {
+        if ($content->getAsanaMontageDueOn() !== null) {
+            return;
+        }
+
         $task = $this->asanaService->fetchTask($taskGid);
         if (!is_array($task) || empty($task['due_on'])) {
             return;
@@ -146,5 +153,15 @@ final class VideoMontageAsanaTrigger
             $content->setAsanaMontageDueOn(new \DateTimeImmutable((string) $task['due_on']));
         } catch (\Throwable) {
         }
+    }
+
+    private function pushMontageDueToAsanaIfSet(Content $content, string $taskGid): void
+    {
+        $due = $content->getAsanaMontageDueOn();
+        if ($due === null) {
+            return;
+        }
+
+        $this->asanaService->updateTaskDueOn($taskGid, $due);
     }
 }

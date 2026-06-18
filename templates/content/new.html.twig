@@ -36,6 +36,11 @@
                 {{ form_row(form.title) }}
                 {{ form_row(form.client) }}
                 {{ form_row(form.scheduledDate) }}
+                <div id="js-montage-due-wrap" style="display: none;">
+                    {% if form.asanaMontageDueOn is defined %}
+                        {{ form_row(form.asanaMontageDueOn) }}
+                    {% endif %}
+                </div>
                 {{ form_row(form.format) }}
             </section>
 
@@ -66,6 +71,22 @@
         input.addEventListener('change', sync);
         sync();
     });
+
+    var formatSelect = document.querySelector('[name$="[format]"]');
+    var montageWrap = document.getElementById('js-montage-due-wrap');
+    function isVideoFormatSelected() {
+        if (!formatSelect) return false;
+        var text = (formatSelect.options[formatSelect.selectedIndex]?.text || '').toLowerCase().trim();
+        return text === 'vidéo' || text === 'video';
+    }
+    function syncMontageFieldVisibility() {
+        if (!montageWrap) return;
+        montageWrap.style.display = isVideoFormatSelected() ? '' : 'none';
+    }
+    if (formatSelect) {
+        formatSelect.addEventListener('change', syncMontageFieldVisibility);
+        syncMontageFieldVisibility();
+    }
 })();
 </script>
 {% endblock %}

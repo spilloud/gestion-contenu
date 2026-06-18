@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\VideoAssigneeResolver;
+use App\Service\VideoMontageDueOnResolver;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -28,6 +29,7 @@ class VideoContentType extends AbstractType
         private readonly StatusRepository $statusRepository,
         private readonly UserRepository $userRepository,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
+        private readonly VideoMontageDueOnResolver $montageDueOnResolver,
     ) {
     }
 
@@ -44,6 +46,15 @@ class VideoContentType extends AbstractType
                 'attr' => [
                     'style' => 'max-width: 320px; padding: 0.9rem 0.8rem; font-size: 1.05rem; min-height: 52px;',
                 ],
+            ])
+            ->add('asanaMontageDueOn', DateType::class, [
+                'label' => 'Date de montage souhaitée',
+                'widget' => 'single_text',
+                'required' => false,
+                'attr' => [
+                    'style' => 'max-width: 320px; padding: 0.9rem 0.8rem; font-size: 1.05rem; min-height: 52px;',
+                ],
+                'help' => 'Échéance de la tâche Asana pour le monteur. Modifier puis enregistrer met à jour Asana.',
             ])
             ->add('client', EntityType::class, [
                 'label' => 'Client',
@@ -121,6 +132,12 @@ class VideoContentType extends AbstractType
             }
 
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+
+            if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
+                $content->setAsanaMontageDueOn(
+                    $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                );
+            }
 
             $form = $event->getForm();
             if ($form->has('status')) {

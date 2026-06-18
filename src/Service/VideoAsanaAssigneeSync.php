@@ -18,6 +18,34 @@ final class VideoAsanaAssigneeSync
     ) {
     }
 
+    public function syncMontageDueOnIfChanged(
+        Content $content,
+        ?\DateTimeImmutable $previous,
+        ?\DateTimeImmutable $next,
+    ): void {
+        if (!$this->formatHelper->isVideoContent($content)) {
+            return;
+        }
+        if ($previous?->format('Y-m-d') === $next?->format('Y-m-d')) {
+            return;
+        }
+        if ($next === null) {
+            return;
+        }
+
+        $taskGid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+        if ($taskGid === null || !$this->asanaService->isEnabled()) {
+            return;
+        }
+
+        if ($this->asanaService->updateTaskDueOn($taskGid, $next)) {
+            $this->asanaService->addCommentToTask(
+                $taskGid,
+                'Échéance montage mise à jour (via Gestion des contenus) : '.$next->format('d/m/Y'),
+            );
+        }
+    }
+
     public function syncMontageAssigneeIfChanged(Content $content, ?User $previous, ?User $next): void
     {
         if (!$this->formatHelper->isVideoContent($content)) {

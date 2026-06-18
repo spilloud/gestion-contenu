@@ -19,7 +19,7 @@ use Symfony\Component\HttpFoundation\RequestStack;
 #[AsDoctrineListener(event: Events::postFlush)]
 final class ContentAuditSubscriber
 {
-    /** @var list<array{content: Content, type: string, previousUser: ?User, nextUser: ?User}> */
+    /** @var list<array{content: Content, type: string, previousUser: ?User, nextUser: ?User, previousDue: ?\DateTimeImmutable, nextDue: ?\DateTimeImmutable}> */
     private array $asanaSyncQueue = [];
 
     public function __construct(
@@ -77,6 +77,39 @@ final class ContentAuditSubscriber
             );
         }
 
+        if (isset($changeSet['asanaMontageDueOn'])) {
+            [$old, $new] = $changeSet['asanaMontageDueOn'];
+            $oldDue = $old instanceof \DateTimeInterface
+                ? ($old instanceof \DateTimeImmutable ? $old : \DateTimeImmutable::createFromInterface($old))
+                : null;
+            $newDue = $new instanceof \DateTimeInterface
+                ? ($new instanceof \DateTimeImmutable ? $new : \DateTimeImmutable::createFromInterface($new))
+                : null;
+            if ($oldDue?->format('Y-m-d') !== $newDue?->format('Y-m-d')) {
+                $this->workflowService->logFieldChange(
+                    $entity,
+                    ContentActionLog::TYPE_SCHEDULED_DATE_CHANGED,
+                    'Date de montage souhaitée modifiée',
+                    $this->journalFormatter->enrichDateChangeDetail(
+                        'Montage souhaité',
+                        $oldDue?->format('d/m/Y') ?? '—',
+                        $newDue?->format('d/m/Y') ?? '—',
+                        $actor,
+                        'Fiche vidéo',
+                    ),
+                    false,
+                );
+                $this->asanaSyncQueue[] = [
+                    'content' => $entity,
+                    'type' => 'montage_due',
+                    'previousUser' => null,
+                    'nextUser' => null,
+                    'previousDue' => $oldDue,
+                    'nextDue' => $newDue,
+                ];
+            }
+        }
+
         if (isset($changeSet['videoEditor'])) {
             [$old, $new] = $changeSet['videoEditor'];
             $this->logUserChange($entity, 'Délégation montage', 'Monteur', $old, $new, ContentActionLog::TYPE_EDITOR_CHANGED, $actor);
@@ -85,6 +118,8 @@ final class ContentAuditSubscriber
                 'type' => 'montage',
                 'previousUser' => $old,
                 'nextUser' => $new,
+                'previousDue' => null,
+                'nextDue' => null,
             ];
         }
 
@@ -96,6 +131,8 @@ final class ContentAuditSubscriber
                 'type' => 'cm',
                 'previousUser' => $old,
                 'nextUser' => $new,
+                'previousDue' => null,
+                'nextDue' => null,
             ];
         }
     }
@@ -115,6 +152,11 @@ final class ContentAuditSubscriber
                     $job['content'],
                     $job['previousUser'],
                     $job['nextUser'],
+                ),
+                'montage_due' => $this->videoAsanaAssigneeSync->syncMontageDueOnIfChanged(
+                    $job['content'],
+                    $job['previousDue'] ?? null,
+                    $job['nextDue'] ?? null,
                 ),
                 'cm' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCommunityManagerChange(
                     $job['content'],

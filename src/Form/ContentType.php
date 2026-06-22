@@ -146,9 +146,11 @@ class ContentType extends AbstractType
 
             if ($this->contentFormatHelper->isVideoContent($content)) {
                 if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
-                    $content->setAsanaMontageDueOn(
-                        $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
-                    );
+                    if ($form->has('asanaMontageDueOn')) {
+                        $form->get('asanaMontageDueOn')->setData(
+                            $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                        );
+                    }
                 }
 
                 return;

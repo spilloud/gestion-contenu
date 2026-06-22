@@ -28,11 +28,17 @@ final class NoStoreSecurityPagesSubscriber implements EventSubscriberInterface
         $request = $event->getRequest();
         $path = $request->getPathInfo() ?? '';
 
-        // Pages contenant des formulaires avec jetons CSRF liés à la session
+        // Pages avec formulaires / jetons CSRF liés à la session (éviter cache navigateur & BFCache).
         $noStorePrefixes = [
             '/login',
             '/mot-de-passe-oublie',
             '/reinitialiser-mot-de-passe',
+            '/calendrier',
+            '/clients',
+            '/videos',
+            '/contenu',
+            '/derush',
+            '/tournage',
         ];
 
         $match = false;

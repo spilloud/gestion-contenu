@@ -25,6 +25,8 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route('/videos')]
 class VideoController extends AbstractController
 {
+    use FormCsrfHelperTrait;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ContentRepository $contentRepository,
@@ -143,6 +145,10 @@ class VideoController extends AbstractController
             $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request) ?? $defaultReturnTo;
 
             return $this->redirect($returnTo);
+        }
+
+        if ($form->isSubmitted() && $this->formHasCsrfError($form)) {
+            $this->addFlash('error', 'Jeton de sécurité invalide ou session expirée. Rechargez la page puis réessayez.');
         }
 
         return $this->render('videos/show.html.twig', array_merge([

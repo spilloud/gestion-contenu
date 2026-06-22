@@ -29,6 +29,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[Route('/contenu')]
 class ContentController extends AbstractController
 {
+    use FormCsrfHelperTrait;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ContentRepository $contentRepository,
@@ -244,6 +246,10 @@ class ContentController extends AbstractController
             return $this->redirectToRoute('app_content_edit', $params);
         }
 
+        if ($form->isSubmitted() && $this->formHasCsrfError($form)) {
+            $this->addFlash('error', 'Jeton de sécurité invalide ou session expirée. Rechargez la page puis réessayez.');
+        }
+
         return $this->render('content/edit.html.twig', array_merge([
             'content' => $content,
             'form' => $form,
@@ -269,7 +275,7 @@ class ContentController extends AbstractController
     #[Route('/{id}/deplacer', name: 'app_content_move', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function move(Content $content, Request $request): Response
     {
-        if (!$this->isCsrfTokenValid('move'.$content->getId(), $request->request->getString('_token'))) {
+        if (!$this->isValidMoveCsrfToken($content, $request)) {
             return new JsonResponse(['ok' => false, 'error' => 'Jeton CSRF invalide. Rechargez la page.'], 403);
         }
 
@@ -559,5 +565,16 @@ class ContentController extends AbstractController
         $this->entityManager->flush();
 
         return $status;
+    }
+
+    private function isValidMoveCsrfToken(Content $content, Request $request): bool
+    {
+        $token = $request->request->getString('_token');
+        if ($token === '') {
+            $token = $request->headers->get('X-CSRF-TOKEN', '');
+        }
+
+        return $this->isCsrfTokenValid('move', $token)
+            || $this->isCsrfTokenValid('move'.$content->getId(), $token);
     }
 }

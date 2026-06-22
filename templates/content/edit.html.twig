@@ -79,9 +79,8 @@
                 </div>
             </details>
 
-            {{ form_rest(form) }}
-
             <div class="content-fiche__save-bar">
+                {{ form_widget(form._token) }}
                 <button type="submit" class="btn">Enregistrer les modifications</button>
             </div>
 

@@ -134,9 +134,11 @@ class VideoContentType extends AbstractType
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
 
             if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
-                $content->setAsanaMontageDueOn(
-                    $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
-                );
+                if ($form->has('asanaMontageDueOn')) {
+                    $form->get('asanaMontageDueOn')->setData(
+                        $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                    );
+                }
             }
 
             $form = $event->getForm();

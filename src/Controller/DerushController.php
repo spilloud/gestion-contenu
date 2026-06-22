@@ -147,22 +147,14 @@ class DerushController extends AbstractController
 
                 $this->entityManager->persist($content);
                 $newContents[] = $content;
+                $touchedContents['new_'.$created] = $content;
                 $created++;
             }
 
             $touchedList = array_values($touchedContents);
 
-            if ($touchedList !== [] || $plannedDatesUpdated > 0) {
-                if ($touchedList === [] && $plannedDatesUpdated > 0) {
-                    $this->entityManager->flush();
-                    $this->addFlash('success', sprintf('%d date(s) de montage enregistrée(s).', $plannedDatesUpdated));
-
-                    return $this->redirectToRoute('app_derush_index', ['client' => $clientId]);
-                }
-
-                if ($touchedList !== []) {
-                    $this->entityManager->flush();
-                }
+            if ($touchedList !== []) {
+                $this->entityManager->flush();
 
                 foreach ($newContents as $content) {
                     $this->contentWorkflowService->logCreation($content);

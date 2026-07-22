@@ -10,6 +10,7 @@ use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Service\ContentWorkflowService;
+use App\Service\DerushCmAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
 use App\Service\VideoMontageDueOnResolver;
@@ -33,6 +34,7 @@ class DerushController extends AbstractController
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly VideoMontageDueOnResolver $montageDueOnResolver,
+        private readonly DerushCmAsanaTrigger $derushCmAsanaTrigger,
     ) {
     }
 
@@ -66,6 +68,7 @@ class DerushController extends AbstractController
             $plannedMoved = 0;
             $plannedDatesUpdated = 0;
             $newContents = [];
+            $derushedContents = [];
             $touchedContents = [];
 
             $videoFormat = $this->findVideoFormat();
@@ -115,6 +118,7 @@ class DerushController extends AbstractController
                 }
                 $this->contentWorkflowService->applyManualStatusChange($content, $statusMontageAFaire, 'derush');
                 $touchedContents[$content->getId()] = $content;
+                $derushedContents[] = $content;
                 $plannedMoved++;
             }
 
@@ -147,6 +151,7 @@ class DerushController extends AbstractController
 
                 $this->entityManager->persist($content);
                 $newContents[] = $content;
+                $derushedContents[] = $content;
                 $touchedContents['new_'.$created] = $content;
                 $created++;
             }
@@ -173,6 +178,17 @@ class DerushController extends AbstractController
                 if ($asanaCreated > 0 || $plannedDatesUpdated > 0) {
                     $this->entityManager->flush();
                 }
+
+                $cmTaskCreated = false;
+                if ($derushedContents !== []) {
+                    $cmTaskGid = $this->derushCmAsanaTrigger->createFollowUpTask(
+                        $client,
+                        $derushedContents,
+                        $globalRushesUrl,
+                    );
+                    $cmTaskCreated = $cmTaskGid !== null;
+                }
+
                 $messages = [];
                 if ($plannedDatesUpdated > 0) {
                     $messages[] = sprintf('%d date(s) de montage enregistrée(s).', $plannedDatesUpdated);
@@ -187,8 +203,18 @@ class DerushController extends AbstractController
                     $this->addFlash('success', implode(' ', $messages));
                 }
                 if ($asanaCreated > 0) {
-                    $this->addFlash('success', sprintf('%d tâche(s) Asana créée(s).', $asanaCreated));
-                } elseif (getenv('ASANA_ACCESS_TOKEN') !== false && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
+                    $this->addFlash('success', sprintf('%d tâche(s) Asana montage créée(s).', $asanaCreated));
+                }
+                if ($cmTaskCreated) {
+                    $this->addFlash('success', 'Tâche Asana de suivi dérush créée pour la CM.');
+                } elseif ($derushedContents !== []
+                    && getenv('ASANA_ACCESS_TOKEN') !== false
+                    && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
+                    $this->addFlash('warning', 'Tâche Asana suivi CM non créée (projet client ou CM Asana manquant).');
+                }
+                if ($asanaCreated === 0
+                    && getenv('ASANA_ACCESS_TOKEN') !== false
+                    && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
                     $stillMissing = false;
                     foreach ($touchedList as $c) {
                         if ($c->getStatus()?->getName() === 'Montage à faire' && $c->getAsanaTaskGid() === null) {

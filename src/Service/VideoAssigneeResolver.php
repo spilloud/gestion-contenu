@@ -74,6 +74,18 @@ final class VideoAssigneeResolver
         return $fallback !== false && trim((string) $fallback) !== '' ? trim((string) $fallback) : null;
     }
 
+    public function asanaGidForCommunityManager(\App\Entity\Client $client): ?string
+    {
+        $gid = $client->getCommunityManager()?->getAsanaUserGid();
+        if ($gid !== null && trim($gid) !== '') {
+            return trim($gid);
+        }
+
+        $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
+
+        return $fallback !== false && trim((string) $fallback) !== '' ? trim((string) $fallback) : null;
+    }
+
     public function displayNameForCm(Content $content): string
     {
         return $this->resolveCommunityManagerForDisplay($content)?->getName() ?? '—';

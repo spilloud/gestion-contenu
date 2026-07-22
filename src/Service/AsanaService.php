@@ -690,5 +690,134 @@ class AsanaService
 
         return is_string($gid) && trim($gid) !== '' ? trim($gid) : null;
     }
+
+    /**
+     * Crée une tâche Asana de suivi / contrôle dérush pour la CM (une seule tâche par session).
+     *
+     * @param list<Content>          $videos
+     * @param array<int, string>     $videoUrls  id contenu => URL fiche vidéo
+     */
+    public function createDerushFollowUpTaskForCommunityManager(
+        \App\Entity\Client $client,
+        array $videos,
+        ?string $globalRushesUrl,
+        array $videoUrls,
+        ?string $assigneeGid,
+        ?string $fallbackAssigneeGid,
+    ): ?string {
+        if (!$this->isEnabled() || $videos === []) {
+            return null;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+        $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
+        $projectGid = trim((string) ($client->getAsanaProjectGid() ?? ''));
+
+        if ($workspaceGid === '' || $projectGid === '') {
+            return null;
+        }
+
+        $assigneeGid = $assigneeGid !== null && trim($assigneeGid) !== ''
+            ? trim($assigneeGid)
+            : ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '' ? trim($fallbackAssigneeGid) : null);
+
+        $clientName = $client->getName() ?? 'Sans client';
+        $today = new \DateTimeImmutable('today');
+        $dueOn = $today->modify('+1 day')->format('Y-m-d');
+        $dueLabelFr = $today->modify('+1 day')->format('d/m/Y');
+        $count = count($videos);
+
+        $name = sprintf(
+            'Suivi dérush — %s — %d vidéo%s — %s',
+            $clientName,
+            $count,
+            $count > 1 ? 's' : '',
+            $today->format('d/m/Y'),
+        );
+
+        $videoLines = [];
+        foreach ($videos as $video) {
+            if (!$video instanceof Content) {
+                continue;
+            }
+            $title = trim((string) ($video->getTitle() ?? ''));
+            if ($title === '') {
+                $title = 'Vidéo #'.($video->getId() ?? '?');
+            }
+            $pub = $video->getScheduledDate() instanceof \DateTimeInterface
+                ? $video->getScheduledDate()->format('d/m/Y')
+                : '—';
+            $montage = $video->getAsanaMontageDueOn() instanceof \DateTimeInterface
+                ? $video->getAsanaMontageDueOn()->format('d/m/Y')
+                : '—';
+            $editor = $video->getVideoEditor()?->getName() ?? '—';
+            $subtitles = ($video->getVideoHasSubtitles() ?? false) ? 'Oui' : 'Non';
+            $ficheUrl = $videoUrls[$video->getId() ?? 0] ?? null;
+            $rushesUrl = trim((string) ($video->getVideoRushesUrl() ?? ''));
+
+            $block = [
+                '• '.$title,
+                '  Publication : '.$pub,
+                '  Montage souhaité : '.$montage,
+                '  Monteur : '.$editor,
+                '  Sous-titres : '.$subtitles,
+            ];
+            if ($rushesUrl !== '') {
+                $block[] = '  Rushs : '.$rushesUrl;
+            }
+            if ($ficheUrl !== null && $ficheUrl !== '') {
+                $block[] = '  Fiche : '.$ficheUrl;
+            }
+            if ($video->getAsanaTaskGid()) {
+                $block[] = '  Tâche montage Asana : https://app.asana.com/0/0/'.$video->getAsanaTaskGid();
+            }
+
+            $videoLines[] = implode("\n", $block);
+        }
+
+        $cmName = $client->getCommunityManager()?->getName() ?? '—';
+
+        $notes = implode("\n", array_filter([
+            'Contrôle / suivi du dérush (Gestion des contenus).',
+            'Vérifier que les rushs, titres, dates et consignes sont corrects avant le montage.',
+            '',
+            'Client : '.$clientName,
+            'Community manager : '.$cmName,
+            'Date du dérush : '.$today->format('d/m/Y'),
+            'Échéance suivi : '.$dueLabelFr.' (J+1)',
+            $globalRushesUrl !== null && trim($globalRushesUrl) !== '' ? 'Lien rushs commun : '.trim($globalRushesUrl) : null,
+            '',
+            sprintf('Vidéos passées en montage (%d) :', $count),
+            $videoLines !== [] ? implode("\n\n", $videoLines) : '—',
+        ]));
+
+        $taskData = [
+            'name' => $name,
+            'notes' => $notes,
+            'workspace' => $workspaceGid,
+            'projects' => [$projectGid],
+            'due_on' => $dueOn,
+        ];
+        if ($assigneeGid !== null) {
+            $taskData['assignee'] = $assigneeGid;
+        }
+
+        try {
+            $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => ['data' => $taskData],
+            ]);
+            $data = $resp->toArray(false);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $gid = $data['data']['gid'] ?? null;
+
+        return is_string($gid) && trim($gid) !== '' ? trim($gid) : null;
+    }
 }
 

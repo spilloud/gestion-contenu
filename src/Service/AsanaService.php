@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\Content;
 use App\Entity\ShootingRequest;
+use App\Repository\ContentRepository;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AsanaService
@@ -12,6 +13,7 @@ class AsanaService
         private readonly HttpClientInterface $httpClient,
         private readonly RichTextSanitizer $richTextSanitizer,
         private readonly VideoMontageDueOnResolver $montageDueOnResolver,
+        private readonly ContentRepository $contentRepository,
     ) {
     }
 
@@ -114,6 +116,9 @@ class AsanaService
         }
 
         $existing = $this->findMontageTaskForVideo($content, $videoUrl);
+        if ($existing !== null && $this->contentRepository->isAsanaTaskGidLinkedToOtherContent($existing, $content->getId())) {
+            $existing = null;
+        }
         if ($existing !== null) {
             return $existing;
         }

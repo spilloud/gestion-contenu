@@ -139,7 +139,7 @@ class Content
         return $this->scheduledDate;
     }
 
-    public function setScheduledDate(\DateTimeInterface $scheduledDate): static
+    public function setScheduledDate(?\DateTimeInterface $scheduledDate): static
     {
         $this->scheduledDate = $scheduledDate;
 

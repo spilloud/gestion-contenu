@@ -18,6 +18,29 @@ class ContentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Une tâche Asana montage ne peut être liée qu'à une seule fiche vidéo.
+     */
+    public function isAsanaTaskGidLinkedToOtherContent(string $taskGid, ?int $excludeContentId = null): bool
+    {
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return false;
+        }
+
+        $qb = $this->createQueryBuilder('c')
+            ->select('c.id')
+            ->andWhere('c.asanaTaskGid = :gid')
+            ->setParameter('gid', $taskGid)
+            ->setMaxResults(1);
+
+        if ($excludeContentId !== null) {
+            $qb->andWhere('c.id != :excludeId')->setParameter('excludeId', $excludeContentId);
+        }
+
+        return $qb->getQuery()->getOneOrNullResult() !== null;
+    }
+
+    /**
      * @param int[]|null $clientIds
      * @param int[]|null $statusIds
      * @param int[]|null $formatIds

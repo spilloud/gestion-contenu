@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Content;
+use App\Repository\ContentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -16,6 +17,7 @@ final class VideoMontageAsanaTrigger
         private readonly AsanaService $asanaService,
         private readonly VideoAssigneeResolver $assigneeResolver,
         private readonly ContentFormatHelper $formatHelper,
+        private readonly ContentRepository $contentRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
@@ -56,7 +58,7 @@ final class VideoMontageAsanaTrigger
         }
 
         $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
-        if ($found !== null) {
+        if ($found !== null && !$this->contentRepository->isAsanaTaskGidLinkedToOtherContent($found, $content->getId())) {
             $content->setAsanaTaskGid($found);
             $this->syncMontageDueFromAsanaIfUnset($content, $found);
             $changed = true;

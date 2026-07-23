@@ -60,6 +60,21 @@ final class AsanaBackfillDerushTasksCommand extends Command
         $skipped = 0;
         $completedMarked = 0;
 
+        $linkedGids = [];
+        foreach ($this->asanaLinkedTaskRepository->findAll() as $existing) {
+            $g = trim((string) ($existing->getTaskGid() ?? ''));
+            if ($g !== '') {
+                $linkedGids[$g] = true;
+            }
+        }
+
+        // 1) Recherche workspace (rattrapage historique)
+        foreach ($this->asanaService->searchTasksInWorkspace('Suivi dérush') as $task) {
+            $result = $this->linkDerushTask($task, $clients, $linkedGids, $io, $skipped, $completedMarked);
+            $created += $result;
+        }
+
+        // 2) Par projet client
         foreach ($clients as $client) {
             if (!$client instanceof Client) {
                 continue;
@@ -73,41 +88,7 @@ final class AsanaBackfillDerushTasksCommand extends Command
             $io->section($client->getName() ?? 'Client #'.$client->getId());
 
             foreach ($this->asanaService->findDerushFollowUpTasksInProject($projectGid) as $task) {
-                $gid = trim((string) ($task['gid'] ?? ''));
-                $name = trim((string) ($task['name'] ?? ''));
-                if ($gid === '') {
-                    continue;
-                }
-
-                if ($this->asanaLinkedTaskRepository->findOneBy(['taskGid' => $gid]) instanceof AsanaLinkedTask) {
-                    ++$skipped;
-                    $io->writeln('  — déjà liée : '.$name);
-
-                    continue;
-                }
-
-                $contentIds = $this->extractContentIdsFromTaskNotes((string) ($task['notes'] ?? ''), $client);
-                if ($contentIds === []) {
-                    $io->writeln('  ⚠ aucune vidéo trouvée dans les notes : '.$name);
-                    ++$skipped;
-
-                    continue;
-                }
-
-                $linked = new AsanaLinkedTask();
-                $linked->setTaskGid($gid);
-                $linked->setKind(AsanaLinkedTask::KIND_DERUSH_FOLLOWUP);
-                $linked->setClient($client);
-                $linked->setContentIds($contentIds);
-
-                if (!empty($task['completed'])) {
-                    $linked->setCompletedAtLucy(new \DateTimeImmutable());
-                    ++$completedMarked;
-                }
-
-                $this->entityManager->persist($linked);
-                ++$created;
-                $io->writeln(sprintf('  ✓ liée (%d vidéo(s)) : %s', count($contentIds), $name));
+                $created += $this->linkDerushTask($task, [$client], $linkedGids, $io, $skipped, $completedMarked);
             }
         }
 
@@ -126,6 +107,88 @@ final class AsanaBackfillDerushTasksCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * @param list<Client|null> $clientsHint
+     * @param array<string, true> $linkedGids
+     */
+    private function linkDerushTask(
+        array $task,
+        array $clientsHint,
+        array &$linkedGids,
+        SymfonyStyle $io,
+        int &$skipped,
+        int &$completedMarked,
+    ): int {
+        $gid = trim((string) ($task['gid'] ?? ''));
+        $name = trim((string) ($task['name'] ?? ''));
+        if ($gid === '') {
+            return 0;
+        }
+
+        if (isset($linkedGids[$gid])) {
+            ++$skipped;
+            return 0;
+        }
+
+        $client = $this->resolveClientForTask($task, $clientsHint);
+        if (!$client instanceof Client) {
+            $io->writeln('  ⚠ client introuvable : '.$name);
+            ++$skipped;
+
+            return 0;
+        }
+
+        $contentIds = $this->extractContentIdsFromTaskNotes((string) ($task['notes'] ?? ''), $client);
+        if ($contentIds === []) {
+            $io->writeln('  ⚠ aucune vidéo dans les notes : '.$name);
+            ++$skipped;
+
+            return 0;
+        }
+
+        $linked = new AsanaLinkedTask();
+        $linked->setTaskGid($gid);
+        $linked->setKind(AsanaLinkedTask::KIND_DERUSH_FOLLOWUP);
+        $linked->setClient($client);
+        $linked->setContentIds($contentIds);
+
+        if (!empty($task['completed'])) {
+            $linked->setCompletedAtLucy(new \DateTimeImmutable());
+            ++$completedMarked;
+        }
+
+        $this->entityManager->persist($linked);
+        $linkedGids[$gid] = true;
+        $io->writeln(sprintf('  ✓ [%s] %d vidéo(s) : %s', $client->getName(), count($contentIds), $name));
+
+        return 1;
+    }
+
+    /**
+     * @param list<Client|null> $clientsHint
+     */
+    private function resolveClientForTask(array $task, array $clientsHint): ?Client
+    {
+        if (count($clientsHint) === 1) {
+            $only = $clientsHint[0];
+            if ($only instanceof Client) {
+                return $only;
+            }
+        }
+
+        $notes = (string) ($task['notes'] ?? '');
+        if (preg_match('/Client\s*:\s*(.+)/m', $notes, $m)) {
+            $clientName = trim($m[1]);
+            foreach ($this->clientRepository->findAllOrderedByClientName() as $client) {
+                if (trim((string) ($client->getName() ?? '')) === $clientName) {
+                    return $client;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

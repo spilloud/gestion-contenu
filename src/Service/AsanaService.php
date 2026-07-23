@@ -130,6 +130,60 @@ class AsanaService
     }
 
     /**
+     * Recherche de tâches dans le workspace (ex. rattrapage « Suivi dérush »).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function searchTasksInWorkspace(string $text, ?string $completedSince = '1970-01-01T00:00:00Z'): array
+    {
+        if (!$this->isEnabled()) {
+            return [];
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+        $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
+        $text = trim($text);
+        if ($workspaceGid === '' || $text === '') {
+            return [];
+        }
+
+        $query = [
+            'text' => $text,
+            'opt_fields' => 'name,notes,completed,gid,projects',
+            'limit' => 100,
+        ];
+        if ($completedSince !== null) {
+            $query['completed_since'] = $completedSince;
+        }
+
+        try {
+            $resp = $this->httpClient->request(
+                'GET',
+                'https://app.asana.com/api/1.0/workspaces/'.rawurlencode($workspaceGid).'/tasks/search',
+                [
+                    'headers' => ['Authorization' => 'Bearer '.$token],
+                    'query' => $query,
+                ],
+            );
+            if ($resp->getStatusCode() >= 400) {
+                return [];
+            }
+            $payload = $resp->toArray(false);
+        } catch (\Throwable) {
+            return [];
+        }
+
+        $tasks = [];
+        foreach ($payload['data'] ?? [] as $task) {
+            if (is_array($task)) {
+                $tasks[] = $task;
+            }
+        }
+
+        return $tasks;
+    }
+
+    /**
      * Crée une tâche Asana pour une vidéo, si configuré.
      * Retourne le task gid (string) ou null si non créé.
      */

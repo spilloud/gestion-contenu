@@ -337,7 +337,6 @@ final class AsanaBidirectionalSyncService
             return false;
         }
 
-        $asanaName = trim((string) ($assignee['name'] ?? ''));
         $user = $this->userRepository->findOneByAsanaUserGid($assigneeGid);
 
         if ($kind === 'montage') {
@@ -348,9 +347,11 @@ final class AsanaBidirectionalSyncService
             }
 
             $previous = $current;
-            if ($user !== null) {
-                $content->setVideoEditor($user);
+            if ($user === null) {
+                return false;
             }
+
+            $content->setVideoEditor($user);
 
             $this->persistAsanaLog(
                 $content,
@@ -360,7 +361,7 @@ final class AsanaBidirectionalSyncService
                     $previous,
                     $user,
                     null,
-                ).($user === null && $asanaName !== '' ? "\nAssigné Asana : ".$asanaName : ''),
+                ),
             );
 
             return true;
@@ -373,9 +374,11 @@ final class AsanaBidirectionalSyncService
         }
 
         $previous = $current;
-        if ($user !== null) {
-            $content->setVideoCommunityManager($user);
+        if ($user === null) {
+            return false;
         }
+
+        $content->setVideoCommunityManager($user);
 
         $this->persistAsanaLog(
             $content,
@@ -385,7 +388,7 @@ final class AsanaBidirectionalSyncService
                 $previous,
                 $user,
                 null,
-            ).($user === null && $asanaName !== '' ? "\nAssigné Asana : ".$asanaName : ''),
+            ),
         );
 
         return true;

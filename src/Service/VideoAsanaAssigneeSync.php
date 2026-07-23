@@ -39,6 +39,7 @@ final class VideoAsanaAssigneeSync
         }
 
         if ($this->asanaService->updateTaskDueOn($taskGid, $next)) {
+            $content->markAsanaMontageDueOnPushedFromLucy();
             $this->asanaService->addCommentToTask(
                 $taskGid,
                 'Échéance montage mise à jour (via Gestion des contenus) : '.$next->format('d/m/Y'),

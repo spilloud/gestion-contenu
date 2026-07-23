@@ -44,4 +44,20 @@ class ShootingRequestRepository extends ServiceEntityRepository
             ->getQuery()
             ->getOneOrNullResult();
     }
+
+    /**
+     * @return ShootingRequest[]
+     */
+    public function findWithOpenAsanaTask(): array
+    {
+        return $this->createQueryBuilder('s')
+            ->leftJoin('s.client', 'c')->addSelect('c')
+            ->leftJoin('s.assignedTo', 'a')->addSelect('a')
+            ->leftJoin('s.videos', 'v')->addSelect('v')
+            ->andWhere('s.asanaTaskGid IS NOT NULL')
+            ->andWhere('s.asanaTaskCompletedAt IS NULL')
+            ->orderBy('s.shootingDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

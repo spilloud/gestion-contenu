@@ -89,6 +89,10 @@ class Content
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $asanaMontageDueOn = null;
 
+    /** Horodatage du dernier push échéance montage Lucy → Asana (évite d’écraser une modif CM). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $asanaMontageDueOnLastPushedAt = null;
+
     /**
      * @var Collection<int, ContentComment>
      */
@@ -370,6 +374,25 @@ class Content
     public function setAsanaMontageDueOn(?\DateTimeImmutable $asanaMontageDueOn): static
     {
         $this->asanaMontageDueOn = $asanaMontageDueOn;
+
+        return $this;
+    }
+
+    public function getAsanaMontageDueOnLastPushedAt(): ?\DateTimeImmutable
+    {
+        return $this->asanaMontageDueOnLastPushedAt;
+    }
+
+    public function setAsanaMontageDueOnLastPushedAt(?\DateTimeImmutable $asanaMontageDueOnLastPushedAt): static
+    {
+        $this->asanaMontageDueOnLastPushedAt = $asanaMontageDueOnLastPushedAt;
+
+        return $this;
+    }
+
+    public function markAsanaMontageDueOnPushedFromLucy(): static
+    {
+        $this->asanaMontageDueOnLastPushedAt = new \DateTimeImmutable();
 
         return $this;
     }

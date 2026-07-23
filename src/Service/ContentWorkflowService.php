@@ -44,7 +44,7 @@ final class ContentWorkflowService
     /**
      * @return array{ok: bool, message?: string}
      */
-    public function applyTransition(Content $content, string $actionId): array
+    public function applyTransition(Content $content, string $actionId, bool $fromAsana = false): array
     {
         $transition = $this->registry->getTransition($actionId, $content);
         if ($transition === null) {
@@ -67,7 +67,7 @@ final class ContentWorkflowService
         $content->setUpdatedAt(new \DateTimeImmutable());
 
         foreach ($transition['effects'] as $effect) {
-            $this->applyEffect($content, $effect);
+            $this->applyEffect($content, $effect, $fromAsana);
         }
 
         $this->persistLog(
@@ -169,15 +169,29 @@ final class ContentWorkflowService
         }
     }
 
-    private function applyEffect(Content $content, string $effect): void
+    private function applyEffect(Content $content, string $effect, bool $fromAsana = false): void
     {
         match ($effect) {
             'set_subtitles_yes' => $content->setVideoHasSubtitles(true),
             'set_subtitles_no' => $content->setVideoHasSubtitles(false),
-            'complete_asana_montage' => $this->completeMontageAsanaTask($content),
+            'complete_asana_montage' => $fromAsana ? null : $this->completeMontageAsanaTask($content),
+            'complete_asana_subtitles' => $fromAsana ? null : $this->completeSubtitlesAsanaTask($content),
             'trigger_subtitles_asana' => null,
             default => null,
         };
+    }
+
+    private function completeSubtitlesAsanaTask(Content $content): void
+    {
+        $gid = trim((string) ($content->getAsanaSubtitlesTaskGid() ?? ''));
+        if ($gid === '' || !$this->asanaService->isEnabled()) {
+            return;
+        }
+
+        $user = $this->currentUser();
+        $actor = $user instanceof User ? ($user->getName() ?? $user->getUserIdentifier()) : '—';
+        $this->asanaService->addCommentToTask($gid, "Sous-titres validés (via Gestion des contenus).\nPar : @$actor");
+        $this->asanaService->completeTask($gid);
     }
 
     private function completeMontageAsanaTask(Content $content): void

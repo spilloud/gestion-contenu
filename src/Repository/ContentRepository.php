@@ -180,4 +180,43 @@ class ContentRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Vidéos d'un client avec au moins une tâche Asana liée.
+     *
+     * @return Content[]
+     */
+    public function findVideosWithAsanaLinksForClient(Client $client): array
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->andWhere('c.client = :client')
+            ->andWhere('c.asanaTaskGid IS NOT NULL OR c.asanaSubtitlesTaskGid IS NOT NULL')
+            ->setParameter('client', $client)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Vidéos non publiées avec tâche Asana (cron sync).
+     *
+     * @return Content[]
+     */
+    public function findVideosForAsanaSync(): array
+    {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.client', 'cl')->addSelect('cl')
+            ->andWhere('LOWER(f.name) IN (:videoNames)')
+            ->andWhere('s.name != :published')
+            ->andWhere('c.asanaTaskGid IS NOT NULL OR c.asanaSubtitlesTaskGid IS NOT NULL')
+            ->setParameter('videoNames', ['vidéo', 'video'])
+            ->setParameter('published', 'Publiée')
+            ->orderBy('c.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

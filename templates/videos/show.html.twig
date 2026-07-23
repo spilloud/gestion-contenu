@@ -77,7 +77,12 @@
                     <h2>Équipe</h2>
                     <span class="content-fiche__section-kicker">Asana</span>
                 </div>
-                <p class="vf-team-hint">Enregistrer réassigne automatiquement les tâches Asana (montage et relecture sous-titres) si elles existent.</p>
+                <p class="vf-team-hint">Enregistrer réassigne automatiquement les tâches Asana (montage et relecture sous-titres) si elles existent. La sync automatique tourne aussi toutes les 15&nbsp;min.</p>
+                <form method="post" action="{{ path('app_video_asana_sync', {id: content.id}) }}" class="vf-asana-sync-form" style="margin-bottom: 1rem;">
+                    <input type="hidden" name="_token" value="{{ csrf_token('asana_sync' ~ content.id) }}">
+                    <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+                    <button type="submit" class="vw-btn vw-btn--ghost">↻ Rafraîchir depuis Asana</button>
+                </form>
                 <div class="vf-team-grid">
                     {{ form_row(form.videoEditor) }}
                     {{ form_row(form.videoCommunityManager) }}

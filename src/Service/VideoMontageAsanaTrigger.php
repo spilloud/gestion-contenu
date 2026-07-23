@@ -132,6 +132,11 @@ final class VideoMontageAsanaTrigger
         $content->setAsanaTaskGid($gid);
         if ($content->getAsanaMontageDueOn() === null) {
             $this->syncMontageDueFromAsanaIfUnset($content, $gid);
+        } else {
+            $this->pushMontageDueToAsanaIfSet($content, $gid);
+        }
+        if ($content->getAsanaMontageDueOn() !== null && $content->getAsanaMontageDueOnLastPushedAt() === null) {
+            $content->markAsanaMontageDueOnPushedFromLucy();
         }
         if ($flush) {
             $this->entityManager->flush();
@@ -164,6 +169,8 @@ final class VideoMontageAsanaTrigger
             return;
         }
 
-        $this->asanaService->updateTaskDueOn($taskGid, $due);
+        if ($this->asanaService->updateTaskDueOn($taskGid, $due)) {
+            $content->markAsanaMontageDueOnPushedFromLucy();
+        }
     }
 }

@@ -48,6 +48,9 @@ class ShootingRequest
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $asanaTaskGid = null;
 
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $asanaTaskCompletedAt = null;
+
     /** @var Collection<int, Content> */
     #[ORM\ManyToMany(targetEntity: Content::class)]
     #[ORM\JoinTable(name: 'shooting_request_video')]
@@ -168,6 +171,18 @@ class ShootingRequest
     public function setAsanaTaskGid(?string $asanaTaskGid): static
     {
         $this->asanaTaskGid = $asanaTaskGid;
+
+        return $this;
+    }
+
+    public function getAsanaTaskCompletedAt(): ?\DateTimeImmutable
+    {
+        return $this->asanaTaskCompletedAt;
+    }
+
+    public function setAsanaTaskCompletedAt(?\DateTimeImmutable $asanaTaskCompletedAt): static
+    {
+        $this->asanaTaskCompletedAt = $asanaTaskCompletedAt;
 
         return $this;
     }

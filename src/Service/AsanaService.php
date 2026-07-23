@@ -43,7 +43,7 @@ class AsanaService
         try {
             $resp = $this->httpClient->request(
                 'GET',
-                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,completed,due_on,permalink_url',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,assignee.gid,completed,due_on,modified_at,permalink_url',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer '.$token,

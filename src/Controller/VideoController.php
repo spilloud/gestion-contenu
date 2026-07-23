@@ -10,6 +10,7 @@ use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
+use App\Service\AsanaBidirectionalSyncService;
 use App\Service\AsanaInboundSyncService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowViewBuilder;
@@ -38,6 +39,7 @@ class VideoController extends AbstractController
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowViewBuilder $workflowViewBuilder,
         private readonly AsanaInboundSyncService $asanaInboundSync,
+        private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
@@ -157,6 +159,31 @@ class VideoController extends AbstractController
             'returnTo' => $defaultReturnTo,
             'cm_display_name' => $this->videoAssigneeResolver->displayNameForCm($content),
         ], $this->workflowViewBuilder->build($content)));
+    }
+
+    #[Route('/fiche/{id}/asana-sync', name: 'app_video_asana_sync', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function asanaSync(Content $content, Request $request): Response
+    {
+        if (!$this->contentFormatHelper->isVideoContent($content)) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid('asana_sync'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide. Rechargez la page.');
+
+            return $this->redirectToRoute('app_video_show', ['id' => $content->getId()]);
+        }
+
+        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request)
+            ?? $this->generateUrl('app_video_show', ['id' => $content->getId()]);
+
+        if ($this->asanaBidirectionalSync->syncContent($content, true)) {
+            $this->addFlash('success', 'Synchronisation Asana effectuée — fiche mise à jour.');
+        } else {
+            $this->addFlash('info', 'Aucun changement détecté depuis Asana.');
+        }
+
+        return $this->redirect($returnTo);
     }
 
     private function findVideoFormat(): Format

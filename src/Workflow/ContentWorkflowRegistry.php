@@ -528,7 +528,7 @@ final class ContentWorkflowRegistry
                 'from' => ['Sous-titres à valider'],
                 'to' => 'À valider (CM)',
                 'label' => 'Sous-titres validés',
-                'effects' => [],
+                'effects' => ['complete_asana_subtitles'],
             ],
             'cm_validation' => [
                 'from' => ['Prépa CM (sans sous-titres)'],

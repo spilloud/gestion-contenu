@@ -10,6 +10,7 @@ use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Service\ContentWorkflowService;
+use App\Service\AsanaBidirectionalSyncService;
 use App\Service\DerushCmAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
@@ -35,6 +36,7 @@ class DerushController extends AbstractController
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly VideoMontageDueOnResolver $montageDueOnResolver,
         private readonly DerushCmAsanaTrigger $derushCmAsanaTrigger,
+        private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
     ) {
     }
 
@@ -186,6 +188,10 @@ class DerushController extends AbstractController
                         $derushedContents,
                         $globalRushesUrl,
                     );
+                    if ($cmTaskGid !== null) {
+                        $this->asanaBidirectionalSync->registerDerushFollowUpTask($client, $derushedContents, $cmTaskGid);
+                        $this->entityManager->flush();
+                    }
                     $cmTaskCreated = $cmTaskGid !== null;
                 }
 

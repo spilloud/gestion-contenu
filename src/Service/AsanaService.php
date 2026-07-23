@@ -101,6 +101,34 @@ class AsanaService
     }
 
     /**
+     * Tâches « Suivi dérush » d'un projet client (historique + récentes).
+     *
+     * @return \Generator<int, array<string, mixed>>
+     */
+    public function findDerushFollowUpTasksInProject(string $projectGid): \Generator
+    {
+        if (!$this->isEnabled()) {
+            return;
+        }
+
+        $projectGid = trim($projectGid);
+        if ($projectGid === '') {
+            return;
+        }
+
+        foreach ($this->iterateProjectTasks($projectGid, ['name', 'notes', 'completed', 'gid']) as $task) {
+            $name = trim((string) ($task['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+            if (!str_starts_with($name, 'Suivi dérush') && !str_starts_with($name, 'Suivi derush')) {
+                continue;
+            }
+            yield $task;
+        }
+    }
+
+    /**
      * Crée une tâche Asana pour une vidéo, si configuré.
      * Retourne le task gid (string) ou null si non créé.
      */

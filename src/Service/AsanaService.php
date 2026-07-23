@@ -116,12 +116,13 @@ class AsanaService
             return;
         }
 
-        foreach ($this->iterateProjectTasks($projectGid, ['name', 'notes', 'completed', 'gid']) as $task) {
+        foreach ($this->iterateProjectTasks($projectGid, ['name', 'notes', 'completed', 'gid'], '1970-01-01T00:00:00Z') as $task) {
             $name = trim((string) ($task['name'] ?? ''));
             if ($name === '') {
                 continue;
             }
-            if (!str_starts_with($name, 'Suivi dérush') && !str_starts_with($name, 'Suivi derush')) {
+            $nameLower = mb_strtolower($name);
+            if (!str_contains($nameLower, 'suivi') || (!str_contains($nameLower, 'dérush') && !str_contains($nameLower, 'derush'))) {
                 continue;
             }
             yield $task;
@@ -500,7 +501,7 @@ class AsanaService
      *
      * @return \Generator<int, array<string, mixed>>
      */
-    private function iterateProjectTasks(string $projectGid, array $optFields): \Generator
+    private function iterateProjectTasks(string $projectGid, array $optFields, ?string $completedSince = null): \Generator
     {
         $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
         $offset = null;
@@ -508,6 +509,9 @@ class AsanaService
         do {
             $url = 'https://app.asana.com/api/1.0/projects/'.rawurlencode($projectGid).'/tasks'
                 .'?opt_fields='.implode(',', $optFields).'&limit=100';
+            if ($completedSince !== null) {
+                $url .= '&completed_since='.rawurlencode($completedSince);
+            }
             if ($offset !== null) {
                 $url .= '&offset='.rawurlencode($offset);
             }

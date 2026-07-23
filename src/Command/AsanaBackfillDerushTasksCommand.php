@@ -147,6 +147,20 @@ final class AsanaBackfillDerushTasksCommand extends Command
             }
         }
 
+        // Anciennes tâches : liens absolus contenu.osmose-marketing.ch
+        if ($ids === [] && preg_match_all('#contenu\.osmose-marketing\.ch/videos/fiche/(\d+)#', $notes, $matches)) {
+            foreach ($matches[1] as $rawId) {
+                $id = (int) $rawId;
+                if ($id <= 0) {
+                    continue;
+                }
+                $content = $this->contentRepository->find($id);
+                if ($content instanceof Content && $content->getClient()?->getId() === $client->getId()) {
+                    $ids[] = $id;
+                }
+            }
+        }
+
         return array_values(array_unique($ids));
     }
 }

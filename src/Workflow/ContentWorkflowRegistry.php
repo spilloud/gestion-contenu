@@ -81,6 +81,31 @@ final class ContentWorkflowRegistry
         'Publiée',
     ];
 
+    /** Contenu déjà produit hors Lucy — pas de parcours intermédiaire ni Asana à la création. */
+    public const STANDARD_DIRECT_ENTRY_STATUS_NAMES = ['Prêt à publier', 'Publiée'];
+
+    /** @var list<string> */
+    public const VIDEO_DIRECT_ENTRY_STATUS_NAMES = ['Prête à programmer', 'Programmée', 'Publiée'];
+
+    public static function isDirectEntryStatusName(string $statusName, bool $isVideo): bool
+    {
+        if ($isVideo) {
+            return $statusName === 'Prêt à publier'
+                || in_array($statusName, self::VIDEO_DIRECT_ENTRY_STATUS_NAMES, true);
+        }
+
+        return in_array($statusName, self::STANDARD_DIRECT_ENTRY_STATUS_NAMES, true);
+    }
+
+    public static function normalizeDirectEntryStatusName(string $statusName, bool $isVideo): string
+    {
+        if ($isVideo && $statusName === 'Prêt à publier') {
+            return 'Prête à programmer';
+        }
+
+        return $statusName;
+    }
+
     /**
      * Statuts proposés dans les menus déroulants (filtres, correction manuelle).
      * Exclut les étapes legacy vidéo et les anciens libellés hors parcours actuel.

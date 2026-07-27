@@ -7,11 +7,13 @@ use App\Entity\Content;
 use App\Entity\Format;
 use App\Entity\Status;
 use App\Entity\User;
+use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\ContentFormatHelper;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageDueOnResolver;
+use App\Workflow\ContentWorkflowRegistry;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -27,6 +29,7 @@ class ContentType extends AbstractType
 {
     public function __construct(
         private readonly StatusRepository $statusRepository,
+        private readonly FormatRepository $formatRepository,
         private readonly UserRepository $userRepository,
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
@@ -69,11 +72,11 @@ class ContentType extends AbstractType
                 'help' => 'Pour les vidéos : la date ici correspond à la date de publication. Le dérush sert ensuite à lancer le montage (Asana).',
             ])
             ->add('status', EntityType::class, [
-                'label' => 'Statut (réglage manuel)',
+                'label' => 'Statut',
                 'class' => Status::class,
                 'choice_label' => 'name',
                 'choices' => [],
-                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
+                'help' => 'Par défaut : début de parcours. Si le contenu existe déjà (hors Lucy), choisissez « Prêt à publier » (post) ou « Prête à programmer » (vidéo).',
             ])
             ->add('notes', TextareaType::class, [
                 'label' => 'Notes (interne)',
@@ -104,6 +107,42 @@ class ContentType extends AbstractType
                 'help' => 'Échéance de la tâche Asana pour le monteur (par défaut : publication − 3 jours).',
             ]);
 
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event): void {
+            $raw = $event->getData();
+            if (!is_array($raw)) {
+                return;
+            }
+
+            $format = null;
+            $formatId = $raw['format'] ?? null;
+            if ($formatId !== null && $formatId !== '') {
+                $format = $this->formatRepository->find($formatId);
+            }
+
+            $isVideo = $this->contentFormatHelper->isVideoFormat($format instanceof Format ? $format : null);
+            $workflow = $isVideo ? Status::WORKFLOW_VIDEO : Status::WORKFLOW_STANDARD;
+
+            $currentStatus = null;
+            $statusId = $raw['status'] ?? null;
+            if ($statusId !== null && $statusId !== '') {
+                $currentStatus = $this->statusRepository->find($statusId);
+            }
+
+            $form = $event->getForm();
+            if ($form->has('status')) {
+                $form->remove('status');
+            }
+            $form->add('status', EntityType::class, [
+                'label' => 'Statut',
+                'class' => Status::class,
+                'choice_label' => 'name',
+                'choices' => $this->statusRepository->findSelectableForWorkflow($workflow, $currentStatus),
+                'help' => $isVideo
+                    ? 'Contenu déjà produit hors Lucy : choisissez « Prête à programmer » (ou « Programmée » / « Publiée »).'
+                    : 'Contenu déjà produit hors Lucy : choisissez « Prêt à publier » (ou « Publiée »).',
+            ]);
+        });
+
         $builder->addEventListener(FormEvents::SUBMIT, function (FormEvent $event): void {
             $content = $event->getData();
             if (!$content instanceof Content) {
@@ -111,6 +150,13 @@ class ContentType extends AbstractType
             }
 
             if (!$this->contentFormatHelper->isVideoContent($content)) {
+                $content->setAsanaMontageDueOn(null);
+
+                return;
+            }
+
+            $statusName = $content->getStatus()?->getName() ?? '';
+            if (ContentWorkflowRegistry::isDirectEntryStatusName($statusName, true)) {
                 $content->setAsanaMontageDueOn(null);
 
                 return;
@@ -130,18 +176,24 @@ class ContentType extends AbstractType
             }
 
             $form = $event->getForm();
+            $workflow = $this->contentFormatHelper->workflowForContent($content);
+            $isNew = $content->getId() === null;
             if ($form->has('status')) {
                 $form->remove('status');
             }
             $form->add('status', EntityType::class, [
-                'label' => 'Statut (réglage manuel)',
+                'label' => 'Statut',
                 'class' => Status::class,
                 'choice_label' => 'name',
                 'choices' => $this->statusRepository->findSelectableForWorkflow(
-                    Status::WORKFLOW_STANDARD,
+                    $workflow,
                     $content->getStatus(),
                 ),
-                'help' => 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
+                'help' => $isNew
+                    ? ($this->contentFormatHelper->isVideoContent($content)
+                        ? 'Contenu déjà produit hors Lucy : choisissez « Prête à programmer » (ou « Programmée » / « Publiée »).'
+                        : 'Contenu déjà produit hors Lucy : choisissez « Prêt à publier » (ou « Publiée »).')
+                    : 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ]);
 
             if ($this->contentFormatHelper->isVideoContent($content)) {

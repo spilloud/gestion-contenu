@@ -153,31 +153,7 @@ class ContentController extends AbstractController
                 }
             }
 
-            if ($isVideo) {
-                // Création "planning" (CM) : on planifie une vidéo avec date,
-                // sans déclencher Asana (créé uniquement depuis la page Dérush).
-                // - monteur auto depuis le client (si défini)
-                // - sous-titres par défaut à non
-                $content->setStatus($this->findPlannedVideoStatus());
-
-                $client = $content->getClient();
-                if ($client) {
-                    if ($content->getVideoEditor() === null && $client->getEditor() !== null) {
-                        $content->setVideoEditor($client->getEditor());
-                    }
-                    if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
-                        $content->setVideoCommunityManager($client->getCommunityManager());
-                    }
-                }
-                if ($content->getVideoHasSubtitles() === null) {
-                    $content->setVideoHasSubtitles(false);
-                }
-            }
-
-            if (!$isVideo) {
-                $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
-                $content->setStatus($this->findInitialStandardStatus());
-            }
+            $this->applyCreationStatus($content, $isVideo);
 
             $this->entityManager->persist($content);
             $this->entityManager->flush();
@@ -509,6 +485,50 @@ class ContentController extends AbstractController
         }
 
         throw $this->createNotFoundException('Format vidéo introuvable.');
+    }
+
+    private function applyCreationStatus(Content $content, bool $isVideo): void
+    {
+        $selectedName = $content->getStatus()?->getName() ?? '';
+        $directEntry = \App\Workflow\ContentWorkflowRegistry::isDirectEntryStatusName($selectedName, $isVideo);
+
+        if ($isVideo) {
+            $client = $content->getClient();
+            if ($client) {
+                if ($content->getVideoEditor() === null && $client->getEditor() !== null) {
+                    $content->setVideoEditor($client->getEditor());
+                }
+                if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
+                    $content->setVideoCommunityManager($client->getCommunityManager());
+                }
+            }
+            if ($content->getVideoHasSubtitles() === null) {
+                $content->setVideoHasSubtitles(false);
+            }
+
+            if ($directEntry) {
+                $normalizedName = \App\Workflow\ContentWorkflowRegistry::normalizeDirectEntryStatusName($selectedName, true);
+                $status = $this->statusRepository->findOneByName($normalizedName);
+                if ($status !== null) {
+                    $content->setStatus($status);
+                }
+                $content->setAsanaMontageDueOn(null);
+
+                return;
+            }
+
+            $content->setStatus($this->findPlannedVideoStatus());
+
+            return;
+        }
+
+        $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+
+        if ($directEntry) {
+            return;
+        }
+
+        $content->setStatus($this->findInitialStandardStatus());
     }
 
     private function findInitialStandardStatus(): \App\Entity\Status

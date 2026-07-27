@@ -9,7 +9,6 @@ use App\Repository\CalendarEventRepository;
 use App\Repository\CampaignRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
-use App\Service\AsanaBidirectionalSyncService;
 use App\Service\YearPlanningGridBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -27,7 +26,6 @@ class ClientController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly YearPlanningGridBuilder $yearPlanningGridBuilder,
-        private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
     ) {
     }
 
@@ -86,13 +84,6 @@ class ClientController extends AbstractController
 
         $form = $this->createForm(ClientPageType::class, $clientPage);
         $form->handleRequest($request);
-
-        if ($request->isMethod('GET')) {
-            $synced = $this->asanaBidirectionalSync->syncContentsForClient($client, true);
-            if ($synced > 0) {
-                $this->addFlash('info', sprintf('%d vidéo(s) synchronisée(s) avec Asana.', $synced));
-            }
-        }
 
         if ($form->isSubmitted() && $form->isValid()) {
             foreach ($clientPage->getTodoItems() as $i => $item) {

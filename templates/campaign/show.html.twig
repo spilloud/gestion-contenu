@@ -113,15 +113,184 @@
 .campaign-day-num { display: block; font-size: 0.65rem; color: var(--muted); margin-bottom: 0.15rem; text-align: right; }
 
 .campaign-actions-print { margin-bottom: 1rem; }
+.campaign-print-banner { display: none; }
+.campaign-weeks { display: block; }
 
 @media print {
-    .no-print, nav, .flash-messages, .campaign-panel, .campaign-nav, .campaign-actions-print, .campaign-banner .btn {
+    @page {
+        size: A4 landscape;
+        margin: 4mm;
+    }
+
+    html, body {
+        height: auto !important;
+        background: #fff !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .layout {
+        display: block !important;
+    }
+    .sidebar,
+    header.topbar,
+    .topbar,
+    .flash-success,
+    .flash-error,
+    .no-print,
+    nav,
+    .campaign-panel,
+    .campaign-nav,
+    .campaign-actions-print,
+    .campaign-banner {
         display: none !important;
     }
-    .campaign-page { color: #000; }
-    .campaign-week { break-inside: avoid; border-color: #ccc; }
-    .campaign-card { break-inside: avoid; background: #fff; border-color: #bbb; }
-    .campaign-grid__cell.out-campaign { background: #f5f5f5; }
+
+    main,
+    .main,
+    .page-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        max-width: none !important;
+        flex: none !important;
+    }
+
+    .campaign-page {
+        color: #000;
+        height: 100vh;
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .campaign-print-banner {
+        display: flex !important;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 8mm;
+        flex-wrap: nowrap;
+        border-bottom: 1px solid #222;
+        padding: 0 0 1.5mm;
+        margin: 0 0 2mm;
+        font-size: 8pt;
+        line-height: 1.2;
+        flex-shrink: 0;
+    }
+    .campaign-print-banner__main {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5mm 4mm;
+        align-items: baseline;
+        min-width: 0;
+    }
+    .campaign-print-banner__client {
+        font-weight: 700;
+        font-size: 11pt;
+    }
+    .campaign-print-banner__meta {
+        color: #333;
+    }
+    .campaign-print-banner__date {
+        white-space: nowrap;
+        color: #444;
+        font-size: 7.5pt;
+    }
+
+    .campaign-weeks {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2mm;
+    }
+
+    .campaign-week {
+        flex: 1 1 0;
+        min-height: 0;
+        margin: 0;
+        border: 1px solid #999;
+        border-radius: 0;
+        overflow: hidden;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    .campaign-week__title {
+        display: none !important;
+    }
+
+    .campaign-grid {
+        flex: 1;
+        min-height: 0;
+        grid-template-columns: 22mm repeat(7, minmax(0, 1fr));
+        grid-template-rows: auto;
+        grid-auto-rows: minmax(0, 1fr);
+        align-content: stretch;
+    }
+
+    .campaign-grid__head {
+        font-size: 6pt;
+        padding: 0.6mm 0.4mm;
+        background: #eee !important;
+        border-color: #bbb !important;
+        font-weight: 700;
+    }
+
+    .campaign-grid__label {
+        font-size: 6pt;
+        padding: 0.5mm 1mm;
+        min-height: 0;
+        border-color: #bbb !important;
+        gap: 1mm;
+        line-height: 1.15;
+    }
+    .campaign-category-swatch {
+        width: 7px;
+        height: 7px;
+    }
+
+    .campaign-grid__cell {
+        min-height: 0;
+        padding: 0.4mm;
+        border-color: #bbb !important;
+    }
+    .campaign-grid__cell.out-month {
+        opacity: 0.35;
+    }
+    .campaign-grid__cell.out-campaign {
+        background: #f3f3f3 !important;
+    }
+
+    .campaign-day-num,
+    .campaign-card__edit {
+        display: none !important;
+    }
+
+    .campaign-card {
+        cursor: default;
+        font-size: 5.5pt;
+        line-height: 1.15;
+        padding: 0.4mm 0.6mm;
+        margin: 0 0 0.4mm;
+        border-radius: 1px;
+        border-color: #aaa;
+        background: #fff;
+        gap: 0.5mm;
+        break-inside: avoid;
+    }
+    .campaign-card__picto {
+        font-size: 6pt;
+        margin: 0;
+    }
+    .campaign-card__title {
+        -webkit-line-clamp: 2;
+    }
+
     a { color: #000; text-decoration: none; }
 }
 </style>
@@ -142,7 +311,19 @@
         <a href="{{ path('app_client_year_planning', {id: client.id, year: calendarYear}) }}">Vue annuelle</a>
     </nav>
 
-    <div class="campaign-banner">
+    {% if campaign %}
+    <div class="campaign-print-banner" aria-hidden="true">
+        <div class="campaign-print-banner__main">
+            <span class="campaign-print-banner__client">{{ client.name }}</span>
+            <span class="campaign-print-banner__meta">{{ campaign.name }}</span>
+            <span class="campaign-print-banner__meta">{{ calendarMonthStart|date('F Y')|capitalize }}</span>
+            <span class="campaign-print-banner__meta">CM : {{ client.communityManager ? client.communityManager.name : '—' }}</span>
+        </div>
+        <span class="campaign-print-banner__date">Imprimé le {{ 'now'|date('d/m/Y H:i') }}</span>
+    </div>
+    {% endif %}
+
+    <div class="campaign-banner no-print">
         <div>
             <h1>Campagne — {{ client.name }}</h1>
             {% if campaign %}
@@ -237,12 +418,13 @@
     {% endif %}
 
     {% if campaign %}
-    <div class="campaign-nav">
+    <div class="campaign-nav no-print">
         <a href="{{ path('app_client_campaign', {id: client.id, cmonth: prevMonth|date('n'), cyear: prevMonth|date('Y')}) }}" title="Mois précédent">‹</a>
         <strong>{{ calendarMonthStart|date('F Y') }}</strong>
         <a href="{{ path('app_client_campaign', {id: client.id, cmonth: nextMonth|date('n'), cyear: nextMonth|date('Y')}) }}" title="Mois suivant">›</a>
     </div>
 
+    <div class="campaign-weeks">
     {% for week in weeks %}
         <section class="campaign-week">
             <div class="campaign-week__title">Semaine du {{ week.start|date('d/m/Y') }}</div>
@@ -283,8 +465,9 @@
             </div>
         </section>
     {% else %}
-        <p style="color:var(--muted);">Aucune semaine à afficher pour ce mois dans la période de campagne.</p>
+        <p class="no-print" style="color:var(--muted);">Aucune semaine à afficher pour ce mois dans la période de campagne.</p>
     {% endfor %}
+    </div>
     {% endif %}
 </div>
 

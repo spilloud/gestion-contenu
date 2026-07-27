@@ -9,6 +9,9 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class AsanaService
 {
+    /** @var array<string, array<string, mixed>|null> */
+    private array $taskFetchCache = [];
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly RichTextSanitizer $richTextSanitizer,
@@ -38,6 +41,10 @@ class AsanaService
             return null;
         }
 
+        if (array_key_exists($taskGid, $this->taskFetchCache)) {
+            return $this->taskFetchCache[$taskGid];
+        }
+
         $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
 
         try {
@@ -51,16 +58,22 @@ class AsanaService
                 ],
             );
             if ($resp->getStatusCode() === 404) {
+                $this->taskFetchCache[$taskGid] = null;
+
                 return null;
             }
             $data = $resp->toArray(false);
         } catch (\Throwable) {
+            $this->taskFetchCache[$taskGid] = null;
+
             return null;
         }
 
         $task = $data['data'] ?? null;
+        $resolved = is_array($task) ? $task : null;
+        $this->taskFetchCache[$taskGid] = $resolved;
 
-        return is_array($task) ? $task : null;
+        return $resolved;
     }
 
     public function isTaskAccessible(string $taskGid): bool

@@ -33,7 +33,7 @@ final class VideoAsanaAssigneeSync
             return;
         }
 
-        $taskGid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+        $taskGid = $this->resolveMontageTaskGid($content);
         if ($taskGid === null || !$this->asanaService->isEnabled()) {
             return;
         }
@@ -56,7 +56,7 @@ final class VideoAsanaAssigneeSync
             return;
         }
 
-        $taskGid = $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+        $taskGid = $this->resolveMontageTaskGid($content);
         if ($taskGid === null || !$this->asanaService->isEnabled()) {
             return;
         }
@@ -104,6 +104,16 @@ final class VideoAsanaAssigneeSync
                 "Community manager réassignée (via Gestion des contenus) : $name",
             );
         }
+    }
+
+    private function resolveMontageTaskGid(Content $content): ?string
+    {
+        $stored = trim((string) ($content->getAsanaTaskGid() ?? ''));
+        if ($stored !== '') {
+            return $stored;
+        }
+
+        return $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
     }
 
     private function sameUser(?User $a, ?User $b): bool

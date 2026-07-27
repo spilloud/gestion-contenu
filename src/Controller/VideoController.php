@@ -11,12 +11,10 @@ use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\AsanaBidirectionalSyncService;
-use App\Service\AsanaInboundSyncService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowViewBuilder;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
-use App\Service\VideoMontageAsanaTrigger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -38,9 +36,7 @@ class VideoController extends AbstractController
         private readonly ContentFormatHelper $contentFormatHelper,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowViewBuilder $workflowViewBuilder,
-        private readonly AsanaInboundSyncService $asanaInboundSync,
         private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
-        private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
     ) {
     }
@@ -129,8 +125,6 @@ class VideoController extends AbstractController
                 $content->setUpdatedAt(new \DateTimeImmutable());
                 $this->entityManager->flush();
             }
-            $this->montageAsanaTrigger->resolveMontageTaskLink($content, false);
-            $this->asanaInboundSync->syncContent($content, true);
         }
 
         $form = $this->createForm(VideoContentType::class, $content);

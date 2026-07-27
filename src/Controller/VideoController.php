@@ -151,6 +151,8 @@ class VideoController extends AbstractController
 
         if ($form->isSubmitted() && $this->formHasCsrfError($form)) {
             $this->addFlash('error', 'Jeton de sécurité invalide ou session expirée. Rechargez la page puis réessayez.');
+        } elseif ($form->isSubmitted() && !$form->isValid()) {
+            $this->addFlash('error', 'Enregistrement impossible — corrigez les champs signalés ci-dessous.');
         }
 
         return $this->render('videos/show.html.twig', array_merge([

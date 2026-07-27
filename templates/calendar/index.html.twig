@@ -344,6 +344,20 @@
 
 <h1>Calendrier des contenus</h1>
 
+{% if campaignClient and (campaignLink or is_granted('ROLE_ADMIN') or is_granted('ROLE_CM')) %}
+<p style="margin: 0.35rem 0 0.85rem;">
+    {% if campaignLink %}
+        <a href="{{ path('app_client_campaign', {id: campaignClient.id, cmonth: month, cyear: year}) }}" class="btn btn-sm" style="background:#0ea5e9;">
+            Vue Campagne — {{ campaignClient.name }}{% if campaignLink.name %} ({{ campaignLink.name }}){% endif %}
+        </a>
+    {% else %}
+        <a href="{{ path('app_client_campaign', {id: campaignClient.id}) }}" class="btn btn-sm" style="background:#64748b;">
+            + Campagne — {{ campaignClient.name }}
+        </a>
+    {% endif %}
+</p>
+{% endif %}
+
 {% set prevMonth = monthStart|date_modify('-1 month') %}
 {% set nextMonth = monthStart|date_modify('+1 month') %}
 {% set todayDate = 'now'|date('Y-m-d') %}

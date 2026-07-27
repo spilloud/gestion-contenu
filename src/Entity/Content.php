@@ -113,6 +113,11 @@ class Content
     #[ORM\Column]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    /** Catégorie dans une campagne (vue planning) — indépendante du format. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(name: 'campaign_category_id', nullable: true, onDelete: 'SET NULL')]
+    private ?CampaignCategory $campaignCategory = null;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -464,6 +469,18 @@ class Content
     public function setUpdatedAt(\DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
+        return $this;
+    }
+
+    public function getCampaignCategory(): ?CampaignCategory
+    {
+        return $this->campaignCategory;
+    }
+
+    public function setCampaignCategory(?CampaignCategory $campaignCategory): static
+    {
+        $this->campaignCategory = $campaignCategory;
 
         return $this;
     }

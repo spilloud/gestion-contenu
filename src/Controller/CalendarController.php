@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Content;
 use App\Entity\Status;
 use App\Repository\CalendarEventRepository;
+use App\Repository\CampaignRepository;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
 use App\Repository\FormatRepository;
@@ -23,6 +24,7 @@ class CalendarController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly FormatRepository $formatRepository,
         private readonly CalendarEventRepository $calendarEventRepository,
+        private readonly CampaignRepository $campaignRepository,
     ) {
     }
 
@@ -70,6 +72,16 @@ class CalendarController extends AbstractController
             );
         }
 
+        $campaignClient = null;
+        $campaignLink = null;
+        if (is_array($clientIds) && count($clientIds) === 1) {
+            $onlyId = (int) reset($clientIds);
+            $campaignClient = $this->clientRepository->find($onlyId);
+            if ($campaignClient !== null) {
+                $campaignLink = $this->campaignRepository->findPreferredForClient($campaignClient);
+            }
+        }
+
         return $this->render('calendar/index.html.twig', [
             'contents' => $contents,
             'calendarEvents' => $calendarEvents,
@@ -87,6 +99,8 @@ class CalendarController extends AbstractController
             'year' => $year,
             'monthStart' => $monthStart,
             'monthEnd' => $monthEnd,
+            'campaignClient' => $campaignClient,
+            'campaignLink' => $campaignLink,
         ]);
     }
 }

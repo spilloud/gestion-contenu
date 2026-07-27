@@ -107,6 +107,32 @@ class ContentRepository extends ServiceEntityRepository
     }
 
     /**
+     * Contenus d’un client sur une plage (vue campagne), avec format + catégorie.
+     *
+     * @return Content[]
+     */
+    public function findForCampaignGrid(
+        Client $client,
+        \DateTimeInterface $rangeStart,
+        \DateTimeInterface $rangeEnd,
+    ): array {
+        return $this->createQueryBuilder('c')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.campaignCategory', 'cc')->addSelect('cc')
+            ->andWhere('c.client = :client')
+            ->andWhere('c.scheduledDate >= :rangeStart')
+            ->andWhere('c.scheduledDate <= :rangeEnd')
+            ->setParameter('client', $client)
+            ->setParameter('rangeStart', $rangeStart)
+            ->setParameter('rangeEnd', $rangeEnd)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Tous les contenus planifiés du client sur une année (passés, brouillons, tous statuts).
      *
      * @return Content[]

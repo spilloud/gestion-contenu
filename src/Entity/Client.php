@@ -44,9 +44,17 @@ class Client
     #[ORM\OneToOne(mappedBy: 'client', cascade: ['persist', 'remove'])]
     private ?ClientPage $clientPage = null;
 
+    /**
+     * @var Collection<int, Campaign>
+     */
+    #[ORM\OneToMany(targetEntity: Campaign::class, mappedBy: 'client', orphanRemoval: true)]
+    #[ORM\OrderBy(['startsOn' => 'DESC'])]
+    private Collection $campaigns;
+
     public function __construct()
     {
         $this->contents = new ArrayCollection();
+        $this->campaigns = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -161,6 +169,14 @@ class Client
         $this->clientPage = $clientPage;
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Campaign>
+     */
+    public function getCampaigns(): Collection
+    {
+        return $this->campaigns;
     }
 
     public function __toString(): string

@@ -6,6 +6,7 @@ use App\Entity\Client;
 use App\Entity\ClientPage;
 use App\Form\ClientPageType;
 use App\Repository\CalendarEventRepository;
+use App\Repository\CampaignRepository;
 use App\Repository\ContentRepository;
 use App\Repository\StatusRepository;
 use App\Service\AsanaBidirectionalSyncService;
@@ -22,6 +23,7 @@ class ClientController extends AbstractController
     public function __construct(
         private readonly ContentRepository $contentRepository,
         private readonly CalendarEventRepository $calendarEventRepository,
+        private readonly CampaignRepository $campaignRepository,
         private readonly StatusRepository $statusRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly YearPlanningGridBuilder $yearPlanningGridBuilder,
@@ -139,6 +141,8 @@ class ClientController extends AbstractController
             'calendarMonthStart' => $calendarMonthStart,
             'statuses' => $this->statusRepository->findSelectableForWorkflow(\App\Entity\Status::WORKFLOW_STANDARD),
             'videoStatuses' => $this->statusRepository->findSelectableForWorkflow(\App\Entity\Status::WORKFLOW_VIDEO),
+            'clientCampaign' => $this->campaignRepository->findPreferredForClient($client),
+            'clientCampaignCurrent' => $this->campaignRepository->findCurrentForClient($client),
         ]);
     }
 

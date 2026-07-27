@@ -1,0 +1,357 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Campagne — {{ client.name }}{% endblock %}
+
+{% block stylesheets %}
+{{ parent() }}
+<style>
+.campaign-page { color: var(--text); }
+.campaign-banner {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;
+    padding: 0.9rem 1rem; margin-bottom: 1rem;
+}
+.campaign-banner h1 { margin: 0; font-size: 1.25rem; }
+.campaign-banner .meta { color: var(--muted); font-size: 0.9rem; }
+.campaign-nav { display: inline-flex; align-items: center; gap: 0.65rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.campaign-panel {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 10px;
+    padding: 1rem; margin-bottom: 1.25rem;
+}
+.campaign-panel h2 { margin: 0 0 0.75rem; font-size: 1.05rem; }
+.campaign-panel details { margin-top: 0.5rem; }
+.campaign-category-list { list-style: none; padding: 0; margin: 0 0 1rem; display: grid; gap: 0.5rem; }
+.campaign-category-list li {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem;
+    padding: 0.45rem 0.6rem; border-radius: 8px; border: 1px solid var(--card-border);
+}
+.campaign-category-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+.campaign-category-forms { display: grid; gap: 0.75rem; }
+.campaign-category-forms form { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+.campaign-category-forms label { font-size: 0.8rem; color: var(--muted); display: grid; gap: 0.2rem; }
+
+.campaign-week {
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--card-bg);
+}
+.campaign-week__title {
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    border-bottom: 1px solid var(--card-border);
+    background: var(--bg);
+}
+.campaign-grid {
+    display: grid;
+    grid-template-columns: 140px repeat(7, minmax(90px, 1fr));
+    width: 100%;
+}
+.campaign-grid__head {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-align: center;
+    padding: 0.4rem 0.25rem;
+    border-bottom: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    background: var(--bg);
+}
+.campaign-grid__head:last-child { border-right: none; }
+.campaign-grid__label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 0.45rem 0.5rem;
+    border-bottom: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    display: flex; align-items: center; gap: 0.35rem;
+    min-height: 72px;
+}
+.campaign-grid__cell {
+    min-height: 72px;
+    padding: 0.25rem;
+    border-bottom: 1px solid var(--card-border);
+    border-right: 1px solid var(--card-border);
+    vertical-align: top;
+}
+.campaign-grid__cell:nth-child(8n) { border-right: none; }
+.campaign-grid__cell.out-month { opacity: 0.45; }
+.campaign-grid__cell.out-campaign { background: repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.03) 4px, rgba(0,0,0,0.03) 8px); }
+.campaign-grid__cell.drag-over { outline: 2px solid #3b82f6; outline-offset: -2px; background: rgba(59,130,246,0.08); }
+
+.campaign-card {
+    display: flex; gap: 0.3rem; align-items: flex-start;
+    background: var(--bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0.28rem 0.35rem;
+    margin-bottom: 0.25rem;
+    cursor: grab;
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
+.campaign-card.is-dragging { opacity: 0.5; }
+.campaign-card__picto { flex-shrink: 0; font-size: 0.85rem; line-height: 1; margin-top: 0.05rem; }
+.campaign-card__title {
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+.campaign-card__edit {
+    flex-shrink: 0;
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 0 0.1rem;
+}
+.campaign-card__edit:hover { color: var(--text); }
+.campaign-day-num { display: block; font-size: 0.65rem; color: var(--muted); margin-bottom: 0.15rem; text-align: right; }
+
+.campaign-actions-print { margin-bottom: 1rem; }
+
+@media print {
+    .no-print, nav, .flash-messages, .campaign-panel, .campaign-nav, .campaign-actions-print, .campaign-banner .btn {
+        display: none !important;
+    }
+    .campaign-page { color: #000; }
+    .campaign-week { break-inside: avoid; border-color: #ccc; }
+    .campaign-card { break-inside: avoid; background: #fff; border-color: #bbb; }
+    .campaign-grid__cell.out-campaign { background: #f5f5f5; }
+    a { color: #000; text-decoration: none; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+{% set prevMonth = calendarMonthStart|date_modify('-1 month') %}
+{% set nextMonth = calendarMonthStart|date_modify('+1 month') %}
+{% set todayDate = 'now'|date('Y-m-d') %}
+<meta name="csrf-campaign-move-token" content="{{ csrf_token('campaign_move') }}">
+
+<div class="campaign-page">
+    <nav class="campaign-nav no-print" aria-label="Navigation">
+        <a href="{{ path('app_client_show', {id: client.id}) }}">← Fiche client</a>
+        <span aria-hidden="true">·</span>
+        <a href="{{ path('app_calendar', {clients: [client.id]}) }}">Calendrier classique</a>
+        <span aria-hidden="true">·</span>
+        <a href="{{ path('app_client_year_planning', {id: client.id, year: calendarYear}) }}">Vue annuelle</a>
+    </nav>
+
+    <div class="campaign-banner">
+        <div>
+            <h1>Campagne — {{ client.name }}</h1>
+            {% if campaign %}
+                <div class="meta">
+                    <strong>{{ campaign.name }}</strong>
+                    · {{ campaign.startsOn|date('d/m/Y') }} → {{ campaign.endsOn|date('d/m/Y') }}
+                    {% if campaign.isCurrent %}
+                        · <span style="color:#16a34a;">en cours</span>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="meta">Aucune campagne pour ce client. Créez-en une pour organiser le planning par catégories.</div>
+            {% endif %}
+        </div>
+        <div class="campaign-actions-print no-print">
+            {% if campaign %}
+                <button type="button" class="btn btn-sm" onclick="window.print()">Imprimer</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if canManage %}
+    <section class="campaign-panel no-print">
+        <h2>{% if campaign %}Gérer la campagne{% else %}Créer une campagne{% endif %}</h2>
+        {% if campaign %}
+            <form method="post" action="{{ path('app_client_campaign_edit', {id: client.id, campaignId: campaign.id, cmonth: calendarMonth, cyear: calendarYear}) }}" style="display:grid; gap:0.6rem; max-width:520px;">
+                {{ form_row(campaignForm.name) }}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                    {{ form_row(campaignForm.startsOn) }}
+                    {{ form_row(campaignForm.endsOn) }}
+                </div>
+                {{ form_rest(campaignForm) }}
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                    <button type="submit" class="btn btn-sm">Enregistrer la campagne</button>
+                </div>
+            </form>
+            <form method="post" action="{{ path('app_client_campaign_delete', {id: client.id, campaignId: campaign.id}) }}" style="margin-top:0.75rem;" onsubmit="return confirm('Supprimer cette campagne et ses catégories ?');">
+                <input type="hidden" name="_token" value="{{ csrf_token('campaign_delete' ~ campaign.id) }}">
+                <button type="submit" class="btn btn-sm btn-danger">Supprimer la campagne</button>
+            </form>
+        {% else %}
+            <form method="post" action="{{ path('app_client_campaign_create', {id: client.id}) }}" style="display:grid; gap:0.6rem; max-width:520px;">
+                {{ form_row(campaignForm.name) }}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                    {{ form_row(campaignForm.startsOn) }}
+                    {{ form_row(campaignForm.endsOn) }}
+                </div>
+                {{ form_rest(campaignForm) }}
+                <button type="submit" class="btn">Créer la campagne</button>
+            </form>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if campaign and canManage %}
+    <section class="campaign-panel no-print">
+        <h2>Catégories</h2>
+        <ul class="campaign-category-list">
+            {% for cat in categories %}
+                <li style="background: {{ cat.color }}33;">
+                    <span class="campaign-category-swatch" style="background:{{ cat.color }};"></span>
+                    <strong>{{ cat.name }}</strong>
+                    <details>
+                        <summary style="cursor:pointer; color:var(--muted); font-size:0.85rem;">Modifier</summary>
+                        <form method="post" action="{{ path('app_client_campaign_category_edit', {id: client.id, campaignId: campaign.id, categoryId: cat.id, cmonth: calendarMonth, cyear: calendarYear}) }}" style="display:flex; flex-wrap:wrap; gap:0.4rem; align-items:end; margin-top:0.4rem;">
+                            <input type="hidden" name="_token" value="{{ csrf_token('category_edit' ~ cat.id) }}">
+                            <label>Nom <input type="text" name="name" value="{{ cat.name }}" required></label>
+                            <label>Couleur <input type="color" name="color" value="{{ cat.color }}"></label>
+                            <label>Ordre <input type="number" name="sortOrder" value="{{ cat.sortOrder }}" style="width:4.5rem;"></label>
+                            <button type="submit" class="btn btn-sm">OK</button>
+                        </form>
+                        <form method="post" action="{{ path('app_client_campaign_category_delete', {id: client.id, campaignId: campaign.id, categoryId: cat.id, cmonth: calendarMonth, cyear: calendarYear}) }}" style="margin-top:0.35rem;" onsubmit="return confirm('Supprimer cette catégorie ?');">
+                            <input type="hidden" name="_token" value="{{ csrf_token('category_delete' ~ cat.id) }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+                        </form>
+                    </details>
+                </li>
+            {% else %}
+                <li style="color:var(--muted);">Aucune catégorie — ajoutez-en (ex. Extraction de podcast, micro-trottoir…).</li>
+            {% endfor %}
+        </ul>
+        <form method="post" action="{{ path('app_client_campaign_category_create', {id: client.id, campaignId: campaign.id, cmonth: calendarMonth, cyear: calendarYear}) }}" class="campaign-category-forms">
+            <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:end;">
+                {{ form_row(categoryForm.name) }}
+                {{ form_row(categoryForm.color) }}
+                {{ form_row(categoryForm.sortOrder) }}
+                {{ form_rest(categoryForm) }}
+                <button type="submit" class="btn btn-sm">+ Ajouter</button>
+            </div>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if campaign %}
+    <div class="campaign-nav">
+        <a href="{{ path('app_client_campaign', {id: client.id, cmonth: prevMonth|date('n'), cyear: prevMonth|date('Y')}) }}" title="Mois précédent">‹</a>
+        <strong>{{ calendarMonthStart|date('F Y') }}</strong>
+        <a href="{{ path('app_client_campaign', {id: client.id, cmonth: nextMonth|date('n'), cyear: nextMonth|date('Y')}) }}" title="Mois suivant">›</a>
+    </div>
+
+    {% for week in weeks %}
+        <section class="campaign-week">
+            <div class="campaign-week__title">Semaine du {{ week.start|date('d/m/Y') }}</div>
+            <div class="campaign-grid">
+                <div class="campaign-grid__head"></div>
+                {% for day in week.days %}
+                    <div class="campaign-grid__head">{{ day|date('D d/m') }}</div>
+                {% endfor %}
+
+                {% for row in week.rows %}
+                    <div class="campaign-grid__label" style="background: {{ row.color }}55;">
+                        <span class="campaign-category-swatch" style="background:{{ row.color }};"></span>
+                        <span>{{ row.label }}</span>
+                    </div>
+                    {% for day in week.days %}
+                        {% set dayKey = day|date('Y-m-d') %}
+                        {% set inMonth = day|date('Y-m') == calendarMonthStart|date('Y-m') %}
+                        {% set inCampaign = campaign.containsDate(day) %}
+                        <div class="campaign-grid__cell{% if not inMonth %} out-month{% endif %}{% if not inCampaign %} out-campaign{% endif %}"
+                             data-date="{{ dayKey }}"
+                             data-category-id="{{ row.category ? row.category.id : 0 }}"
+                             {% if canManage and inCampaign %}data-droppable="1"{% endif %}>
+                            <span class="campaign-day-num">{{ day|date('j') }}</span>
+                            {% for item in row.cells[dayKey]|default([]) %}
+                                <div class="campaign-card"
+                                     draggable="{{ canManage ? 'true' : 'false' }}"
+                                     data-content-id="{{ item.content.id }}"
+                                     data-move-url="{{ path('app_client_campaign_move', {id: client.id, contentId: item.content.id}) }}"
+                                     data-move-token="{{ csrf_token('campaign_move' ~ item.content.id) }}">
+                                    <span class="campaign-card__picto" aria-hidden="true">{% if item.isVideo %}▶{% else %}🖼{% endif %}</span>
+                                    <span class="campaign-card__title" title="{{ item.content.title }}">{{ item.content.title }}</span>
+                                    <a class="campaign-card__edit" href="{{ item.editUrl }}" draggable="false" title="Ouvrir">✎</a>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            </div>
+        </section>
+    {% else %}
+        <p style="color:var(--muted);">Aucune semaine à afficher pour ce mois dans la période de campagne.</p>
+    {% endfor %}
+    {% endif %}
+</div>
+
+{% if campaign and canManage %}
+<script>
+(function () {
+    var pageTokenMeta = document.querySelector('meta[name="csrf-campaign-move-token"]');
+    var pageToken = pageTokenMeta ? (pageTokenMeta.getAttribute('content') || '') : '';
+    var dragged = null;
+
+    document.querySelectorAll('.campaign-card[draggable="true"]').forEach(function (card) {
+        card.addEventListener('dragstart', function (e) {
+            if (e.target.closest('a')) {
+                e.preventDefault();
+                return;
+            }
+            dragged = card;
+            card.classList.add('is-dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', card.dataset.contentId || '');
+        });
+        card.addEventListener('dragend', function () {
+            card.classList.remove('is-dragging');
+            document.querySelectorAll('.campaign-grid__cell.drag-over').forEach(function (c) {
+                c.classList.remove('drag-over');
+            });
+            dragged = null;
+        });
+    });
+
+    document.querySelectorAll('.campaign-grid__cell[data-droppable="1"]').forEach(function (cell) {
+        cell.addEventListener('dragover', function (e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            cell.classList.add('drag-over');
+        });
+        cell.addEventListener('dragleave', function () {
+            cell.classList.remove('drag-over');
+        });
+        cell.addEventListener('drop', function (e) {
+            e.preventDefault();
+            cell.classList.remove('drag-over');
+            if (!dragged) return;
+            var moveUrl = dragged.dataset.moveUrl;
+            var token = pageToken || dragged.dataset.moveToken || '';
+            if (!moveUrl) return;
+
+            var body = new FormData();
+            body.append('_token', token);
+            body.append('date', cell.dataset.date || '');
+            body.append('categoryId', cell.dataset.categoryId || '0');
+
+            fetch(moveUrl, { method: 'POST', body: body, credentials: 'same-origin' })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    if (!res.ok || !res.j.ok) {
+                        alert((res.j && res.j.error) ? res.j.error : 'Déplacement impossible.');
+                        return;
+                    }
+                    window.location.reload();
+                })
+                .catch(function () {
+                    alert('Erreur réseau lors du déplacement.');
+                });
+        });
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

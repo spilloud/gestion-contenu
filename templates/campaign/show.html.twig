@@ -67,6 +67,7 @@
     border-right: 1px solid var(--card-border);
     display: flex; align-items: center; gap: 0.35rem;
     min-height: 72px;
+    background: var(--row-bg, transparent);
 }
 .campaign-grid__cell {
     min-height: 72px;
@@ -74,11 +75,20 @@
     border-bottom: 1px solid var(--card-border);
     border-right: 1px solid var(--card-border);
     vertical-align: top;
+    background: var(--row-bg, transparent);
 }
 .campaign-grid__cell:nth-child(8n) { border-right: none; }
 .campaign-grid__cell.out-month { opacity: 0.45; }
-.campaign-grid__cell.out-campaign { background: repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.03) 4px, rgba(0,0,0,0.03) 8px); }
-.campaign-grid__cell.drag-over { outline: 2px solid #3b82f6; outline-offset: -2px; background: rgba(59,130,246,0.08); }
+.campaign-grid__cell.out-campaign {
+    background-image: repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.04) 4px, rgba(0,0,0,0.04) 8px);
+    background-color: var(--row-bg, transparent);
+}
+.campaign-grid__cell.drag-over {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    background-color: rgba(59,130,246,0.12);
+    background-image: none;
+}
 
 .campaign-card {
     display: flex; gap: 0.3rem; align-items: flex-start;
@@ -248,6 +258,7 @@
         border-color: #bbb !important;
         gap: 1mm;
         line-height: 1.15;
+        background: var(--row-bg, transparent) !important;
     }
     .campaign-category-swatch {
         width: 7px;
@@ -258,12 +269,14 @@
         min-height: 0;
         padding: 0.4mm;
         border-color: #bbb !important;
+        background: var(--row-bg, transparent) !important;
     }
     .campaign-grid__cell.out-month {
         opacity: 0.35;
     }
     .campaign-grid__cell.out-campaign {
-        background: #f3f3f3 !important;
+        background-color: var(--row-bg, #f3f3f3) !important;
+        background-image: none !important;
     }
 
     .campaign-day-num,
@@ -435,7 +448,8 @@
                 {% endfor %}
 
                 {% for row in week.rows %}
-                    <div class="campaign-grid__label" style="background: {{ row.color }}55;">
+                    {% set rowBg = row.color ~ '55' %}
+                    <div class="campaign-grid__label" style="--row-bg: {{ rowBg }};">
                         <span class="campaign-category-swatch" style="background:{{ row.color }};"></span>
                         <span>{{ row.label }}</span>
                     </div>
@@ -444,6 +458,7 @@
                         {% set inMonth = day|date('Y-m') == calendarMonthStart|date('Y-m') %}
                         {% set inCampaign = campaign.containsDate(day) %}
                         <div class="campaign-grid__cell{% if not inMonth %} out-month{% endif %}{% if not inCampaign %} out-campaign{% endif %}"
+                             style="--row-bg: {{ rowBg }};"
                              data-date="{{ dayKey }}"
                              data-category-id="{{ row.category ? row.category.id : 0 }}"
                              {% if canManage and inCampaign %}data-droppable="1"{% endif %}>

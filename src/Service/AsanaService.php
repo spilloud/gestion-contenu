@@ -621,6 +621,18 @@ class AsanaService
     }
 
     /**
+     * Toutes les tâches d'un projet (y compris terminées).
+     *
+     * @param list<string> $optFields
+     *
+     * @return \Generator<int, array<string, mixed>>
+     */
+    public function iterateAllProjectTasks(string $projectGid, array $optFields = ['gid', 'name', 'completed']): \Generator
+    {
+        yield from $this->iterateProjectTasks($projectGid, $optFields, '1970-01-01T00:00:00Z');
+    }
+
+    /**
      * @param list<string> $optFields
      *
      * @return \Generator<int, array<string, mixed>>

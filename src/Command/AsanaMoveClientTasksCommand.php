@@ -40,6 +40,8 @@ final class AsanaMoveClientTasksCommand extends Command
         $this
             ->addArgument('client', InputArgument::REQUIRED, 'Nom ou ID client (ex. "Pro Suisse" ou 12)')
             ->addArgument('projectGid', InputArgument::REQUIRED, 'GID du projet Asana cible')
+            ->addOption('from-project', null, InputOption::VALUE_REQUIRED, 'Vider ce projet source (toutes tâches, y compris terminées)')
+            ->addOption('skip-client-update', null, InputOption::VALUE_NONE, 'Ne pas modifier asana_project_gid en base')
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Simule sans modifier Asana ni la base');
     }
 
@@ -54,6 +56,8 @@ final class AsanaMoveClientTasksCommand extends Command
 
         $clientArg = trim((string) $input->getArgument('client'));
         $projectGid = trim((string) $input->getArgument('projectGid'));
+        $fromProjectGid = trim((string) $input->getOption('from-project'));
+        $skipClientUpdate = (bool) $input->getOption('skip-client-update');
         $dryRun = (bool) $input->getOption('dry-run');
 
         $client = is_numeric($clientArg)
@@ -76,30 +80,43 @@ final class AsanaMoveClientTasksCommand extends Command
             return Command::FAILURE;
         }
 
-        $oldProjectGid = trim((string) ($client->getAsanaProjectGid() ?? ''));
+        $oldProjectGid = $fromProjectGid !== '' ? $fromProjectGid : trim((string) ($client->getAsanaProjectGid() ?? ''));
         $io->title(sprintf('Client : %s (#%d)', $client->getName(), $client->getId()));
         $io->table(['', 'GID'], [
-            ['Ancien projet', $oldProjectGid !== '' ? $oldProjectGid : '—'],
-            ['Nouveau projet', $projectGid],
+            ['Projet source (à vider)', $fromProjectGid !== '' ? $fromProjectGid : ($oldProjectGid !== '' ? $oldProjectGid : '—')],
+            ['Projet cible', $projectGid],
         ]);
 
-        if (!$dryRun) {
+        if (!$skipClientUpdate && !$dryRun) {
             $client->setAsanaProjectGid($projectGid);
             $this->entityManager->flush();
             $io->success('Project GID client mis à jour en base.');
+        } elseif ($skipClientUpdate) {
+            $io->note('Mise à jour client ignorée (--skip-client-update).');
         } else {
             $io->note('Dry-run : base non modifiée.');
         }
 
         $taskGids = $this->collectTaskGids($client);
+        if ($fromProjectGid !== '') {
+            foreach ($this->asanaService->iterateAllProjectTasks($fromProjectGid, ['gid', 'name', 'completed']) as $task) {
+                $gid = trim((string) ($task['gid'] ?? ''));
+                if ($gid !== '') {
+                    $taskGids[] = $gid;
+                }
+            }
+            $taskGids = array_values(array_unique($taskGids));
+        }
+
         if ($taskGids === []) {
-            $io->warning('Aucune tâche Asana liée trouvée pour ce client.');
+            $io->warning('Aucune tâche Asana à déplacer.');
 
             return Command::SUCCESS;
         }
 
-        $io->section(sprintf('%d tâche(s) à déplacer', count($taskGids)));
+        $io->section(sprintf('%d tâche(s) à traiter', count($taskGids)));
         $moved = 0;
+        $removedOnly = 0;
         $skipped = 0;
         $errors = 0;
 
@@ -112,44 +129,74 @@ final class AsanaMoveClientTasksCommand extends Command
             }
 
             $name = trim((string) ($task['name'] ?? $taskGid));
+            $completed = !empty($task['completed']) ? ' [terminée]' : '';
             $projectGids = $this->extractProjectGids($task);
+            $sourceGid = $fromProjectGid !== '' ? $fromProjectGid : null;
+            $inSource = $sourceGid !== null && in_array($sourceGid, $projectGids, true);
+            $inTarget = in_array($projectGid, $projectGids, true);
 
-            if (in_array($projectGid, $projectGids, true)) {
-                $io->writeln("  — $name (déjà dans le bon projet)");
+            if ($sourceGid !== null && !$inSource && $inTarget) {
+                $io->writeln("  — $name$completed (déjà hors projet source)");
+                ++$skipped;
+                continue;
+            }
+
+            if ($sourceGid === null && $inTarget) {
+                $io->writeln("  — $name$completed (déjà dans le bon projet)");
                 ++$skipped;
                 continue;
             }
 
             if ($dryRun) {
-                $io->writeln(sprintf('  → %s (projets actuels : %s)', $name, implode(', ', $projectGids) ?: '—'));
+                $io->writeln(sprintf(
+                    '  → %s%s (projets : %s)',
+                    $name,
+                    $completed,
+                    implode(', ', $projectGids) ?: '—',
+                ));
                 ++$moved;
                 continue;
             }
 
             $ok = true;
-            foreach ($projectGids as $fromGid) {
-                if ($fromGid === $projectGid) {
-                    continue;
-                }
-                if (!$this->asanaService->removeTaskFromProject($taskGid, $fromGid)) {
-                    $ok = false;
-                }
-            }
-
-            if (!$this->asanaService->addTaskToProject($taskGid, $projectGid)) {
+            if (!$inTarget && !$this->asanaService->addTaskToProject($taskGid, $projectGid)) {
                 $ok = false;
             }
 
+            if ($sourceGid !== null && $inSource && !$this->asanaService->removeTaskFromProject($taskGid, $sourceGid)) {
+                $ok = false;
+            } elseif ($sourceGid === null) {
+                foreach ($projectGids as $fromGid) {
+                    if ($fromGid === $projectGid) {
+                        continue;
+                    }
+                    if (!$this->asanaService->removeTaskFromProject($taskGid, $fromGid)) {
+                        $ok = false;
+                    }
+                }
+            }
+
             if ($ok) {
-                $io->writeln("  ✓ $name");
-                ++$moved;
+                if ($inTarget && $sourceGid !== null && $inSource) {
+                    $io->writeln("  ✓ $name$completed (retirée du projet source)");
+                    ++$removedOnly;
+                } else {
+                    $io->writeln("  ✓ $name$completed");
+                    ++$moved;
+                }
             } else {
-                $io->writeln("  ✗ $name — erreur déplacement");
+                $io->writeln("  ✗ $name$completed — erreur déplacement");
                 ++$errors;
             }
         }
 
-        $io->success(sprintf('Terminé : %d déplacée(s), %d déjà OK, %d erreur(s).', $moved, $skipped, $errors));
+        $io->success(sprintf(
+            'Terminé : %d déplacée(s), %d retirée(s) du source, %d ignorée(s), %d erreur(s).',
+            $moved,
+            $removedOnly,
+            $skipped,
+            $errors,
+        ));
 
         return $errors > 0 ? Command::FAILURE : Command::SUCCESS;
     }

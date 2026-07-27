@@ -43,7 +43,7 @@ class AsanaService
         try {
             $resp = $this->httpClient->request(
                 'GET',
-                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,assignee.gid,completed,due_on,modified_at,permalink_url',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,assignee.gid,completed,due_on,modified_at,permalink_url,projects.gid',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer '.$token,
@@ -509,6 +509,76 @@ class AsanaService
             $status = $resp->getStatusCode();
 
             return $status >= 200 && $status < 300;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Ajoute une tâche existante à un projet Asana.
+     */
+    public function addTaskToProject(string $taskGid, string $projectGid): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        $projectGid = trim($projectGid);
+        if ($taskGid === '' || $projectGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request(
+                'POST',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'/addProject',
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer '.$token,
+                        'Content-Type' => 'application/json',
+                    ],
+                    'json' => ['data' => ['project' => $projectGid]],
+                ],
+            );
+
+            return $resp->getStatusCode() >= 200 && $resp->getStatusCode() < 300;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Retire une tâche d'un projet Asana (sans supprimer la tâche).
+     */
+    public function removeTaskFromProject(string $taskGid, string $projectGid): bool
+    {
+        if (!$this->isEnabled()) {
+            return false;
+        }
+        $taskGid = trim($taskGid);
+        $projectGid = trim($projectGid);
+        if ($taskGid === '' || $projectGid === '') {
+            return false;
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request(
+                'POST',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'/removeProject',
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer '.$token,
+                        'Content-Type' => 'application/json',
+                    ],
+                    'json' => ['data' => ['project' => $projectGid]],
+                ],
+            );
+
+            return $resp->getStatusCode() >= 200 && $resp->getStatusCode() < 300;
         } catch (\Throwable) {
             return false;
         }

@@ -2,6 +2,7 @@
 
 namespace App\Repository;
 
+use App\Entity\Campaign;
 use App\Entity\Client;
 use App\Entity\Content;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
@@ -126,6 +127,71 @@ class ContentRepository extends ServiceEntityRepository
             ->setParameter('client', $client)
             ->setParameter('rangeStart', $rangeStart)
             ->setParameter('rangeEnd', $rangeEnd)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Contenus futurs non classés (sans catégorie de cette campagne), pour le casier.
+     *
+     * @return Content[]
+     */
+    public function findUnclassifiedFromDateForClient(
+        Client $client,
+        Campaign $campaign,
+        \DateTimeInterface $fromDate,
+        ?\DateTimeInterface $untilDate = null,
+    ): array {
+        $qb = $this->createQueryBuilder('c')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.campaignCategory', 'cc')->addSelect('cc')
+            ->andWhere('c.client = :client')
+            ->andWhere('c.scheduledDate >= :fromDate')
+            ->andWhere('c.campaignCategory IS NULL OR cc.campaign != :campaign')
+            ->setParameter('client', $client)
+            ->setParameter('fromDate', $fromDate)
+            ->setParameter('campaign', $campaign);
+
+        if ($untilDate !== null) {
+            $qb->andWhere('c.scheduledDate <= :untilDate')
+                ->setParameter('untilDate', $untilDate);
+        }
+
+        return $qb
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('c.title', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Contenus futurs d’un client (à partir d’aujourd’hui), pour le casier campagne.
+     *
+     * @return Content[]
+     */
+    public function findFutureFromDateForClient(
+        Client $client,
+        \DateTimeInterface $fromDate,
+        ?\DateTimeInterface $untilDate = null,
+    ): array {
+        $qb = $this->createQueryBuilder('c')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.campaignCategory', 'cc')->addSelect('cc')
+            ->andWhere('c.client = :client')
+            ->andWhere('c.scheduledDate >= :fromDate')
+            ->setParameter('client', $client)
+            ->setParameter('fromDate', $fromDate);
+
+        if ($untilDate !== null) {
+            $qb->andWhere('c.scheduledDate <= :untilDate')
+                ->setParameter('untilDate', $untilDate);
+        }
+
+        return $qb
             ->orderBy('c.scheduledDate', 'ASC')
             ->addOrderBy('c.title', 'ASC')
             ->getQuery()

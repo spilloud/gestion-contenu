@@ -126,6 +126,64 @@
 .campaign-print-banner { display: none; }
 .campaign-weeks { display: block; }
 
+.campaign-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: 1rem;
+    align-items: start;
+}
+.campaign-workspace__main { min-width: 0; }
+.campaign-tray {
+    position: sticky;
+    top: 0.75rem;
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 10px;
+    padding: 0.75rem;
+}
+.campaign-tray__title {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+}
+.campaign-tray__hint {
+    margin: 0 0 0.75rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.35;
+}
+.campaign-tray__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+.campaign-tray__empty {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+.campaign-tray .campaign-card {
+    margin: 0;
+    cursor: grab;
+}
+.campaign-tray .campaign-card__meta {
+    display: block;
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-bottom: 0.1rem;
+}
+@media (max-width: 1100px) {
+    .campaign-workspace {
+        grid-template-columns: 1fr;
+    }
+    .campaign-tray {
+        position: static;
+        max-height: 320px;
+        order: -1;
+    }
+}
+
 @media print {
     @page {
         size: A4 landscape;
@@ -207,6 +265,21 @@
         white-space: nowrap;
         color: #444;
         font-size: 7.5pt;
+    }
+
+    .campaign-workspace {
+        display: block !important;
+        flex: 1;
+        min-height: 0;
+    }
+    .campaign-workspace__main {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+    .campaign-tray {
+        display: none !important;
     }
 
     .campaign-weeks {
@@ -437,6 +510,8 @@
         <a href="{{ path('app_client_campaign', {id: client.id, cmonth: nextMonth|date('n'), cyear: nextMonth|date('Y')}) }}" title="Mois suivant">›</a>
     </div>
 
+    <div class="campaign-workspace">
+    <div class="campaign-workspace__main">
     <div class="campaign-weeks">
     {% for week in weeks %}
         <section class="campaign-week">
@@ -482,6 +557,31 @@
     {% else %}
         <p class="no-print" style="color:var(--muted);">Aucune semaine à afficher pour ce mois dans la période de campagne.</p>
     {% endfor %}
+    </div>
+    </div>
+
+    <aside class="campaign-tray no-print" aria-label="Casier des contenus à placer">
+        <h2 class="campaign-tray__title">Casier — Non classés</h2>
+        <p class="campaign-tray__hint">Contenus à partir d’aujourd’hui sans catégorie. Glissez-les dans une case du planning.</p>
+        <div class="campaign-tray__list">
+            {% for item in trayItems|default([]) %}
+                <div class="campaign-card"
+                     draggable="{{ canManage ? 'true' : 'false' }}"
+                     data-content-id="{{ item.content.id }}"
+                     data-move-url="{{ path('app_client_campaign_move', {id: client.id, contentId: item.content.id}) }}"
+                     data-move-token="{{ csrf_token('campaign_move' ~ item.content.id) }}">
+                    <span class="campaign-card__picto" aria-hidden="true">{% if item.isVideo %}▶{% else %}🖼{% endif %}</span>
+                    <span class="campaign-card__title" title="{{ item.content.title }}">
+                        <span class="campaign-card__meta">{{ item.content.scheduledDate|date('d/m/Y') }}</span>
+                        {{ item.content.title }}
+                    </span>
+                    <a class="campaign-card__edit" href="{{ item.editUrl }}" draggable="false" title="Ouvrir">✎</a>
+                </div>
+            {% else %}
+                <p class="campaign-tray__empty">Aucun contenu non classé à placer.</p>
+            {% endfor %}
+        </div>
+    </aside>
     </div>
     {% endif %}
 </div>

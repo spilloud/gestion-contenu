@@ -54,6 +54,7 @@ class CampaignController extends AbstractController
         $categories = [];
         $contents = [];
         $weeks = [];
+        $trayItems = [];
 
         if ($campaign !== null) {
             $categories = $this->campaignCategoryRepository->findOrderedForCampaign($campaign);
@@ -69,6 +70,28 @@ class CampaignController extends AbstractController
                 $contents = $this->contentRepository->findForCampaignGrid($client, $rangeStart, $rangeEnd);
             }
             $weeks = $this->buildWeeks($gridStart, $categories, $contents, $campaign, $monthStart);
+
+            $today = new \DateTimeImmutable('today');
+            $trayFrom = $today;
+            $trayUntil = $campaign->getEndsOn();
+            $trayContents = ($trayUntil !== null && $trayUntil < $trayFrom)
+                ? []
+                : $this->contentRepository->findUnclassifiedFromDateForClient(
+                    $client,
+                    $campaign,
+                    $trayFrom,
+                    $trayUntil,
+                );
+            foreach ($trayContents as $content) {
+                $isVideo = $this->contentFormatHelper->isVideoContent($content);
+                $trayItems[] = [
+                    'content' => $content,
+                    'isVideo' => $isVideo,
+                    'editUrl' => $isVideo
+                        ? $this->generateUrl('app_video_show', ['id' => $content->getId()])
+                        : $this->generateUrl('app_content_edit', ['id' => $content->getId()]),
+                ];
+            }
         }
 
         $emptyCampaign = new Campaign();
@@ -85,6 +108,7 @@ class CampaignController extends AbstractController
             'campaign' => $campaign,
             'categories' => $categories,
             'weeks' => $weeks,
+            'trayItems' => $trayItems,
             'calendarMonth' => $month,
             'calendarYear' => $year,
             'calendarMonthStart' => $monthStart,

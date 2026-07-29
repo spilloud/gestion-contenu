@@ -642,6 +642,10 @@
                         alert((res.j && res.j.error) ? res.j.error : 'Déplacement impossible.');
                         return;
                     }
+                    var categoryId = parseInt(cell.dataset.categoryId || '0', 10);
+                    if (categoryId > 0 && dragged && dragged.parentNode) {
+                        dragged.parentNode.removeChild(dragged);
+                    }
                     window.location.reload();
                 })
                 .catch(function () {

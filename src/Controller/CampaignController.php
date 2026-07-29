@@ -393,7 +393,7 @@ class CampaignController extends AbstractController
      * @param CampaignCategory[] $categories
      * @param Content[]          $contents
      *
-     * @return list<array{start: \DateTimeImmutable, days: list<\DateTimeImmutable>, rows: list<array{category: ?CampaignCategory, label: string, color: string, cells: array<string, list<array{content: Content, isVideo: bool, editUrl: string}>}>}>
+     * @return list<array{start: \DateTimeImmutable, days: list<\DateTimeImmutable>, rows: list<array{category: CampaignCategory, label: string, color: string, cells: array<string, list<array{content: Content, isVideo: bool, editUrl: string}>}>}>
      */
     private function buildWeeks(
         \DateTimeImmutable $gridStart,
@@ -434,11 +434,6 @@ class CampaignController extends AbstractController
                 'color' => $category->getColor(),
             ];
         }
-        $rowDefs[] = [
-            'category' => null,
-            'label' => 'Non classé',
-            'color' => '#f1f5f9',
-        ];
 
         $weeks = [];
         for ($w = 0; $w < 6; ++$w) {

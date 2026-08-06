@@ -807,13 +807,19 @@ class AsanaService
      */
     private function scoreMontageTaskMatch(array $task, Content $content, string $videoUrl): int
     {
+        $rawTaskName = mb_strtolower(trim((string) ($task['name'] ?? '')));
+        if (str_contains($rawTaskName, 'suivi') && (str_contains($rawTaskName, 'dérush') || str_contains($rawTaskName, 'derush'))) {
+            return -1;
+        }
+
         $notes = (string) ($task['notes'] ?? '');
         $contentId = $content->getId();
         if ($contentId !== null && str_contains($notes, '/videos/fiche/'.$contentId)) {
-            $score = 100;
-            if (str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
-                $score -= 30;
+            if (!str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
+                return -1;
             }
+
+            $score = 100;
             if (!empty($task['completed'])) {
                 $score -= 20;
             }
@@ -821,10 +827,11 @@ class AsanaService
             return $score;
         }
         if ($videoUrl !== '' && str_contains($notes, $videoUrl)) {
-            $score = 95;
-            if (str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
-                $score -= 30;
+            if (!str_contains($notes, 'Vidéo créée depuis Gestion des contenus.')) {
+                return -1;
             }
+
+            $score = 95;
             if (!empty($task['completed'])) {
                 $score -= 20;
             }
@@ -837,7 +844,6 @@ class AsanaService
             return -1;
         }
 
-        $rawTaskName = mb_strtolower(trim((string) ($task['name'] ?? '')));
         $isMontageName = str_contains($rawTaskName, 'montage')
             || str_contains($rawTaskName, 'monter vid');
         if (!$isMontageName) {

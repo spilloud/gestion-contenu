@@ -170,13 +170,7 @@ class DerushController extends AbstractController
                     $this->entityManager->flush();
                 }
 
-                $asanaCreated = 0;
-                foreach ($touchedList as $content) {
-                    if ($content->getStatus()?->getName() === 'Montage à faire'
-                        && $this->montageAsanaTrigger->ensureWhenMontageQueued($content, false)) {
-                        ++$asanaCreated;
-                    }
-                }
+                $asanaCreated = $this->montageAsanaTrigger->ensureBatchForDerush($touchedList);
                 if ($asanaCreated > 0 || $plannedDatesUpdated > 0) {
                     $this->entityManager->flush();
                 }

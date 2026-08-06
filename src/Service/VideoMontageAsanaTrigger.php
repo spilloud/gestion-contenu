@@ -28,7 +28,7 @@ final class VideoMontageAsanaTrigger
      *
      * @return string|null GID Asana utilisable
      */
-    public function resolveMontageTaskLink(Content $content, bool $flush = false): ?string
+    public function resolveMontageTaskLink(Content $content, bool $flush = false, bool $skipExistingTaskLookup = false): ?string
     {
         if (!$this->formatHelper->isVideoContent($content) || !$this->asanaService->isEnabled()) {
             return $content->getAsanaTaskGid();
@@ -57,17 +57,19 @@ final class VideoMontageAsanaTrigger
             $changed = true;
         }
 
-        $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
-        if ($found !== null && !$this->contentRepository->isAsanaTaskGidLinkedToOtherContent($found, $content->getId())) {
-            $content->setAsanaTaskGid($found);
-            $this->syncMontageDueFromAsanaIfUnset($content, $found);
-            $changed = true;
+        if (!$skipExistingTaskLookup) {
+            $found = $this->asanaService->findMontageTaskForVideo($content, $videoUrl);
+            if ($found !== null && !$this->contentRepository->isAsanaTaskGidLinkedToOtherContent($found, $content->getId())) {
+                $content->setAsanaTaskGid($found);
+                $this->syncMontageDueFromAsanaIfUnset($content, $found);
+                $changed = true;
 
-            if ($flush) {
-                $this->entityManager->flush();
+                if ($flush) {
+                    $this->entityManager->flush();
+                }
+
+                return $found;
             }
-
-            return $found;
         }
 
         if ($changed && $flush) {
@@ -143,6 +145,88 @@ final class VideoMontageAsanaTrigger
         }
 
         return true;
+    }
+
+    /**
+     * Lot dérush : pas de scan projet Asana, créations montage en parallèle.
+     *
+     * @param list<Content> $contents
+     */
+    public function ensureBatchForDerush(array $contents): int
+    {
+        if (!$this->asanaService->isEnabled()) {
+            foreach ($contents as $content) {
+                if ($content instanceof Content) {
+                    $this->assigneeResolver->applyClientTeamDefaultsForForm($content);
+                }
+            }
+
+            return 0;
+        }
+
+        $fallback = getenv('ASANA_FALLBACK_ASSIGNEE_GID');
+        $fallback = $fallback === false ? null : (string) $fallback;
+
+        $toCreate = [];
+        foreach ($contents as $content) {
+            if (!$content instanceof Content) {
+                continue;
+            }
+            if (!$this->formatHelper->isVideoContent($content)) {
+                continue;
+            }
+            if ($content->getStatus()?->getName() !== 'Montage à faire') {
+                continue;
+            }
+            if ($content->getId() === null) {
+                continue;
+            }
+
+            $this->assigneeResolver->applyClientTeamDefaultsForForm($content);
+
+            $stored = $content->getAsanaTaskGid();
+            if ($stored !== null && $this->asanaService->isTaskAccessible($stored)) {
+                $this->pushMontageDueToAsanaIfSet($content, $stored);
+
+                continue;
+            }
+            if ($stored !== null) {
+                $content->setAsanaTaskGid(null);
+            }
+
+            $toCreate[] = $content;
+        }
+
+        if ($toCreate === []) {
+            return 0;
+        }
+
+        $videoUrls = [];
+        foreach ($toCreate as $content) {
+            $videoUrls[$content->getId()] = $this->urlGenerator->generate(
+                'app_video_show',
+                ['id' => $content->getId()],
+                UrlGeneratorInterface::ABSOLUTE_URL,
+            );
+        }
+
+        $createdGids = $this->asanaService->createMontageTasksInParallel($toCreate, $videoUrls, $fallback);
+        $created = 0;
+
+        foreach ($toCreate as $content) {
+            $gid = $createdGids[$content->getId()] ?? null;
+            if ($gid === null) {
+                continue;
+            }
+
+            $content->setAsanaTaskGid($gid);
+            if ($content->getAsanaMontageDueOn() !== null && $content->getAsanaMontageDueOnLastPushedAt() === null) {
+                $content->markAsanaMontageDueOnPushedFromLucy();
+            }
+            ++$created;
+        }
+
+        return $created;
     }
 
     private function syncMontageDueFromAsanaIfUnset(Content $content, string $taskGid): void

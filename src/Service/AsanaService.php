@@ -200,8 +200,12 @@ class AsanaService
      * Crée une tâche Asana pour une vidéo, si configuré.
      * Retourne le task gid (string) ou null si non créé.
      */
-    public function createTaskForVideo(Content $content, string $videoUrl, ?string $fallbackAssigneeGid): ?string
-    {
+    public function createTaskForVideo(
+        Content $content,
+        string $videoUrl,
+        ?string $fallbackAssigneeGid,
+        bool $skipExistingTaskLookup = false,
+    ): ?string {
         if (!$this->isEnabled()) {
             return null;
         }
@@ -211,19 +215,112 @@ class AsanaService
             return $stored;
         }
 
-        $existing = $this->findMontageTaskForVideo($content, $videoUrl);
-        if ($existing !== null && $this->contentRepository->isAsanaTaskGidLinkedToOtherContent($existing, $content->getId())) {
-            $existing = null;
+        if (!$skipExistingTaskLookup) {
+            $existing = $this->findMontageTaskForVideo($content, $videoUrl);
+            if ($existing !== null && $this->contentRepository->isAsanaTaskGidLinkedToOtherContent($existing, $content->getId())) {
+                $existing = null;
+            }
+            if ($existing !== null) {
+                return $existing;
+            }
         }
-        if ($existing !== null) {
-            return $existing;
+
+        $taskData = $this->buildMontageTaskPayload($content, $videoUrl, $fallbackAssigneeGid);
+        if ($taskData === null) {
+            return null;
+        }
+
+        return $this->postMontageTask($taskData);
+    }
+
+    /**
+     * Crée plusieurs tâches montage en parallèle (dérush).
+     *
+     * @param list<Content>        $contents
+     * @param array<int, string>   $videoUrls
+     *
+     * @return array<int, string> contentId => taskGid
+     */
+    public function createMontageTasksInParallel(array $contents, array $videoUrls, ?string $fallbackAssigneeGid): array
+    {
+        if (!$this->isEnabled() || $contents === []) {
+            return [];
         }
 
         $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+        $responses = [];
+        /** @var array<int, Content> $contentByResponseId */
+        $contentByResponseId = [];
+
+        foreach ($contents as $content) {
+            if (!$content instanceof Content || $content->getId() === null) {
+                continue;
+            }
+
+            $videoUrl = $videoUrls[$content->getId()] ?? '';
+            if ($videoUrl === '') {
+                continue;
+            }
+
+            $taskData = $this->buildMontageTaskPayload($content, $videoUrl, $fallbackAssigneeGid);
+            if ($taskData === null) {
+                continue;
+            }
+
+            $response = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
+                'headers' => [
+                    'Authorization' => 'Bearer '.$token,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => ['data' => $taskData],
+            ]);
+            $responses[] = $response;
+            $contentByResponseId[spl_object_id($response)] = $content;
+        }
+
+        if ($responses === []) {
+            return [];
+        }
+
+        $created = [];
+        foreach ($this->httpClient->stream($responses) as $response => $chunk) {
+            if (!$response->getInfo('done')) {
+                continue;
+            }
+
+            $content = $contentByResponseId[spl_object_id($response)] ?? null;
+            if (!$content instanceof Content || $content->getId() === null) {
+                continue;
+            }
+
+            try {
+                if ($response->getStatusCode() >= 400) {
+                    continue;
+                }
+                $data = $response->toArray(false);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            $gid = $data['data']['gid'] ?? null;
+            if (!is_string($gid) || trim($gid) === '') {
+                continue;
+            }
+
+            $created[$content->getId()] = trim($gid);
+        }
+
+        return $created;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function buildMontageTaskPayload(Content $content, string $videoUrl, ?string $fallbackAssigneeGid): ?array
+    {
         $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
         $client = $content->getClient();
-        $projectGid = $client ? (string) ($client->getAsanaProjectGid() ?? '') : '';
-        $projectGid = trim($projectGid);
+        $projectGid = trim((string) ($client?->getAsanaProjectGid() ?? ''));
 
         if ($workspaceGid === '' || $projectGid === '') {
             return null;
@@ -274,7 +371,16 @@ class AsanaService
         if ($assigneeGid !== null && trim((string) $assigneeGid) !== '') {
             $taskData['assignee'] = trim((string) $assigneeGid);
         }
-        $payload = ['data' => $taskData];
+
+        return $taskData;
+    }
+
+    /**
+     * @param array<string, mixed> $taskData
+     */
+    private function postMontageTask(array $taskData): ?string
+    {
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
 
         try {
             $resp = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
@@ -282,7 +388,7 @@ class AsanaService
                     'Authorization' => 'Bearer '.$token,
                     'Content-Type' => 'application/json',
                 ],
-                'json' => $payload,
+                'json' => ['data' => $taskData],
             ]);
             $data = $resp->toArray(false);
         } catch (\Throwable) {

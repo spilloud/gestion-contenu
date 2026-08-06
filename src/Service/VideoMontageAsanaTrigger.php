@@ -216,6 +216,10 @@ final class VideoMontageAsanaTrigger
         foreach ($toCreate as $content) {
             $gid = $createdGids[$content->getId()] ?? null;
             if ($gid === null) {
+                $linked = $this->resolveMontageTaskLink($content, false, false);
+                $gid = $linked;
+            }
+            if ($gid === null) {
                 continue;
             }
 

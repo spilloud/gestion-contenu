@@ -248,9 +248,8 @@ class AsanaService
         }
 
         $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
-        $responses = [];
-        /** @var array<int, Content> $contentByResponseId */
-        $contentByResponseId = [];
+        /** @var list<array{content: Content, response: \Symfony\Contracts\HttpClient\ResponseInterface}> $batch */
+        $batch = [];
 
         foreach ($contents as $content) {
             if (!$content instanceof Content || $content->getId() === null) {
@@ -267,28 +266,37 @@ class AsanaService
                 continue;
             }
 
-            $response = $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
-                'headers' => [
-                    'Authorization' => 'Bearer '.$token,
-                    'Content-Type' => 'application/json',
-                ],
-                'json' => ['data' => $taskData],
-            ]);
-            $responses[] = $response;
-            $contentByResponseId[spl_object_id($response)] = $content;
+            $batch[] = [
+                'content' => $content,
+                'response' => $this->httpClient->request('POST', 'https://app.asana.com/api/1.0/tasks', [
+                    'headers' => [
+                        'Authorization' => 'Bearer '.$token,
+                        'Content-Type' => 'application/json',
+                    ],
+                    'json' => ['data' => $taskData],
+                ]),
+            ];
         }
 
-        if ($responses === []) {
+        if ($batch === []) {
             return [];
         }
 
         $created = [];
+        $responses = array_map(static fn (array $item) => $item['response'], $batch);
+
         foreach ($this->httpClient->stream($responses) as $response => $chunk) {
-            if (!$response->getInfo('done')) {
+            if (!method_exists($chunk, 'isLast') || !$chunk->isLast()) {
                 continue;
             }
 
-            $content = $contentByResponseId[spl_object_id($response)] ?? null;
+            $content = null;
+            foreach ($batch as $item) {
+                if ($item['response'] === $response) {
+                    $content = $item['content'];
+                    break;
+                }
+            }
             if (!$content instanceof Content || $content->getId() === null) {
                 continue;
             }

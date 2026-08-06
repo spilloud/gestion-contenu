@@ -120,13 +120,26 @@
 
         <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem;">
             <button type="button" class="btn" style="background:#64748b;" onclick="addRow()">+ Ajouter une ligne</button>
-            <button type="submit" class="btn">Valider le dérush (montage)</button>
+            <button type="submit" class="btn" id="derush-submit">Valider le dérush (montage)</button>
         </div>
     </div>
 </form>
 
 <script>
 let nextIndex = 3;
+
+(function () {
+    const form = document.querySelector('form[method="post"]');
+    const submitBtn = document.getElementById('derush-submit');
+    if (!form || !submitBtn) return;
+
+    form.addEventListener('submit', function () {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Envoi en cours…';
+        submitBtn.style.opacity = '0.7';
+        submitBtn.style.cursor = 'wait';
+    });
+})();
 
 function addRow() {
     const tbody = document.getElementById('rows');

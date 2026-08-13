@@ -55,9 +55,18 @@ final class VideoAsanaAssigneeSync
         if ($this->sameUser($previous, $next)) {
             return;
         }
+        if (!$this->asanaService->isEnabled()) {
+            return;
+        }
 
         $taskGid = $this->resolveMontageTaskGid($content);
-        if ($taskGid === null || !$this->asanaService->isEnabled()) {
+        // Pas de tâche Asana : si la vidéo est déjà en montage, on la crée pour le nouveau monteur.
+        if ($taskGid === null && $content->getStatus()?->getName() === 'Montage à faire') {
+            $this->montageAsanaTrigger->ensureWhenMontageQueued($content, true);
+
+            return;
+        }
+        if ($taskGid === null) {
             return;
         }
 

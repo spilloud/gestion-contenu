@@ -44,7 +44,7 @@ final class ContentWorkflowService
     /**
      * @return array{ok: bool, message?: string}
      */
-    public function applyTransition(Content $content, string $actionId, bool $fromAsana = false): array
+    public function applyTransition(Content $content, string $actionId, bool $fromAsana = false, ?string $asanaActorName = null): array
     {
         $transition = $this->registry->getTransition($actionId, $content);
         if ($transition === null) {
@@ -70,6 +70,13 @@ final class ContentWorkflowService
             $this->applyEffect($content, $effect, $fromAsana);
         }
 
+        $actorOverride = null;
+        if ($fromAsana) {
+            $actorOverride = ($asanaActorName !== null && trim($asanaActorName) !== '')
+                ? trim($asanaActorName).' (via Asana)'
+                : 'Asana (auteur inconnu)';
+        }
+
         $this->persistLog(
             $content,
             ContentActionLog::TYPE_TRANSITION,
@@ -79,6 +86,7 @@ final class ContentWorkflowService
                 $oldName,
                 $newStatus->getName() ?? '',
                 $this->currentUser(),
+                $actorOverride,
             ),
         );
 

@@ -275,12 +275,21 @@ final class AsanaBidirectionalSyncService
                 return false;
             }
 
-            $result = $this->contentWorkflowService->applyTransition($content, 'montage_done', fromAsana: true);
+            $actor = $this->asanaService->resolveCompletedByName($task, $content->getAsanaTaskGid());
+            $result = $this->contentWorkflowService->applyTransition(
+                $content,
+                'montage_done',
+                fromAsana: true,
+                asanaActorName: $actor,
+            );
             if ($result['ok']) {
                 $this->persistAsanaLog(
                     $content,
                     'Montage terminé (Asana)',
-                    'Tâche Asana cochée — statut avancé automatiquement vers « À valider (Prod) ».',
+                    $this->asanaDetail(
+                        'Tâche Asana cochée — statut avancé automatiquement vers « À valider (Prod) ».',
+                        $actor,
+                    ),
                 );
 
                 return true;
@@ -305,12 +314,21 @@ final class AsanaBidirectionalSyncService
                 return false;
             }
 
-            $result = $this->contentWorkflowService->applyTransition($content, 'subtitles_validated', fromAsana: true);
+            $actor = $this->asanaService->resolveCompletedByName($task, $content->getAsanaSubtitlesTaskGid());
+            $result = $this->contentWorkflowService->applyTransition(
+                $content,
+                'subtitles_validated',
+                fromAsana: true,
+                asanaActorName: $actor,
+            );
             if ($result['ok']) {
                 $this->persistAsanaLog(
                     $content,
                     'Sous-titres validés (Asana)',
-                    'Tâche Asana cochée — statut avancé automatiquement vers « À valider (CM) ».',
+                    $this->asanaDetail(
+                        'Tâche Asana cochée — statut avancé automatiquement vers « À valider (CM) ».',
+                        $actor,
+                    ),
                 );
 
                 return true;
@@ -353,6 +371,11 @@ final class AsanaBidirectionalSyncService
 
             $content->setVideoEditor($user);
 
+            $taskGid = trim((string) ($content->getAsanaTaskGid() ?? ''));
+            $actor = $taskGid !== ''
+                ? $this->asanaService->resolveStoryActorName($taskGid, 'assigned')
+                : null;
+
             $this->persistAsanaLog(
                 $content,
                 'Délégation montage (Asana)',
@@ -361,6 +384,7 @@ final class AsanaBidirectionalSyncService
                     $previous,
                     $user,
                     null,
+                    $actor !== null ? $actor.' (via Asana)' : 'Asana (auteur inconnu)',
                 ),
             );
 
@@ -380,6 +404,11 @@ final class AsanaBidirectionalSyncService
 
         $content->setVideoCommunityManager($user);
 
+        $taskGid = trim((string) ($content->getAsanaSubtitlesTaskGid() ?? ''));
+        $actor = $taskGid !== ''
+            ? $this->asanaService->resolveStoryActorName($taskGid, 'assigned')
+            : null;
+
         $this->persistAsanaLog(
             $content,
             'Délégation CM (Asana)',
@@ -388,6 +417,7 @@ final class AsanaBidirectionalSyncService
                 $previous,
                 $user,
                 null,
+                $actor !== null ? $actor.' (via Asana)' : 'Asana (auteur inconnu)',
             ),
         );
 
@@ -424,6 +454,11 @@ final class AsanaBidirectionalSyncService
         $oldLabel = $stored?->format('d/m/Y') ?? '—';
         $content->setAsanaMontageDueOn($newDue);
 
+        $taskGid = trim((string) ($content->getAsanaTaskGid() ?? ''));
+        $actor = $taskGid !== ''
+            ? $this->asanaService->resolveStoryActorName($taskGid, 'due_date_changed')
+            : null;
+
         $this->persistAsanaLog(
             $content,
             'Échéance montage Asana modifiée',
@@ -433,6 +468,7 @@ final class AsanaBidirectionalSyncService
                 $newDue->format('d/m/Y'),
                 null,
                 'Asana',
+                $actor !== null ? $actor.' (via Asana)' : 'Asana (auteur inconnu)',
             ),
         );
 
@@ -574,5 +610,17 @@ final class AsanaBidirectionalSyncService
         $log->setUser(null);
         $this->entityManager->persist($log);
         $content->setUpdatedAt(new \DateTimeImmutable());
+    }
+
+    private function asanaDetail(string $message, ?string $actorName): string
+    {
+        $lines = [$message, 'Source : Asana'];
+        if ($actorName !== null && trim($actorName) !== '') {
+            $lines[] = 'Par : '.trim($actorName).' (via Asana)';
+        } else {
+            $lines[] = 'Par : Asana (auteur inconnu)';
+        }
+
+        return implode("\n", $lines);
     }
 }

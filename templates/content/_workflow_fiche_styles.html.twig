@@ -329,6 +329,34 @@
             font-weight: 700;
             line-height: 1.35;
         }
+        .vw-journal__who {
+            margin: 0 0 0.35rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            align-items: center;
+            font-size: 0.82rem;
+            line-height: 1.3;
+        }
+        .vw-journal__channel {
+            display: inline-block;
+            padding: 0.1rem 0.4rem;
+            border-radius: 999px;
+            background: rgba(100, 116, 139, 0.15);
+            color: #334155;
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+        }
+        .vw-journal__entry--asana .vw-journal__channel {
+            background: rgba(14, 165, 233, 0.16);
+            color: #0369a1;
+        }
+        body.theme-dark .vw-journal__channel { color: #cbd5e1; background: rgba(148, 163, 184, 0.2); }
+        body.theme-dark .vw-journal__entry--asana .vw-journal__channel { color: #7dd3fc; background: rgba(14, 165, 233, 0.22); }
+        .vw-journal__actor { font-weight: 600; color: var(--text, #0f172a); }
+        .vw-journal__actor--unknown { font-weight: 500; opacity: 0.7; font-style: italic; }
         .vw-journal__entry--latest .vw-journal__label { color: #5b21b6; }
         body.theme-dark .vw-journal__entry--latest .vw-journal__label { color: #c4b5fd; }
         .vw-journal__detail {

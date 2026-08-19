@@ -22,10 +22,19 @@ final class ContentWorkflowViewBuilder
     {
         $journey = [];
         foreach ($this->contentActionLogRepository->findVisibleJourneyForContent($content) as $log) {
+            $detailLines = $this->journalFormatter->splitDetailLines($log->getDetail());
+            $presented = $this->journalFormatter->presentJournalEntry(
+                $log->getActionType(),
+                $log->getUser()?->getName(),
+                $detailLines,
+            );
+
             $journey[] = [
                 'label' => $log->getLabel(),
                 'detail' => $log->getDetail(),
-                'detailLines' => $this->journalFormatter->splitDetailLines($log->getDetail()),
+                'detailLines' => $presented['facts'],
+                'actor' => $presented['actor'],
+                'channel' => $presented['channel'],
                 'createdAt' => $log->getCreatedAt(),
                 'userName' => $log->getUser()?->getName(),
                 'actionType' => $log->getActionType(),

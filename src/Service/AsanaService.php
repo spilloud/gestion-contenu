@@ -12,6 +12,12 @@ class AsanaService
     /** @var array<string, array<string, mixed>|null> */
     private array $taskFetchCache = [];
 
+    /** @var array<string, list<array<string, mixed>>> */
+    private array $taskStoriesCache = [];
+
+    /** Compte technique Lucy (ne pas afficher comme auteur humain). */
+    private const LUCY_ASANA_USER_GID = '1210382795264260';
+
     public function __construct(
         private readonly HttpClientInterface $httpClient,
         private readonly RichTextSanitizer $richTextSanitizer,
@@ -50,7 +56,7 @@ class AsanaService
         try {
             $resp = $this->httpClient->request(
                 'GET',
-                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,assignee.gid,completed,due_on,modified_at,permalink_url,projects.gid',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'?opt_fields=name,notes,assignee.name,assignee.gid,completed,completed_by.name,completed_by.gid,due_on,modified_at,permalink_url,projects.gid',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer '.$token,
@@ -79,6 +85,122 @@ class AsanaService
     public function isTaskAccessible(string $taskGid): bool
     {
         return $this->fetchTask($taskGid) !== null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function fetchTaskStories(string $taskGid): array
+    {
+        if (!$this->isEnabled()) {
+            return [];
+        }
+
+        $taskGid = trim($taskGid);
+        if ($taskGid === '') {
+            return [];
+        }
+
+        if (array_key_exists($taskGid, $this->taskStoriesCache)) {
+            return $this->taskStoriesCache[$taskGid];
+        }
+
+        $token = trim((string) getenv('ASANA_ACCESS_TOKEN'));
+
+        try {
+            $resp = $this->httpClient->request(
+                'GET',
+                'https://app.asana.com/api/1.0/tasks/'.rawurlencode($taskGid).'/stories',
+                [
+                    'headers' => ['Authorization' => 'Bearer '.$token],
+                    'query' => [
+                        'opt_fields' => 'created_at,created_by.name,created_by.gid,created_by.email,text,type,resource_subtype',
+                    ],
+                ],
+            );
+            if ($resp->getStatusCode() >= 400) {
+                $this->taskStoriesCache[$taskGid] = [];
+
+                return [];
+            }
+            $payload = $resp->toArray(false);
+        } catch (\Throwable) {
+            $this->taskStoriesCache[$taskGid] = [];
+
+            return [];
+        }
+
+        $stories = [];
+        foreach ($payload['data'] ?? [] as $story) {
+            if (is_array($story)) {
+                $stories[] = $story;
+            }
+        }
+
+        $this->taskStoriesCache[$taskGid] = $stories;
+
+        return $stories;
+    }
+
+    /**
+     * Dernier auteur humain d'une story Asana (ex. assigned, due_date_changed, marked_complete).
+     */
+    public function resolveStoryActorName(string $taskGid, string $resourceSubtype): ?string
+    {
+        $stories = $this->fetchTaskStories($taskGid);
+        for ($i = count($stories) - 1; $i >= 0; --$i) {
+            $story = $stories[$i];
+            if (($story['resource_subtype'] ?? '') !== $resourceSubtype) {
+                continue;
+            }
+            $name = $this->humanActorNameFromStory($story);
+            if ($name !== null) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $task
+     */
+    public function resolveCompletedByName(array $task, ?string $taskGid = null): ?string
+    {
+        $completedBy = $task['completed_by'] ?? null;
+        if (is_array($completedBy)) {
+            $gid = trim((string) ($completedBy['gid'] ?? ''));
+            $name = trim((string) ($completedBy['name'] ?? ''));
+            if ($gid !== self::LUCY_ASANA_USER_GID && $name !== '' && strcasecmp($name, 'Lucy') !== 0) {
+                return $name;
+            }
+        }
+
+        $gid = trim((string) ($taskGid ?? $task['gid'] ?? ''));
+        if ($gid === '') {
+            return null;
+        }
+
+        return $this->resolveStoryActorName($gid, 'marked_complete');
+    }
+
+    /**
+     * @param array<string, mixed> $story
+     */
+    private function humanActorNameFromStory(array $story): ?string
+    {
+        $createdBy = $story['created_by'] ?? null;
+        if (!is_array($createdBy)) {
+            return null;
+        }
+
+        $gid = trim((string) ($createdBy['gid'] ?? ''));
+        $name = trim((string) ($createdBy['name'] ?? ''));
+        if ($gid === self::LUCY_ASANA_USER_GID || strcasecmp($name, 'Lucy') === 0) {
+            return null;
+        }
+
+        return $name !== '' ? $name : null;
     }
 
     /**

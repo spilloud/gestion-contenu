@@ -217,10 +217,14 @@ final class ContentWorkflowService
 
     private function afterStatusChange(Content $content, string $from, string $to): void
     {
-        if (!$this->formatHelper->isVideoContent($content) || !$this->asanaService->isEnabled()) {
-            if ($this->formatHelper->isVideoContent($content)) {
-                $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
-            }
+        if (!$this->formatHelper->isVideoContent($content)) {
+            $this->completePostProductionAsanaIfNeeded($content, $from, $to);
+
+            return;
+        }
+
+        if (!$this->asanaService->isEnabled()) {
+            $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
 
             return;
         }
@@ -244,6 +248,48 @@ final class ContentWorkflowService
         $this->logAsanaSideEffect($content, $subtitlesGidBefore, $content->getAsanaSubtitlesTaskGid(), 'subtitles');
 
         $this->entityManager->flush();
+    }
+
+    private function completePostProductionAsanaIfNeeded(Content $content, string $from, string $to): void
+    {
+        if (!$this->asanaService->isEnabled()) {
+            return;
+        }
+
+        $advanceStatuses = ['À valider (post)', 'Prêt à publier', 'Publiée'];
+        if (!in_array($to, $advanceStatuses, true)) {
+            return;
+        }
+
+        $gid = trim((string) ($content->getAsanaTaskGid() ?? ''));
+        if ($gid === '') {
+            return;
+        }
+
+        $task = $this->asanaService->fetchTask($gid);
+        if ($task === null || !empty($task['completed'])) {
+            return;
+        }
+
+        $user = $this->currentUser();
+        $actor = $user instanceof User ? ($user->getName() ?? $user->getUserIdentifier()) : '—';
+        $this->asanaService->addCommentToTask(
+            $gid,
+            "Création post avancée dans Lucy : $from → $to\nPar : @$actor",
+        );
+        if ($this->asanaService->completeTask($gid)) {
+            $this->persistLog(
+                $content,
+                ContentActionLog::TYPE_ASANA_SYNC,
+                'Tâche Asana création post terminée',
+                implode("\n", [
+                    'Tâche Asana cochée depuis Lucy.',
+                    "Statut : $from → $to",
+                    'Par : '.$this->journalFormatter->formatActor($user),
+                ]),
+            );
+            $this->entityManager->flush();
+        }
     }
 
     private function logAsanaSideEffect(Content $content, ?string $beforeGid, ?string $afterGid, string $kind): void

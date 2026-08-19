@@ -274,11 +274,11 @@ class ContentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Vidéos d'un client avec au moins une tâche Asana liée.
+     * Contenus d'un client avec au moins une tâche Asana liée.
      *
      * @return Content[]
      */
-    public function findVideosWithAsanaLinksForClient(Client $client): array
+    public function findContentsWithAsanaLinksForClient(Client $client): array
     {
         return $this->createQueryBuilder('c')
             ->leftJoin('c.format', 'f')->addSelect('f')
@@ -292,23 +292,41 @@ class ContentRepository extends ServiceEntityRepository
     }
 
     /**
-     * Vidéos non publiées avec tâche Asana (cron sync).
+     * @deprecated Utiliser findContentsWithAsanaLinksForClient
      *
      * @return Content[]
      */
-    public function findVideosForAsanaSync(): array
+    public function findVideosWithAsanaLinksForClient(Client $client): array
+    {
+        return $this->findContentsWithAsanaLinksForClient($client);
+    }
+
+    /**
+     * Contenus non publiés avec tâche Asana (cron sync).
+     *
+     * @return Content[]
+     */
+    public function findContentsForAsanaSync(): array
     {
         return $this->createQueryBuilder('c')
             ->leftJoin('c.format', 'f')->addSelect('f')
             ->leftJoin('c.status', 's')->addSelect('s')
             ->leftJoin('c.client', 'cl')->addSelect('cl')
-            ->andWhere('LOWER(f.name) IN (:videoNames)')
             ->andWhere('s.name != :published')
             ->andWhere('c.asanaTaskGid IS NOT NULL OR c.asanaSubtitlesTaskGid IS NOT NULL')
-            ->setParameter('videoNames', ['vidéo', 'video'])
             ->setParameter('published', 'Publiée')
             ->orderBy('c.id', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @deprecated Utiliser findContentsForAsanaSync
+     *
+     * @return Content[]
+     */
+    public function findVideosForAsanaSync(): array
+    {
+        return $this->findContentsForAsanaSync();
     }
 }

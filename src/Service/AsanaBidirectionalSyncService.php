@@ -25,6 +25,12 @@ final class AsanaBidirectionalSyncService
         'Retouches (Monteur)',
     ];
 
+    /** Statuts post où la complétion Asana « Création post » avance le workflow. */
+    private const POST_PRODUCTION_ACTIVE_STATUSES = [
+        'Brouillon (idée)',
+        'En préparation',
+    ];
+
     public function __construct(
         private readonly AsanaService $asanaService,
         private readonly ContentFormatHelper $formatHelper,
@@ -40,12 +46,16 @@ final class AsanaBidirectionalSyncService
 
     public function syncContent(Content $content, bool $flush = true): bool
     {
-        if (!$this->formatHelper->isVideoContent($content) || !$this->asanaService->isEnabled()) {
+        if (!$this->asanaService->isEnabled()) {
             return false;
         }
 
-        $changed = $this->syncMontageTask($content)
-            || $this->syncSubtitlesTask($content);
+        if ($this->formatHelper->isVideoContent($content)) {
+            $changed = $this->syncMontageTask($content)
+                || $this->syncSubtitlesTask($content);
+        } else {
+            $changed = $this->syncPostProductionTask($content);
+        }
 
         if ($changed && $flush) {
             $this->entityManager->flush();
@@ -55,7 +65,7 @@ final class AsanaBidirectionalSyncService
     }
 
     /**
-     * @return int Nombre de vidéos mises à jour
+     * @return int Nombre de contenus mis à jour
      */
     public function syncContentsForClient(Client $client, bool $flush = true): int
     {
@@ -64,7 +74,7 @@ final class AsanaBidirectionalSyncService
         }
 
         $updated = 0;
-        foreach ($this->contentRepository->findVideosWithAsanaLinksForClient($client) as $content) {
+        foreach ($this->contentRepository->findContentsWithAsanaLinksForClient($client) as $content) {
             if ($this->syncContent($content, false)) {
                 ++$updated;
             }
@@ -90,7 +100,7 @@ final class AsanaBidirectionalSyncService
         $errors = 0;
         $skipped = 0;
 
-        foreach ($this->contentRepository->findVideosForAsanaSync() as $content) {
+        foreach ($this->contentRepository->findContentsForAsanaSync() as $content) {
             try {
                 if ($this->syncContent($content, false)) {
                     ++$updated;
@@ -241,6 +251,64 @@ final class AsanaBidirectionalSyncService
         $changed = $this->syncMontageDueOn($content, $task) || $changed;
 
         return $changed;
+    }
+
+    private function syncPostProductionTask(Content $content): bool
+    {
+        $gid = $content->getAsanaTaskGid();
+        if ($gid === null) {
+            return false;
+        }
+
+        $task = $this->asanaService->fetchTask($gid);
+        if ($task === null) {
+            return false;
+        }
+
+        $changed = false;
+        $changed = $this->syncPostProductionCompleted($content, $task) || $changed;
+        $changed = $this->syncAssigneeFromTask($content, $task, 'montage') || $changed;
+        $changed = $this->syncMontageDueOn($content, $task) || $changed;
+
+        return $changed;
+    }
+
+    /**
+     * @param array<string, mixed> $task
+     */
+    private function syncPostProductionCompleted(Content $content, array $task): bool
+    {
+        if (!(bool) ($task['completed'] ?? false)) {
+            return false;
+        }
+
+        $statusName = $content->getStatus()?->getName() ?? '';
+        if (!in_array($statusName, self::POST_PRODUCTION_ACTIVE_STATUSES, true)) {
+            return false;
+        }
+
+        $actionId = $statusName === 'Brouillon (idée)' ? 'to_preparation' : 'to_validation';
+        $actor = $this->asanaService->resolveCompletedByName($task, $content->getAsanaTaskGid());
+        $result = $this->contentWorkflowService->applyTransition(
+            $content,
+            $actionId,
+            fromAsana: true,
+            asanaActorName: $actor,
+        );
+        if (!$result['ok']) {
+            return false;
+        }
+
+        $this->persistAsanaLog(
+            $content,
+            'Création post terminée (Asana)',
+            $this->asanaDetail(
+                'Tâche Asana cochée — statut avancé automatiquement.',
+                $actor,
+            ),
+        );
+
+        return true;
     }
 
     private function syncSubtitlesTask(Content $content): bool

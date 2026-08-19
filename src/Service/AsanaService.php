@@ -534,6 +534,80 @@ class AsanaService
     }
 
     /**
+     * Crée une tâche Asana « Création post » pour un contenu non vidéo.
+     */
+    public function createTaskForPostProduction(Content $content, string $ficheUrl, ?string $fallbackAssigneeGid): ?string
+    {
+        if (!$this->isEnabled()) {
+            return null;
+        }
+
+        $stored = $content->getAsanaTaskGid();
+        if ($stored !== null && $this->isTaskAccessible($stored)) {
+            return $stored;
+        }
+
+        $workspaceGid = trim((string) (getenv('ASANA_WORKSPACE_GID') ?: ''));
+        $client = $content->getClient();
+        $projectGid = trim((string) ($client?->getAsanaProjectGid() ?? ''));
+        if ($workspaceGid === '' || $projectGid === '') {
+            return null;
+        }
+
+        $assigneeGid = null;
+        $editor = $content->getVideoEditor() ?? $client?->getEditor();
+        if ($editor && $editor->getAsanaUserGid()) {
+            $assigneeGid = $editor->getAsanaUserGid();
+        } elseif ($fallbackAssigneeGid !== null && trim($fallbackAssigneeGid) !== '') {
+            $assigneeGid = trim($fallbackAssigneeGid);
+        }
+
+        $clientName = $client?->getName() ?? 'Sans client';
+        $title = trim((string) ($content->getTitle() ?? ''));
+        $name = 'Création post - '.($title !== '' ? $title : 'Sans titre');
+
+        $dueAt = $content->getAsanaMontageDueOn()
+            ?? ($content->getScheduledDate() instanceof \DateTimeInterface
+                ? \DateTimeImmutable::createFromInterface($content->getScheduledDate())
+                : new \DateTimeImmutable('today'));
+        $dueOn = $dueAt->format('Y-m-d');
+        $dueLabelFr = $dueAt->format('d/m/Y');
+        $pubLabel = $content->getScheduledDate() instanceof \DateTimeInterface
+            ? $content->getScheduledDate()->format('d/m/Y')
+            : '—';
+
+        $links = array_filter([
+            $content->getVideoRushesUrl() ? 'Source (KDrive) : '.$content->getVideoRushesUrl() : null,
+            $content->getVideoFinalUrl() ? 'Final (KDrive) : '.$content->getVideoFinalUrl() : null,
+        ]);
+
+        $notes = implode("\n", array_filter([
+            'Post créé depuis Gestion des contenus (Lucy).',
+            'Client : '.$clientName,
+            'Format : '.($content->getFormat()?->getName() ?? '—'),
+            'Publication prévue : '.$pubLabel,
+            'Échéance monteur : le '.$dueLabelFr.' — due_on Asana '.$dueOn.'.',
+            '',
+            $links !== [] ? "Liens :\n- ".implode("\n- ", $links) : null,
+            $links !== [] ? '' : null,
+            'Outil (fiche contenu) : '.$ficheUrl,
+        ]));
+
+        $taskData = [
+            'name' => $name,
+            'notes' => $notes,
+            'workspace' => $workspaceGid,
+            'projects' => [$projectGid],
+            'due_on' => $dueOn,
+        ];
+        if ($assigneeGid !== null && trim((string) $assigneeGid) !== '') {
+            $taskData['assignee'] = trim((string) $assigneeGid);
+        }
+
+        return $this->postMontageTask($taskData);
+    }
+
+    /**
      * Ajoute un commentaire (story) sur une tâche Asana existante.
      */
     public function addCommentToTask(string $taskGid, string $text): bool

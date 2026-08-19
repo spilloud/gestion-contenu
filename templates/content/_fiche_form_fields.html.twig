@@ -13,6 +13,34 @@
             {{ form_row(form.videoCommunityManager) }}
         {% endif %}
     </div>
+    {% if form.asanaMontageDueOn is defined %}
+        <div style="margin-top: 0.75rem;">
+            {{ form_row(form.asanaMontageDueOn) }}
+        </div>
+    {% endif %}
+</section>
+
+<section id="bloc-asana" class="content-fiche__section">
+    <div class="content-fiche__section-head">
+        <h2>Asana monteur</h2>
+        <span class="content-fiche__section-kicker">Création post</span>
+    </div>
+    {% if content.asanaTaskGid %}
+        <p style="margin: 0 0 0.75rem;">
+            Tâche liée :
+            <a href="https://app.asana.com/0/0/{{ content.asanaTaskGid }}" target="_blank" rel="noopener">
+                ouvrir dans Asana
+            </a>
+        </p>
+        <div style="display:flex; gap: 0.6rem; flex-wrap: wrap;">
+            <button type="submit" form="content-asana-sync-form-{{ content.id }}" class="btn" style="background:#0369a1;">↻ Rafraîchir depuis Asana</button>
+        </div>
+    {% else %}
+        <p style="color: var(--muted); margin: 0 0 0.75rem;">
+            Crée une tâche Asana <strong>Création post - {{ content.title }}</strong> pour le médiamaticien assigné.
+        </p>
+        <button type="submit" form="content-asana-create-form-{{ content.id }}" class="btn">Créer la tâche Asana monteur</button>
+    {% endif %}
 </section>
 
 <section id="bloc-fichiers" class="content-fiche__section">

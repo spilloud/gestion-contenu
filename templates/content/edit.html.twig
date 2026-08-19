@@ -31,6 +31,8 @@
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#bloc-equipe">Équipe</a>
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
+        <a href="#bloc-asana">Asana</a>
+        <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#bloc-fichiers">Fichiers</a>
         <span aria-hidden="true" style="color: var(--card-border);">·</span>
         <a href="#retours-discussion">Retours</a>
@@ -44,6 +46,9 @@
             <span>Pub. <strong>{{ content.scheduledDate|date('d/m/Y') }}</strong></span>
             <span>Médiamaticien <strong>{{ content.videoEditor ? content.videoEditor.name : '—' }}</strong></span>
             <span>CM <strong>{{ cm_display_name|default('—') }}</strong></span>
+            {% if content.asanaTaskGid %}
+                <span>Asana <strong><a href="https://app.asana.com/0/0/{{ content.asanaTaskGid }}" target="_blank" rel="noopener">liée</a></strong></span>
+            {% endif %}
         </div>
     </header>
 
@@ -57,6 +62,15 @@
         {% include 'content/_workflow_journal.html.twig' %}
 
         <div class="content-fiche__form-col">
+            <form id="content-asana-create-form-{{ content.id }}" method="post" action="{{ path('app_content_asana_create_post', {id: content.id}) }}" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('asana_post' ~ content.id) }}">
+                <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+            </form>
+            <form id="content-asana-sync-form-{{ content.id }}" method="post" action="{{ path('app_content_asana_sync', {id: content.id}) }}" hidden>
+                <input type="hidden" name="_token" value="{{ csrf_token('asana_sync' ~ content.id) }}">
+                <input type="hidden" name="_return_to" value="{{ return_to_val }}">
+            </form>
+
             {{ form_start(form) }}
             <input type="hidden" name="_return_to" value="{{ return_to_val }}">
 

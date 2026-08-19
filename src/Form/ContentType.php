@@ -97,14 +97,14 @@ class ContentType extends AbstractType
                 'required' => false,
             ])
             ->add('asanaMontageDueOn', DateType::class, [
-                'label' => 'Date de montage souhaitée',
+                'label' => 'Échéance monteur (Asana)',
                 'widget' => 'single_text',
                 'required' => false,
                 'attr' => [
                     'style' => 'max-width: 320px; padding: 0.9rem 0.8rem; font-size: 1.05rem; min-height: 52px;',
                     'class' => 'js-montage-due-input',
                 ],
-                'help' => 'Échéance de la tâche Asana pour le monteur (par défaut : publication − 3 jours).',
+                'help' => 'Échéance de la tâche Asana monteur (par défaut : publication − 3 jours).',
             ]);
 
         $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event): void {
@@ -149,14 +149,9 @@ class ContentType extends AbstractType
                 return;
             }
 
-            if (!$this->contentFormatHelper->isVideoContent($content)) {
-                $content->setAsanaMontageDueOn(null);
-
-                return;
-            }
-
+            $isVideo = $this->contentFormatHelper->isVideoContent($content);
             $statusName = $content->getStatus()?->getName() ?? '';
-            if (ContentWorkflowRegistry::isDirectEntryStatusName($statusName, true)) {
+            if ($isVideo && ContentWorkflowRegistry::isDirectEntryStatusName($statusName, true)) {
                 $content->setAsanaMontageDueOn(null);
 
                 return;
@@ -196,21 +191,16 @@ class ContentType extends AbstractType
                     : 'Préférez les boutons d\'avancement ; le menu sert aux corrections.',
             ]);
 
-            if ($this->contentFormatHelper->isVideoContent($content)) {
-                if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
-                    if ($form->has('asanaMontageDueOn')) {
-                        $form->get('asanaMontageDueOn')->setData(
-                            $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
-                        );
-                    }
+            if ($content->getAsanaMontageDueOn() === null && $content->getScheduledDate() !== null) {
+                if ($form->has('asanaMontageDueOn')) {
+                    $form->get('asanaMontageDueOn')->setData(
+                        $this->montageDueOnResolver->defaultFromPublication($content->getScheduledDate()),
+                    );
                 }
-
-                return;
             }
 
-            $form = $event->getForm();
-            if ($form->has('asanaMontageDueOn')) {
-                $form->remove('asanaMontageDueOn');
+            if ($this->contentFormatHelper->isVideoContent($content)) {
+                return;
             }
 
             $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);

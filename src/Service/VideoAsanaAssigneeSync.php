@@ -6,7 +6,7 @@ use App\Entity\Content;
 use App\Entity\User;
 
 /**
- * Réassigne les tâches Asana montage / sous-titres quand monteur ou CM changent sur la fiche.
+ * Réassigne les tâches Asana montage / création post / sous-titres quand monteur ou CM changent.
  */
 final class VideoAsanaAssigneeSync
 {
@@ -23,9 +23,6 @@ final class VideoAsanaAssigneeSync
         ?\DateTimeImmutable $previous,
         ?\DateTimeImmutable $next,
     ): void {
-        if (!$this->formatHelper->isVideoContent($content)) {
-            return;
-        }
         if ($previous?->format('Y-m-d') === $next?->format('Y-m-d')) {
             return;
         }
@@ -33,7 +30,7 @@ final class VideoAsanaAssigneeSync
             return;
         }
 
-        $taskGid = $this->resolveMontageTaskGid($content);
+        $taskGid = $this->resolvePrimaryTaskGid($content);
         if ($taskGid === null || !$this->asanaService->isEnabled()) {
             return;
         }
@@ -42,16 +39,13 @@ final class VideoAsanaAssigneeSync
             $content->markAsanaMontageDueOnPushedFromLucy();
             $this->asanaService->addCommentToTask(
                 $taskGid,
-                'Échéance montage mise à jour (via Gestion des contenus) : '.$next->format('d/m/Y'),
+                'Échéance mise à jour (via Gestion des contenus) : '.$next->format('d/m/Y'),
             );
         }
     }
 
     public function syncMontageAssigneeIfChanged(Content $content, ?User $previous, ?User $next): void
     {
-        if (!$this->formatHelper->isVideoContent($content)) {
-            return;
-        }
         if ($this->sameUser($previous, $next)) {
             return;
         }
@@ -59,9 +53,10 @@ final class VideoAsanaAssigneeSync
             return;
         }
 
-        $taskGid = $this->resolveMontageTaskGid($content);
-        // Pas de tâche Asana : si la vidéo est déjà en montage, on la crée pour le nouveau monteur.
-        if ($taskGid === null && $content->getStatus()?->getName() === 'Montage à faire') {
+        $taskGid = $this->resolvePrimaryTaskGid($content);
+        if ($taskGid === null
+            && $this->formatHelper->isVideoContent($content)
+            && $content->getStatus()?->getName() === 'Montage à faire') {
             $this->montageAsanaTrigger->ensureWhenMontageQueued($content, true);
 
             return;
@@ -77,9 +72,10 @@ final class VideoAsanaAssigneeSync
 
         if ($this->asanaService->updateTaskAssignee($taskGid, $assigneeGid)) {
             $name = $next?->getName() ?? '—';
+            $role = $this->formatHelper->isVideoContent($content) ? 'Monteur' : 'Médiamaticien';
             $this->asanaService->addCommentToTask(
                 $taskGid,
-                "Monteur réassigné (via Gestion des contenus) : $name",
+                "$role réassigné (via Gestion des contenus) : $name",
             );
         }
     }
@@ -115,14 +111,18 @@ final class VideoAsanaAssigneeSync
         }
     }
 
-    private function resolveMontageTaskGid(Content $content): ?string
+    private function resolvePrimaryTaskGid(Content $content): ?string
     {
         $stored = trim((string) ($content->getAsanaTaskGid() ?? ''));
         if ($stored !== '') {
             return $stored;
         }
 
-        return $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+        if ($this->formatHelper->isVideoContent($content)) {
+            return $this->montageAsanaTrigger->resolveMontageTaskLink($content, true);
+        }
+
+        return null;
     }
 
     private function sameUser(?User $a, ?User $b): bool

@@ -12,9 +12,11 @@ use App\Repository\FormatRepository;
 use App\Repository\StatusRepository;
 use App\Repository\UserRepository;
 use App\Service\AsanaService;
+use App\Service\AsanaBidirectionalSyncService;
 use App\Service\ContentFormatHelper;
 use App\Service\ContentWorkflowService;
 use App\Service\ContentWorkflowViewBuilder;
+use App\Service\PostProductionAsanaTrigger;
 use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
@@ -38,6 +40,7 @@ class ContentController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly UserRepository $userRepository,
         private readonly AsanaService $asanaService,
+        private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
         private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
         private readonly ContentWorkflowService $contentWorkflowService,
         private readonly ContentWorkflowViewBuilder $workflowViewBuilder,
@@ -45,6 +48,7 @@ class ContentController extends AbstractController
         private readonly FormatRepository $formatRepository,
         private readonly VideoAssigneeResolver $videoAssigneeResolver,
         private readonly VideoMontageAsanaTrigger $montageAsanaTrigger,
+        private readonly PostProductionAsanaTrigger $postProductionAsanaTrigger,
     ) {
     }
 
@@ -342,6 +346,53 @@ class ContentController extends AbstractController
             $this->addFlash('success', 'Étape enregistrée.');
         } else {
             $this->addFlash('error', $result['message'] ?? 'Action impossible.');
+        }
+
+        return $this->redirectWorkflowBack($content, $request);
+    }
+
+    #[Route('/{id}/asana-creer-post', name: 'app_content_asana_create_post', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function createPostAsanaTask(Content $content, Request $request): Response
+    {
+        if ($this->isVideoContent($content)) {
+            throw $this->createNotFoundException();
+        }
+
+        if (!$this->isCsrfTokenValid('asana_post'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectWorkflowBack($content, $request);
+        }
+
+        $result = $this->postProductionAsanaTrigger->ensureTask($content, true);
+        if ($result['ok'] && $result['created']) {
+            $this->addFlash('success', 'Tâche Asana « Création post » créée pour le médiamaticien.');
+        } elseif ($result['ok']) {
+            $this->addFlash('info', $result['message']);
+        } else {
+            $this->addFlash('error', $result['message']);
+        }
+
+        return $this->redirectWorkflowBack($content, $request);
+    }
+
+    #[Route('/{id}/asana-sync', name: 'app_content_asana_sync', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function asanaSync(Content $content, Request $request): Response
+    {
+        if ($this->isVideoContent($content)) {
+            return $this->redirectToRoute('app_video_asana_sync', ['id' => $content->getId()]);
+        }
+
+        if (!$this->isCsrfTokenValid('asana_sync'.$content->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton CSRF invalide.');
+
+            return $this->redirectWorkflowBack($content, $request);
+        }
+
+        if ($this->asanaBidirectionalSync->syncContent($content, true)) {
+            $this->addFlash('success', 'Synchronisation Asana effectuée — fiche mise à jour.');
+        } else {
+            $this->addFlash('info', 'Aucun changement détecté depuis Asana.');
         }
 
         return $this->redirectWorkflowBack($content, $request);

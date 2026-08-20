@@ -13,13 +13,15 @@
             {{ form_row(form.videoCommunityManager) }}
         {% endif %}
     </div>
-    {% if form.asanaMontageDueOn is defined %}
+    {# Sur la création, l'échéance est déjà affichée plus haut (wrap vidéo) — éviter le double render Symfony. #}
+    {% if content.id and form.asanaMontageDueOn is defined %}
         <div style="margin-top: 0.75rem;">
             {{ form_row(form.asanaMontageDueOn) }}
         </div>
     {% endif %}
 </section>
 
+{% if content.id %}
 <section id="bloc-asana" class="content-fiche__section">
     <div class="content-fiche__section-head">
         <h2>Asana monteur</h2>
@@ -42,6 +44,7 @@
         <button type="submit" form="content-asana-create-form-{{ content.id }}" class="btn">Créer la tâche Asana monteur</button>
     {% endif %}
 </section>
+{% endif %}
 
 <section id="bloc-fichiers" class="content-fiche__section">
     <div class="content-fiche__section-head">

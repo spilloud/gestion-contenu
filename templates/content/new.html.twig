@@ -36,16 +36,36 @@
                 {{ form_row(form.title) }}
                 {{ form_row(form.client) }}
                 {{ form_row(form.scheduledDate) }}
-                <div id="js-montage-due-wrap" style="display: none;">
-                    {% if form.asanaMontageDueOn is defined %}
-                        {{ form_row(form.asanaMontageDueOn) }}
-                    {% endif %}
-                </div>
                 {{ form_row(form.format) }}
                 {{ form_row(form.status) }}
             </section>
 
             {% include 'content/_fiche_form_fields.html.twig' with { content: content } %}
+
+            <section id="js-post-asana-option" class="content-fiche__section" style="display: none;">
+                <div class="content-fiche__section-head">
+                    <h2>Asana monteur</h2>
+                    <span class="content-fiche__section-kicker">Optionnel</span>
+                </div>
+                <label style="display:flex; gap: 0.6rem; align-items: flex-start; cursor: pointer;">
+                    <input id="js-create-asana-task" type="checkbox" name="create_asana_task" value="1" style="margin-top: 0.25rem;">
+                    <span>
+                        <strong>Créer une tâche Asana monteur</strong>
+                        <span style="display:block; color: var(--muted); font-size: 0.88rem; margin-top: 0.2rem;">
+                            Optionnel. Titre Asana : <em>Création post - {titre}</em>, assignée au médiamaticien.
+                        </span>
+                    </span>
+                </label>
+            </section>
+
+            <div id="js-asana-due-wrap" class="content-fiche__section" style="display: none;">
+                <div class="content-fiche__section-head">
+                    <h2>Échéance monteur</h2>
+                </div>
+                {% if form.asanaMontageDueOn is defined %}
+                    {{ form_row(form.asanaMontageDueOn) }}
+                {% endif %}
+            </div>
 
             {{ form_rest(form) }}
 
@@ -74,20 +94,37 @@
     });
 
     var formatSelect = document.querySelector('[name$="[format]"]');
-    var montageWrap = document.getElementById('js-montage-due-wrap');
+    var postAsanaOption = document.getElementById('js-post-asana-option');
+    var createAsana = document.getElementById('js-create-asana-task');
+    var asanaDueWrap = document.getElementById('js-asana-due-wrap');
+
     function isVideoFormatSelected() {
         if (!formatSelect) return false;
         var text = (formatSelect.options[formatSelect.selectedIndex]?.text || '').toLowerCase().trim();
         return text === 'vidéo' || text === 'video';
     }
-    function syncMontageFieldVisibility() {
-        if (!montageWrap) return;
-        montageWrap.style.display = isVideoFormatSelected() ? '' : 'none';
+
+    function syncVisibility() {
+        var isVideo = isVideoFormatSelected();
+        if (postAsanaOption) {
+            postAsanaOption.style.display = isVideo ? 'none' : '';
+        }
+        if (isVideo && createAsana) {
+            createAsana.checked = false;
+        }
+        var wantPostAsana = !!(createAsana && createAsana.checked);
+        if (asanaDueWrap) {
+            asanaDueWrap.style.display = (isVideo || wantPostAsana) ? '' : 'none';
+        }
     }
+
     if (formatSelect) {
-        formatSelect.addEventListener('change', syncMontageFieldVisibility);
-        syncMontageFieldVisibility();
+        formatSelect.addEventListener('change', syncVisibility);
     }
+    if (createAsana) {
+        createAsana.addEventListener('change', syncVisibility);
+    }
+    syncVisibility();
 })();
 </script>
 {% endblock %}

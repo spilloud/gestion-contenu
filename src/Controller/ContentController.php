@@ -159,12 +159,26 @@ class ContentController extends AbstractController
 
             $this->applyCreationStatus($content, $isVideo);
 
+            $createAsanaTask = !$isVideo && $request->request->getBoolean('create_asana_task');
+            if (!$isVideo && !$createAsanaTask) {
+                $content->setAsanaMontageDueOn(null);
+            }
+
             $this->entityManager->persist($content);
             $this->entityManager->flush();
             $this->contentWorkflowService->logCreation($content);
             $this->entityManager->flush();
 
             $this->addFlash('success', 'Contenu créé.');
+
+            if ($createAsanaTask) {
+                $asanaResult = $this->postProductionAsanaTrigger->ensureTask($content, true);
+                if ($asanaResult['ok'] && $asanaResult['created']) {
+                    $this->addFlash('success', 'Tâche Asana « Création post » créée pour le médiamaticien.');
+                } elseif (!$asanaResult['ok']) {
+                    $this->addFlash('warning', 'Contenu créé, mais tâche Asana non créée : '.$asanaResult['message']);
+                }
+            }
 
             $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request) ?? $defaultReturnTo;
 

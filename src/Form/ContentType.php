@@ -231,7 +231,7 @@ class ContentType extends AbstractType
             $form->add('videoCommunityManager', EntityType::class, [
                 'label' => 'Community manager',
                 'class' => User::class,
-                'choices' => $this->userRepository->findCommunityManagersOrdered(),
+                'choices' => $this->userRepository->findCommunityManagersOrdered($content->getVideoCommunityManager()),
                 'choice_label' => 'name',
                 'required' => false,
                 'placeholder' => $content->getVideoCommunityManager() !== null ? false : '—',

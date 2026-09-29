@@ -36,25 +36,14 @@ final class VideoAssigneeResolver
             $content->setVideoEditor($client->getEditor());
         }
 
-        $clientCm = $client->getCommunityManager();
-        if ($clientCm !== null && $this->shouldAlignCommunityManagerWithClient($content, $clientCm)) {
-            $content->setVideoCommunityManager($clientCm);
+        if ($content->getVideoCommunityManager() === null && $client->getCommunityManager() !== null) {
+            $content->setVideoCommunityManager($client->getCommunityManager());
         }
     }
 
     public function resolveCommunityManagerForDisplay(Content $content): ?User
     {
         return $content->getVideoCommunityManager() ?? $content->getClient()?->getCommunityManager();
-    }
-
-    private function shouldAlignCommunityManagerWithClient(Content $content, User $clientCm): bool
-    {
-        $current = $content->getVideoCommunityManager();
-        if ($current === null) {
-            return true;
-        }
-
-        return $current->getId() !== $clientCm->getId();
     }
 
     public function asanaGidForSubtitlesReview(Content $content): ?string

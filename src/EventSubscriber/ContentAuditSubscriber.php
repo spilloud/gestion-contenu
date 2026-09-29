@@ -147,24 +147,28 @@ final class ContentAuditSubscriber
         $this->asanaSyncQueue = [];
 
         foreach ($queue as $job) {
-            match ($job['type']) {
-                'montage' => $this->videoAsanaAssigneeSync->syncMontageAssigneeIfChanged(
-                    $job['content'],
-                    $job['previousUser'],
-                    $job['nextUser'],
-                ),
-                'montage_due' => $this->videoAsanaAssigneeSync->syncMontageDueOnIfChanged(
-                    $job['content'],
-                    $job['previousDue'] ?? null,
-                    $job['nextDue'] ?? null,
-                ),
-                'cm' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCommunityManagerChange(
-                    $job['content'],
-                    $job['previousUser'],
-                    $job['nextUser'],
-                ),
-                default => null,
-            };
+            try {
+                match ($job['type']) {
+                    'montage' => $this->videoAsanaAssigneeSync->syncMontageAssigneeIfChanged(
+                        $job['content'],
+                        $job['previousUser'],
+                        $job['nextUser'],
+                    ),
+                    'montage_due' => $this->videoAsanaAssigneeSync->syncMontageDueOnIfChanged(
+                        $job['content'],
+                        $job['previousDue'] ?? null,
+                        $job['nextDue'] ?? null,
+                    ),
+                    'cm' => $this->videoAsanaAssigneeSync->syncSubtitlesAfterCommunityManagerChange(
+                        $job['content'],
+                        $job['previousUser'],
+                        $job['nextUser'],
+                    ),
+                    default => null,
+                };
+            } catch (\Throwable) {
+                // L'enregistrement Lucy a déjà réussi : un échec Asana ne doit pas faire planter la fiche.
+            }
         }
     }
 

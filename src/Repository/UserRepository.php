@@ -43,9 +43,27 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     /**
      * @return User[]
      */
-    public function findCommunityManagersOrdered(): array
+    /**
+     * @return User[]
+     */
+    public function findCommunityManagersOrdered(?User $ensureIncluded = null): array
     {
-        return $this->filterByRole($this->findBy([], ['name' => 'ASC']), User::ROLE_CM);
+        $managers = $this->filterByRole($this->findBy([], ['name' => 'ASC']), User::ROLE_CM);
+
+        if ($ensureIncluded === null) {
+            return $managers;
+        }
+
+        foreach ($managers as $manager) {
+            if ($manager->getId() === $ensureIncluded->getId()) {
+                return $managers;
+            }
+        }
+
+        $managers[] = $ensureIncluded;
+        usort($managers, static fn (User $a, User $b): int => strcasecmp($a->getName() ?? '', $b->getName() ?? ''));
+
+        return $managers;
     }
 
     /**

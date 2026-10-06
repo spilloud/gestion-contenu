@@ -2,9 +2,11 @@
 
 namespace App\EventSubscriber;
 
+use App\Entity\Client;
 use App\Entity\Content;
 use App\Entity\ContentActionLog;
 use App\Entity\User;
+use App\Service\ContentAsanaProjectSync;
 use App\Service\ContentWorkflowService;
 use App\Service\VideoAsanaAssigneeSync;
 use App\Service\WorkflowJournalFormatter;
@@ -22,8 +24,12 @@ final class ContentAuditSubscriber
     /** @var list<array{content: Content, type: string, previousUser: ?User, nextUser: ?User, previousDue: ?\DateTimeImmutable, nextDue: ?\DateTimeImmutable}> */
     private array $asanaSyncQueue = [];
 
+    /** @var list<array{content: Content, previous: ?Client, next: ?Client}> */
+    private array $clientMoveQueue = [];
+
     public function __construct(
         private readonly ContentWorkflowService $workflowService,
+        private readonly ContentAsanaProjectSync $contentAsanaProjectSync,
         private readonly VideoAsanaAssigneeSync $videoAsanaAssigneeSync,
         private readonly WorkflowJournalFormatter $journalFormatter,
         private readonly Security $security,
@@ -123,6 +129,15 @@ final class ContentAuditSubscriber
             ];
         }
 
+        if (isset($changeSet['client'])) {
+            [$previousClient, $nextClient] = $changeSet['client'];
+            $this->clientMoveQueue[] = [
+                'content' => $entity,
+                'previous' => $previousClient instanceof Client ? $previousClient : null,
+                'next' => $nextClient instanceof Client ? $nextClient : null,
+            ];
+        }
+
         if (isset($changeSet['videoCommunityManager'])) {
             [$old, $new] = $changeSet['videoCommunityManager'];
             $this->logUserChange($entity, 'Délégation CM', 'Community manager', $old, $new, ContentActionLog::TYPE_CM_USER_CHANGED, $actor);
@@ -139,6 +154,8 @@ final class ContentAuditSubscriber
 
     public function postFlush(PostFlushEventArgs $args): void
     {
+        $this->drainClientMoveQueue();
+
         if ($this->asanaSyncQueue === []) {
             return;
         }
@@ -168,6 +185,33 @@ final class ContentAuditSubscriber
                 };
             } catch (\Throwable) {
                 // L'enregistrement Lucy a déjà réussi : un échec Asana ne doit pas faire planter la fiche.
+            }
+        }
+    }
+
+    /**
+     * Fait suivre les tâches Asana après un changement de client. Vidée en
+     * postFlush : appeler Asana pendant le flush bloquerait l enregistrement.
+     */
+    private function drainClientMoveQueue(): void
+    {
+        if ($this->clientMoveQueue === []) {
+            return;
+        }
+
+        $queue = $this->clientMoveQueue;
+        $this->clientMoveQueue = [];
+
+        foreach ($queue as $job) {
+            try {
+                $this->contentAsanaProjectSync->syncAfterClientChange(
+                    $job['content'],
+                    $job['previous'],
+                    $job['next'],
+                );
+            } catch (\Throwable) {
+                // L enregistrement Lucy a déjà réussi : un échec Asana ne doit
+                // pas faire planter la fiche.
             }
         }
     }

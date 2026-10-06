@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Routing\Attribute\Route;
 
 #[Route('/admin/clients')]
@@ -25,6 +26,7 @@ class ClientCrudController extends AbstractController
     ) {
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('', name: 'app_admin_client_index', methods: ['GET'])]
     public function index(): Response
     {
@@ -36,6 +38,7 @@ class ClientCrudController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/nouveau', name: 'app_admin_client_new', methods: ['GET', 'POST'])]
     public function new(Request $request): Response
     {
@@ -65,6 +68,7 @@ class ClientCrudController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/{id}/modifier', name: 'app_admin_client_edit', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
     public function edit(Client $client, Request $request): Response
     {
@@ -92,6 +96,7 @@ class ClientCrudController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/{id}/supprimer', name: 'app_admin_client_delete', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function delete(Client $client, Request $request): Response
     {
@@ -122,6 +127,7 @@ class ClientCrudController extends AbstractController
         return $this->redirectToRoute('app_admin_client_index');
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/{id}/fusionner', name: 'app_admin_client_merge', requirements: ['id' => '\\d+'], methods: ['GET', 'POST'])]
     public function merge(Client $client, Request $request, ClientRepository $clientRepository): Response
     {
@@ -180,6 +186,7 @@ class ClientCrudController extends AbstractController
         ]);
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/{id}/archiver', name: 'app_admin_client_archive', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function archive(Client $client, Request $request): Response
     {
@@ -195,6 +202,7 @@ class ClientCrudController extends AbstractController
         return $this->redirectToRoute('app_admin_client_index');
     }
 
+    #[IsGranted('ROLE_ADMIN')]
     #[Route('/{id}/desarchiver', name: 'app_admin_client_unarchive', requirements: ['id' => '\d+'], methods: ['POST'])]
     public function unarchive(Client $client, Request $request): Response
     {

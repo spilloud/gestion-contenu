@@ -327,8 +327,10 @@
 
 {% if dashboardProfile.showAdminShortcuts %}
 <div class="shortcut-grid">
-    <a href="{{ path('app_admin_user_index') }}" class="shortcut">Utilisateurs</a>
-    <a href="{{ path('app_admin_client_index') }}" class="shortcut">Admin Clients</a>
+    {% if is_granted('ROLE_ADMIN') %}
+        <a href="{{ path('app_admin_user_index') }}" class="shortcut">Utilisateurs</a>
+        <a href="{{ path('app_admin_client_index') }}" class="shortcut">Admin Clients</a>
+    {% endif %}
     <a href="{{ path('app_admin_status_format_index') }}" class="shortcut">Statuts et formats</a>
 </div>
 {% endif %}

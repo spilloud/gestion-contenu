@@ -75,7 +75,7 @@
                 <td style="padding: 0.75rem;"><a href="{{ path('app_client_show', {id: client.id}) }}" class="btn btn-sm">Voir</a></td>
             </tr>
         {% else %}
-            <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun client. <a href="{{ path('app_admin_client_new') }}">Ajouter un client</a></td></tr>
+            <tr><td colspan="4" style="padding: 1rem; color: var(--muted);">Aucun client.{% if is_granted('ROLE_ADMIN') %} <a href="{{ path('app_admin_client_new') }}">Ajouter un client</a>{% endif %}</td></tr>
         {% endfor %}
     </tbody>
 </table>

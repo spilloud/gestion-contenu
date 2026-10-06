@@ -709,12 +709,14 @@
 
                 <div class="sidebar-section sidebar-section--admin">
                     <h3>Administration</h3>
-                    <a href="{{ path('app_admin_client_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_client' ? 'active' : '' }}">
-                        <span class="sidebar-link__icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="8" width="20" height="14" rx="2"/></svg>
-                        </span>
-                        <span class="sidebar-link__label">Clients</span>
-                    </a>
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <a href="{{ path('app_admin_client_index') }}" class="sidebar-link {{ currentRoute starts with 'app_admin_client' ? 'active' : '' }}">
+                            <span class="sidebar-link__icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect x="2" y="8" width="20" height="14" rx="2"/></svg>
+                            </span>
+                            <span class="sidebar-link__label">Clients</span>
+                        </a>
+                    {% endif %}
                     {% if 'ROLE_ADMIN' in app.user.roles %}
                         <a href="{{ path('app_admin_integration_api') }}" class="sidebar-link {{ currentRoute in ['app_admin_integration_api', 'app_admin_integration_luc'] ? 'active' : '' }}">
                             <span class="sidebar-link__icon" aria-hidden="true">

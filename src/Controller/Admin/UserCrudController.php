@@ -210,8 +210,8 @@ class UserCrudController extends AbstractController
 
         $blockers = $this->deletionBlockers(
             $user,
-            $this->clientRepository->findClientNamesGroupedByCommunityManager(),
-            $this->shootingRequestRepository->countGroupedByAssignee(),
+            $this->clientRepository->findActiveClientNamesGroupedByCommunityManager(),
+            $this->shootingRequestRepository->countGroupedByAssigneeForActiveClients(),
         );
         if ($blockers !== []) {
             $this->addFlash('error', sprintf(
@@ -223,8 +223,28 @@ class UserCrudController extends AbstractController
             return $this->redirectToRoute('app_admin_user_index');
         }
 
+        if (!$current instanceof User) {
+            $this->addFlash('error', 'Session expirée. Reconnectez-vous, puis réessayez.');
+
+            return $this->redirectToRoute('app_admin_user_index');
+        }
+
+        // Les rattachements archivés ne doivent pas empêcher la suppression. Les
+        // colonnes concernées étant NOT NULL, on ne peut pas les vider : on les
+        // transfère à l admin qui supprime.
+        $archivedClients = $this->clientRepository->findArchivedByCommunityManager($user);
+        $archivedShootingRequests = $this->shootingRequestRepository->findForArchivedClientsByAssignee($user);
+        foreach ($archivedClients as $archivedClient) {
+            $archivedClient->setCommunityManager($current);
+        }
+        foreach ($archivedShootingRequests as $archivedShootingRequest) {
+            $archivedShootingRequest->setAssignedTo($current);
+        }
+
         try {
             $this->entityManager->remove($user);
+            // Doctrine applique les UPDATE avant les DELETE : les transferts
+            // ci-dessus partent dans la même transaction que la suppression.
             $this->entityManager->flush();
         } catch (ForeignKeyConstraintViolationException) {
             // Filet de sécurité : une contrainte RESTRICT ajoutée plus tard ne doit pas renvoyer une erreur 500.
@@ -236,9 +256,44 @@ class UserCrudController extends AbstractController
             return $this->redirectToRoute('app_admin_user_index');
         }
 
-        $this->addFlash('success', 'Utilisateur supprimé.');
+        $this->addFlash('success', $this->deletionSuccessMessage(
+            count($archivedClients),
+            count($archivedShootingRequests),
+        ));
 
         return $this->redirectToRoute('app_admin_user_index');
+    }
+
+    /**
+     * Confirme la suppression en nommant les rattachements archivés transférés.
+     */
+    private function deletionSuccessMessage(int $archivedClientCount, int $archivedShootingRequestCount): string
+    {
+        $transfers = [];
+        if ($archivedClientCount > 0) {
+            $transfers[] = sprintf(
+                '%d client%s archivé%s',
+                $archivedClientCount,
+                $archivedClientCount > 1 ? 's' : '',
+                $archivedClientCount > 1 ? 's' : '',
+            );
+        }
+        if ($archivedShootingRequestCount > 0) {
+            $transfers[] = sprintf(
+                '%d demande%s de tournage sur client archivé',
+                $archivedShootingRequestCount,
+                $archivedShootingRequestCount > 1 ? 's' : '',
+            );
+        }
+
+        if ($transfers === []) {
+            return 'Utilisateur supprimé.';
+        }
+
+        return sprintf(
+            'Utilisateur supprimé. Rattachements archivés transférés à votre compte : %s.',
+            implode(', ', $transfers),
+        );
     }
 
     /**
@@ -248,8 +303,8 @@ class UserCrudController extends AbstractController
      */
     private function deletionBlockersByUserId(iterable $users): array
     {
-        $clientNamesByCm = $this->clientRepository->findClientNamesGroupedByCommunityManager();
-        $shootingCountsByAssignee = $this->shootingRequestRepository->countGroupedByAssignee();
+        $clientNamesByCm = $this->clientRepository->findActiveClientNamesGroupedByCommunityManager();
+        $shootingCountsByAssignee = $this->shootingRequestRepository->countGroupedByAssigneeForActiveClients();
 
         $blockersByUserId = [];
         foreach ($users as $user) {
@@ -271,6 +326,9 @@ class UserCrudController extends AbstractController
      * Reflète les deux contraintes ON DELETE RESTRICT du schéma :
      * client.community_manager_user_id et shooting_request.assigned_to_id.
      * Les autres liens vers user sont en SET NULL ou CASCADE et ne bloquent pas.
+     *
+     * Seuls les rattachements actifs sont listés : ceux qui portent sur un
+     * client archivé sont transférés automatiquement à la suppression.
      *
      * @param array<int, string[]> $clientNamesByCm
      * @param array<int, int>      $shootingCountsByAssignee

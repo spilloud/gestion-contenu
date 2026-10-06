@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\ShootingRequest;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -62,19 +63,23 @@ class ShootingRequestRepository extends ServiceEntityRepository
     }
 
     /**
-     * Nombre de demandes de tournage par utilisateur assigné.
+     * Nombre de demandes de tournage par assigné, hors clients archivés.
      *
-     * shooting_request.assigned_to_id est NOT NULL + ON DELETE RESTRICT : toute
-     * demande encore assignée empêche la suppression du compte. Comptage côté
-     * PHP (volume faible) pour rester sur du DQL trivial.
+     * ShootingRequest n a pas de drapeau d archivage : une demande est
+     * considérée comme archivée quand son client l est. Une demande sans client
+     * est comptée (rien ne permet de la tenir pour archivée). Seules ces
+     * demandes empêchent la suppression du compte. Comptage côté PHP (volume
+     * faible) pour rester sur du DQL trivial.
      *
      * @return array<int, int> [id utilisateur => nombre de demandes]
      */
-    public function countGroupedByAssignee(): array
+    public function countGroupedByAssigneeForActiveClients(): array
     {
         $rows = $this->createQueryBuilder('s')
             ->select('a.id AS userId')
             ->innerJoin('s.assignedTo', 'a')
+            ->leftJoin('s.client', 'c')
+            ->andWhere('(c.id IS NULL OR c.isArchived = false)')
             ->getQuery()
             ->getScalarResult();
 
@@ -85,5 +90,22 @@ class ShootingRequestRepository extends ServiceEntityRepository
         }
 
         return $counts;
+    }
+
+    /**
+     * Demandes de tournage assignées à cet utilisateur et rattachées à un
+     * client archivé.
+     *
+     * @return ShootingRequest[]
+     */
+    public function findForArchivedClientsByAssignee(User $user): array
+    {
+        return $this->createQueryBuilder('s')
+            ->innerJoin('s.client', 'c')
+            ->andWhere('s.assignedTo = :user')
+            ->andWhere('c.isArchived = true')
+            ->setParameter('user', $user)
+            ->getQuery()
+            ->getResult();
     }
 }

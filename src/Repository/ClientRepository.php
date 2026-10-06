@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Client;
+use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -97,17 +98,18 @@ class ClientRepository extends ServiceEntityRepository
     }
 
     /**
-     * Noms des clients groupés par CM, archivés inclus : la contrainte
-     * client.community_manager_user_id ON DELETE RESTRICT bloque la suppression
-     * du compte même lorsque le client est archivé.
+     * Noms des clients actifs groupés par CM. Seuls ceux-là empêchent la
+     * suppression du compte : les clients archivés sont transférés à l admin
+     * qui supprime, la colonne community_manager_user_id étant NOT NULL.
      *
-     * @return array<int, string[]> [id utilisateur => noms des clients]
+     * @return array<int, string[]> [id utilisateur => noms des clients actifs]
      */
-    public function findClientNamesGroupedByCommunityManager(): array
+    public function findActiveClientNamesGroupedByCommunityManager(): array
     {
         $rows = $this->createQueryBuilder('c')
             ->select('cm.id AS cmId', 'c.name AS name')
             ->innerJoin('c.communityManager', 'cm')
+            ->andWhere('c.isArchived = false')
             ->orderBy('c.name', 'ASC')
             ->getQuery()
             ->getScalarResult();
@@ -118,5 +120,21 @@ class ClientRepository extends ServiceEntityRepository
         }
 
         return $grouped;
+    }
+
+    /**
+     * Clients archivés dont cet utilisateur est la CM.
+     *
+     * @return Client[]
+     */
+    public function findArchivedByCommunityManager(User $user): array
+    {
+        return $this->createQueryBuilder('c')
+            ->andWhere('c.communityManager = :user')
+            ->andWhere('c.isArchived = true')
+            ->setParameter('user', $user)
+            ->orderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

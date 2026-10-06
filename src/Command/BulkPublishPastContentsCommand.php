@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Entity\Content;
+use App\Entity\ContentActionLog;
 use App\Entity\Status;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -21,11 +22,12 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
  *
  * Simulation par défaut ; --apply est nécessaire pour écrire.
  *
- * Le changement passe par l'entité, donc ContentAuditSubscriber journalise
- * chaque contenu exactement comme un passage manuel depuis la fiche. La
- * commande s'authentifie sous le compte --actor pour que le journal porte son
- * nom plutôt qu'aucun auteur ; l'horodatage est celui de l'exécution. Un statut
- * seul ne déclenche aucune synchronisation Asana.
+ * La commande écrit elle-même ses entrées de journal, au nom du compte
+ * --actor et horodatées à l'exécution. On ne peut pas s'appuyer sur
+ * ContentAuditSubscriber : un log persisté pendant preUpdate n'est jamais
+ * inséré, Doctrine vidant ses files d'écriture à la fin du commit qui a
+ * déclenché l'événement. Un changement de statut seul ne déclenche aucune
+ * synchronisation Asana.
  */
 #[AsCommand(
     name: 'app:content:bulk-publish',
@@ -34,6 +36,7 @@ use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
 final class BulkPublishPastContentsCommand extends Command
 {
     private const PUBLISHED_STATUS = 'Publiée';
+    private const JOURNAL_LABEL = 'Changement de statut (manuel)';
     private const FIREWALL = 'main';
     private const BATCH_SIZE = 50;
 
@@ -156,16 +159,26 @@ final class BulkPublishPastContentsCommand extends Command
 
         $done = 0;
         foreach ($contents as $content) {
+            $previousName = $content->getStatus()?->getName() ?? '—';
             $content->setStatus($published);
             $content->setUpdatedAt(new \DateTimeImmutable());
+
+            $log = new ContentActionLog();
+            $log->setContent($content);
+            $log->setActionType(ContentActionLog::TYPE_MANUAL_STATUS);
+            $log->setLabel(self::JOURNAL_LABEL);
+            $log->setDetail(implode("\n", [
+                sprintf('%s → %s', $previousName, self::PUBLISHED_STATUS),
+                'Par : '.($actor->getName() ?? $actorEmail),
+            ]));
+            $log->setUser($actor);
+            $this->entityManager->persist($log);
+
             ++$done;
             if ($done % self::BATCH_SIZE === 0) {
                 $this->entityManager->flush();
             }
         }
-        $this->entityManager->flush();
-        // ContentAuditSubscriber persiste ses journaux pendant preUpdate : un
-        // dernier flush les écrit en base.
         $this->entityManager->flush();
 
         $io->success(sprintf('%d contenus passés en « %s », journalisés au nom de %s.', $done, self::PUBLISHED_STATUS, $actor->getName() ?? $actorEmail));

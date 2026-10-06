@@ -95,4 +95,28 @@ class ClientRepository extends ServiceEntityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Noms des clients groupés par CM, archivés inclus : la contrainte
+     * client.community_manager_user_id ON DELETE RESTRICT bloque la suppression
+     * du compte même lorsque le client est archivé.
+     *
+     * @return array<int, string[]> [id utilisateur => noms des clients]
+     */
+    public function findClientNamesGroupedByCommunityManager(): array
+    {
+        $rows = $this->createQueryBuilder('c')
+            ->select('cm.id AS cmId', 'c.name AS name')
+            ->innerJoin('c.communityManager', 'cm')
+            ->orderBy('c.name', 'ASC')
+            ->getQuery()
+            ->getScalarResult();
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $grouped[(int) $row['cmId']][] = (string) $row['name'];
+        }
+
+        return $grouped;
+    }
 }

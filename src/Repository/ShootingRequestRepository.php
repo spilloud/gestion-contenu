@@ -60,4 +60,30 @@ class ShootingRequestRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Nombre de demandes de tournage par utilisateur assigné.
+     *
+     * shooting_request.assigned_to_id est NOT NULL + ON DELETE RESTRICT : toute
+     * demande encore assignée empêche la suppression du compte. Comptage côté
+     * PHP (volume faible) pour rester sur du DQL trivial.
+     *
+     * @return array<int, int> [id utilisateur => nombre de demandes]
+     */
+    public function countGroupedByAssignee(): array
+    {
+        $rows = $this->createQueryBuilder('s')
+            ->select('a.id AS userId')
+            ->innerJoin('s.assignedTo', 'a')
+            ->getQuery()
+            ->getScalarResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            $userId = (int) $row['userId'];
+            $counts[$userId] = ($counts[$userId] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
 }

@@ -5,6 +5,8 @@ namespace App\Controller\Admin;
 use App\Entity\Client;
 use App\Entity\User;
 use App\Repository\ClientRepository;
+use App\Repository\ShootingRequestRepository;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +21,7 @@ class UserCrudController extends AbstractController
         private readonly EntityManagerInterface $entityManager,
         private readonly UserPasswordHasherInterface $passwordHasher,
         private readonly ClientRepository $clientRepository,
+        private readonly ShootingRequestRepository $shootingRequestRepository,
     ) {
     }
 
@@ -40,6 +43,7 @@ class UserCrudController extends AbstractController
         return $this->render('admin/user/index.html.twig', [
             'osmoseUsers' => $osmoseUsers,
             'clientUsers' => $clientUsers,
+            'deletionBlockers' => $this->deletionBlockersByUserId($users),
         ]);
     }
 
@@ -204,11 +208,100 @@ class UserCrudController extends AbstractController
             return $this->redirectToRoute('app_admin_user_index');
         }
 
-        $this->entityManager->remove($user);
-        $this->entityManager->flush();
+        $blockers = $this->deletionBlockers(
+            $user,
+            $this->clientRepository->findClientNamesGroupedByCommunityManager(),
+            $this->shootingRequestRepository->countGroupedByAssignee(),
+        );
+        if ($blockers !== []) {
+            $this->addFlash('error', sprintf(
+                'Suppression impossible : %s est %s. Réassignez ces éléments à un autre utilisateur, puis réessayez.',
+                $user->getName() ?? 'cet utilisateur',
+                implode(' et ', $blockers),
+            ));
+
+            return $this->redirectToRoute('app_admin_user_index');
+        }
+
+        try {
+            $this->entityManager->remove($user);
+            $this->entityManager->flush();
+        } catch (ForeignKeyConstraintViolationException) {
+            // Filet de sécurité : une contrainte RESTRICT ajoutée plus tard ne doit pas renvoyer une erreur 500.
+            $this->addFlash('error', sprintf(
+                'Suppression impossible : %s est encore rattaché à des données existantes. Retirez-le de ces éléments, puis réessayez.',
+                $user->getName() ?? 'cet utilisateur',
+            ));
+
+            return $this->redirectToRoute('app_admin_user_index');
+        }
+
         $this->addFlash('success', 'Utilisateur supprimé.');
 
         return $this->redirectToRoute('app_admin_user_index');
+    }
+
+    /**
+     * @param iterable<mixed> $users
+     *
+     * @return array<int, string[]> [id utilisateur => raisons de blocage]
+     */
+    private function deletionBlockersByUserId(iterable $users): array
+    {
+        $clientNamesByCm = $this->clientRepository->findClientNamesGroupedByCommunityManager();
+        $shootingCountsByAssignee = $this->shootingRequestRepository->countGroupedByAssignee();
+
+        $blockersByUserId = [];
+        foreach ($users as $user) {
+            if (!$user instanceof User) {
+                continue;
+            }
+            $blockers = $this->deletionBlockers($user, $clientNamesByCm, $shootingCountsByAssignee);
+            if ($blockers !== []) {
+                $blockersByUserId[(int) $user->getId()] = $blockers;
+            }
+        }
+
+        return $blockersByUserId;
+    }
+
+    /**
+     * Raisons empêchant la suppression d'un compte, formulées pour l'admin.
+     *
+     * Reflète les deux contraintes ON DELETE RESTRICT du schéma :
+     * client.community_manager_user_id et shooting_request.assigned_to_id.
+     * Les autres liens vers user sont en SET NULL ou CASCADE et ne bloquent pas.
+     *
+     * @param array<int, string[]> $clientNamesByCm
+     * @param array<int, int>      $shootingCountsByAssignee
+     *
+     * @return string[]
+     */
+    private function deletionBlockers(User $user, array $clientNamesByCm, array $shootingCountsByAssignee): array
+    {
+        $userId = (int) $user->getId();
+        $blockers = [];
+
+        $clientNames = $clientNamesByCm[$userId] ?? [];
+        if ($clientNames !== []) {
+            $blockers[] = sprintf(
+                'CM de %d client%s (%s)',
+                count($clientNames),
+                count($clientNames) > 1 ? 's' : '',
+                implode(', ', $clientNames),
+            );
+        }
+
+        $shootingCount = $shootingCountsByAssignee[$userId] ?? 0;
+        if ($shootingCount > 0) {
+            $blockers[] = sprintf(
+                'responsable de %d demande%s de tournage',
+                $shootingCount,
+                $shootingCount > 1 ? 's' : '',
+            );
+        }
+
+        return $blockers;
     }
 }
 

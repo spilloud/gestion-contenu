@@ -1,5 +1,23 @@
 {% extends 'base.html.twig' %}
 
+{% macro delete_action(u, blockers) %}
+    {% if app.user and app.user.id is same as(u.id) %}
+        <span style="font-size: 0.82rem; color: var(--muted);" title="Impossible de supprimer le compte avec lequel vous êtes connecté.">— (vous)</span>
+    {% elseif blockers is not empty %}
+        {# Contraintes ON DELETE RESTRICT en base : la suppression échouerait. #}
+        <span style="display: inline-flex;" title="Suppression impossible : {{ u.name }} est {{ blockers|join(' et ') }}. Réassignez ces éléments, puis réessayez.">
+            <button type="button" class="btn btn-sm btn-danger" disabled style="opacity: 0.45; cursor: not-allowed;">Supprimer</button>
+        </span>
+    {% else %}
+        <form method="post" action="{{ path('app_admin_user_delete', {id: u.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer cet utilisateur ? Cette action est définitive.');">
+            <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
+            <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
+        </form>
+    {% endif %}
+{% endmacro %}
+
+{% import _self as userActions %}
+
 {% block title %}Utilisateurs{% endblock %}
 
 {% block body %}
@@ -7,6 +25,8 @@
 <p style="color: var(--muted); max-width: 720px; font-size: 0.92rem;">
     Accès : menu latéral <strong>Admin</strong> → <strong>Utilisateurs</strong> (comptes administrateurs uniquement).
     Le bouton <strong>Supprimer</strong> n’apparaît pas sur <em>votre</em> propre ligne (sécurité) : il est visible pour les autres comptes.
+    Un bouton <strong>Supprimer</strong> grisé signale un compte encore rattaché à des clients ou à des demandes
+    de tournage : survolez-le pour voir ce qui bloque, puis réassignez ces éléments avant de supprimer.
 </p>
 <p><a href="{{ path('app_admin_user_new') }}" class="btn">+ Nouveau</a></p>
 
@@ -37,14 +57,7 @@
                 <td style="padding: 0.75rem; vertical-align: middle;">
                     <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
                         <a href="{{ path('app_admin_user_edit', {id: u.id}) }}" class="btn btn-sm">Modifier</a>
-                        {% if app.user and app.user.id is same as(u.id) %}
-                            <span style="font-size: 0.82rem; color: var(--muted);" title="Impossible de supprimer le compte avec lequel vous êtes connecté.">— (vous)</span>
-                        {% else %}
-                            <form method="post" action="{{ path('app_admin_user_delete', {id: u.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer cet utilisateur ? Cette action est définitive.');">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
-                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
-                            </form>
-                        {% endif %}
+                        {{ userActions.delete_action(u, deletionBlockers[u.id] ?? []) }}
                     </div>
                 </td>
             </tr>
@@ -82,14 +95,7 @@
                 <td style="padding: 0.75rem;">
                     <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center;">
                         <a href="{{ path('app_admin_user_edit', {id: u.id}) }}" class="btn btn-sm">Modifier</a>
-                        {% if app.user and app.user.id is same as(u.id) %}
-                            <span style="font-size: 0.82rem; color: var(--muted);">— (vous)</span>
-                        {% else %}
-                            <form method="post" action="{{ path('app_admin_user_delete', {id: u.id}) }}" style="display: inline;" onsubmit="return confirm('Supprimer cet utilisateur ? Cette action est définitive.');">
-                                <input type="hidden" name="_token" value="{{ csrf_token('delete_user_' ~ u.id) }}">
-                                <button type="submit" class="btn btn-sm btn-danger">Supprimer</button>
-                            </form>
-                        {% endif %}
+                        {{ userActions.delete_action(u, deletionBlockers[u.id] ?? []) }}
                     </div>
                 </td>
             </tr>

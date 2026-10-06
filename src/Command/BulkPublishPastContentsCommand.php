@@ -50,7 +50,7 @@ final class BulkPublishPastContentsCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addOption('client', null, InputOption::VALUE_REQUIRED, 'Id du client concerné')
+            ->addOption('client', null, InputOption::VALUE_REQUIRED, 'Id du client ; omis = tous les clients')
             ->addOption('before', null, InputOption::VALUE_REQUIRED, 'Date pivot au format Y-m-d, exclue')
             ->addOption('actor', null, InputOption::VALUE_REQUIRED, 'Email du compte auteur des entrées de journal')
             ->addOption('exclude-status', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Nom exact d un statut à ne pas toucher', [])
@@ -61,9 +61,10 @@ final class BulkPublishPastContentsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
-        $clientId = (int) $input->getOption('client');
-        if ($clientId <= 0) {
-            $io->error('--client est obligatoire et doit être un id positif.');
+        $clientOption = trim((string) $input->getOption('client'));
+        $clientId = $clientOption === '' ? null : (int) $clientOption;
+        if ($clientId !== null && $clientId <= 0) {
+            $io->error('--client doit être un id positif, ou être omis pour traiter tous les clients.');
 
             return Command::INVALID;
         }
@@ -103,13 +104,15 @@ final class BulkPublishPastContentsCommand extends Command
             ->from(Content::class, 'c')
             ->innerJoin('c.client', 'cl')
             ->innerJoin('c.status', 's')
-            ->andWhere('cl.id = :clientId')
             ->andWhere('c.scheduledDate < :before')
             ->andWhere('s.id <> :publishedId')
-            ->setParameter('clientId', $clientId)
             ->setParameter('before', $before)
             ->setParameter('publishedId', $published->getId())
             ->orderBy('c.scheduledDate', 'ASC');
+
+        if ($clientId !== null) {
+            $qb->andWhere('cl.id = :clientId')->setParameter('clientId', $clientId);
+        }
 
         if ($excluded !== []) {
             $qb->andWhere('s.name NOT IN (:excluded)')->setParameter('excluded', $excluded);
@@ -136,13 +139,27 @@ final class BulkPublishPastContentsCommand extends Command
             $rows[] = [$name, $count];
         }
         $io->table(['Statut actuel', 'Contenus'], $rows);
+
+        $perClient = [];
+        foreach ($contents as $content) {
+            $clientName = $content->getClient()?->getName() ?? '—';
+            $perClient[$clientName] = ($perClient[$clientName] ?? 0) + 1;
+        }
+        arsort($perClient);
+        $clientRows = [];
+        foreach ($perClient as $clientName => $count) {
+            $clientRows[] = [$clientName, $count];
+        }
+        $io->table(['Client', 'Contenus'], $clientRows);
+
         $io->writeln(sprintf(
-            'Total : <info>%d</info> contenus — client %d, date < %s, journal au nom de %s.',
+            'Total : <info>%d</info> contenus — %s, date < %s, journal au nom de %s.',
             count($contents),
-            $clientId,
+            $clientId !== null ? 'client '.$clientId : 'tous les clients',
             $before->format('Y-m-d'),
             $actor->getName() ?? $actorEmail,
         ));
+        $io->writeln('<comment>Aucun appel Asana : seuls le statut et le journal sont écrits.</comment>');
         if ($excluded !== []) {
             $io->writeln('Statuts exclus : '.implode(', ', $excluded));
         }

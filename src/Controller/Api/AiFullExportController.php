@@ -120,7 +120,10 @@ class AiFullExportController extends AbstractController
                 'statuses' => array_map(fn (Status $s) => $this->serializeStatus($s), $statuses),
                 'communityManagers' => array_map(fn (User $cm) => $this->serializeUser($cm), $communityManagers),
                 'users' => array_map(fn (User $u) => $this->serializeUser($u), $users),
-                'clients' => array_map(fn (Client $cl) => $this->serializeClient($cl), $clients),
+                // publishingSettings : ajouté uniquement ici (pas dans chaque contenu) — Lucy le retrouve via content.client.id.
+                'clients' => array_map(fn (Client $cl) => $this->serializeClient($cl) + [
+                    'publishingSettings' => \App\Service\PublishingSettings::forClient($cl),
+                ], $clients),
                 'clientPages' => array_map(fn (ClientPage $cp) => $this->serializeClientPage($cp), $clientPages),
             ],
             'contents' => $contentsPayload,

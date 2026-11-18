@@ -1,0 +1,123 @@
+{# Box repliable « Configuration publication » — réglages fixes du client, lus par Lucy pour Metricool. #}
+{% set p = publishing %}
+<details id="configuration-publication" style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1.5rem; color: var(--text);">
+    <summary style="cursor: pointer; font-weight: 700; font-size: 1.05rem;">
+        ⚙ Configuration publication
+        <span style="font-weight: 400; color: var(--muted); font-size: 0.85rem;">
+            — canal Metricool : {{ p.metricool.brand ?: client.name ~ ' (par défaut)' }}
+            · heure {{ p.defaultTime }}
+            {% set actifs = publishingNetworks|filter((label, key) => p.networks[key]) %}
+            {% if actifs is not empty %}· {{ actifs|join(', ') }}{% endif %}
+        </span>
+    </summary>
+
+    <form method="post" action="{{ path('app_client_publishing_settings', {id: client.id}) }}" style="display:grid; gap: 1rem; margin-top: 1rem;">
+        <input type="hidden" name="_token" value="{{ csrf_token('publishing' ~ client.id) }}">
+
+        <fieldset style="border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem;">
+            <legend style="font-weight: 700;">Metricool</legend>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem;">
+                <div>
+                    <label for="ps-brand">Canal Metricool (marque)</label>
+                    <input id="ps-brand" type="text" name="settings[metricool][brand]" value="{{ p.metricool.brand }}" placeholder="{{ client.name }}">
+                    <p style="color: var(--muted); font-size: 0.8rem; margin: 0.2rem 0 0;">Vide = le canal du client. Ex. campagne Thuillard → « UDC Vaud ».</p>
+                </div>
+                <div>
+                    <label for="ps-time">Heure de publication par défaut</label>
+                    <select id="ps-time" name="settings[defaultTime]">
+                        {% for h in metricoolHours %}
+                            <option value="{{ h }}" {{ h == p.defaultTime ? 'selected' : '' }}>{{ h }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 0.8rem;">
+                <span style="font-weight: 600;">Réseaux actifs</span>
+                <div style="display:flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; margin-top: 0.3rem;">
+                    {% for key, label in publishingNetworks %}
+                        <label style="display:flex; align-items:center; gap: 0.35rem; margin:0; font-weight: 400;">
+                            <input type="checkbox" name="settings[networks][{{ key }}]" value="1" {{ p.networks[key] ? 'checked' : '' }}> {{ label }}
+                        </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset style="border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem;">
+            <legend style="font-weight: 700;">Tous les réseaux</legend>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem;">
+                <div>
+                    <label for="ps-footer">Texte ajouté à la fin des légendes</label>
+                    <textarea id="ps-footer" name="settings[common][captionFooter]" rows="3">{{ p.common.captionFooter }}</textarea>
+                </div>
+                <div>
+                    <label for="ps-hashtags">Hashtags par défaut</label>
+                    <textarea id="ps-hashtags" name="settings[common][hashtags]" rows="3" placeholder="#vaud #politique">{{ p.common.hashtags }}</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset style="border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem;">
+            <legend style="font-weight: 700;">Instagram</legend>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem;">
+                <div>
+                    <label for="ps-collab">Collaborateurs à inviter (comptes, séparés par des virgules)</label>
+                    <input id="ps-collab" type="text" name="settings[instagram][collaborators]" value="{{ p.instagram.collaborators|join(', ') }}" placeholder="@compte_de_pierre">
+                    <p style="color: var(--muted); font-size: 0.8rem; margin: 0.2rem 0 0;">5 comptes maximum.</p>
+                </div>
+                <div>
+                    <label for="ps-first-comment">Premier commentaire</label>
+                    <textarea id="ps-first-comment" name="settings[instagram][firstComment]" rows="2">{{ p.instagram.firstComment }}</textarea>
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset style="border: 1px solid var(--card-border); border-radius: 8px; padding: 0.8rem;">
+            <legend style="font-weight: 700;">YouTube</legend>
+            <p style="color: var(--muted); font-size: 0.8rem; margin: 0 0 0.5rem;">Variables : <code>{titre}</code> <code>{client}</code> <code>{legende}</code> <code>{date}</code></p>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.8rem;">
+                <div>
+                    <label for="ps-yt-title">Modèle de titre</label>
+                    <input id="ps-yt-title" type="text" name="settings[youtube][titleTemplate]" value="{{ p.youtube.titleTemplate }}">
+                </div>
+                <div>
+                    <label for="ps-yt-tags">Tags (séparés par des virgules)</label>
+                    <input id="ps-yt-tags" type="text" name="settings[youtube][tags]" value="{{ p.youtube.tags }}">
+                </div>
+                <div>
+                    <label for="ps-yt-playlist">Playlist</label>
+                    <input id="ps-yt-playlist" type="text" name="settings[youtube][playlist]" value="{{ p.youtube.playlist }}">
+                </div>
+                <div>
+                    <label for="ps-yt-privacy">Visibilité</label>
+                    <select id="ps-yt-privacy" name="settings[youtube][privacy]">
+                        {% for key, label in youtubePrivacy %}
+                            <option value="{{ key }}" {{ key == p.youtube.privacy ? 'selected' : '' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 0.8rem;">
+                <label for="ps-yt-desc">Modèle de description</label>
+                <textarea id="ps-yt-desc" name="settings[youtube][descriptionTemplate]" rows="3">{{ p.youtube.descriptionTemplate }}</textarea>
+            </div>
+            <label style="display:flex; align-items:center; gap: 0.35rem; margin: 0.6rem 0 0; font-weight: 400;">
+                <input type="checkbox" name="settings[youtube][madeForKids]" value="1" {{ p.youtube.madeForKids ? 'checked' : '' }}> Conçue pour les enfants
+            </label>
+        </fieldset>
+
+        <div>
+            <label for="ps-notes">Autres règles fixes (texte libre pour Lucy)</label>
+            <textarea id="ps-notes" name="settings[notes]" rows="3" placeholder="Ex. toujours taguer @udcvaud ; pas de publication le dimanche">{{ p.notes }}</textarea>
+        </div>
+
+        <p style="margin:0;"><button type="submit" class="btn">Enregistrer la configuration</button></p>
+    </form>
+</details>
+<script>
+// Rouvre la box après enregistrement (ancre #configuration-publication).
+if (location.hash === '#configuration-publication') {
+    const box = document.getElementById('configuration-publication');
+    if (box) box.open = true;
+}
+</script>

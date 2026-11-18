@@ -35,6 +35,15 @@ class Client
     private ?User $editor = null;
 
     /**
+     * Configuration de publication (canal Metricool, réseaux, collaborateurs, modèles YouTube…).
+     * Voir App\Service\PublishingSettings.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $publishingSettings = null;
+
+    /**
      * @var Collection<int, Content>
      */
     #[ORM\OneToMany(targetEntity: Content::class, mappedBy: 'client', orphanRemoval: true)]
@@ -60,6 +69,24 @@ class Client
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getPublishingSettings(): ?array
+    {
+        return $this->publishingSettings;
+    }
+
+    /**
+     * @param array<string, mixed>|null $publishingSettings
+     */
+    public function setPublishingSettings(?array $publishingSettings): static
+    {
+        $this->publishingSettings = $publishingSettings;
+
+        return $this;
     }
 
     public function getName(): ?string

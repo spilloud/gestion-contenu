@@ -7,6 +7,7 @@ use App\Entity\ClientPage;
 use App\Entity\Content;
 use App\Entity\ContentActionLog;
 use App\Service\ContentWorkflowService;
+use App\Service\PublishingSettings;
 use App\Form\ClientPageType;
 use App\Repository\CalendarEventRepository;
 use App\Repository\CampaignRepository;
@@ -36,14 +37,6 @@ class ClientController extends AbstractController
 
     /** Statuts « prêts » listés dans la zone Metricool (vidéo / post). */
     private const METRICOOL_READY_STATUSES = ['Prête à programmer', 'Prêt à publier'];
-
-    /** Heures proposées dans le menu (08:00 par défaut). */
-    private const METRICOOL_HOURS = [
-        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-        '12:00', '12:30', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00',
-    ];
-
-    private const METRICOOL_DEFAULT_HOUR = '08:00';
 
     /**
      * Raison pour laquelle un contenu prêt ne peut pas partir dans Metricool (null = envoyable).
@@ -81,12 +74,13 @@ class ClientController extends AbstractController
             ->getQuery()
             ->getResult();
 
+        $defaultTime = PublishingSettings::defaultTimeFor($client);
         $rows = [];
         foreach ($contents as $content) {
             $rows[] = [
                 'content' => $content,
                 'isVideo' => $this->contentFormatHelper->isVideoContent($content),
-                'time' => $content->getScheduledTime()?->format('H:i') ?? self::METRICOOL_DEFAULT_HOUR,
+                'time' => $content->getScheduledTime()?->format('H:i') ?? $defaultTime,
                 'reason' => $this->metricoolBlockReason($content),
             ];
         }
@@ -133,9 +127,9 @@ class ClientController extends AbstractController
                 continue;
             }
 
-            $time = (string) ($times[$content->getId()] ?? self::METRICOOL_DEFAULT_HOUR);
-            if (!in_array($time, self::METRICOOL_HOURS, true)) {
-                $time = self::METRICOOL_DEFAULT_HOUR;
+            $time = (string) ($times[$content->getId()] ?? '');
+            if (!in_array($time, PublishingSettings::HOURS, true)) {
+                $time = PublishingSettings::defaultTimeFor($client);
             }
 
             $content->setScheduledTime(new \DateTimeImmutable('1970-01-01 '.$time.':00'));
@@ -256,7 +250,10 @@ class ClientController extends AbstractController
 
         return $this->render('client/show.html.twig', [
             'metricoolRows' => $this->buildMetricoolRows($client),
-            'metricoolHours' => self::METRICOOL_HOURS,
+            'metricoolHours' => PublishingSettings::HOURS,
+            'publishing' => PublishingSettings::forClient($client),
+            'publishingNetworks' => PublishingSettings::NETWORKS,
+            'youtubePrivacy' => PublishingSettings::YOUTUBE_PRIVACY,
             'client' => $client,
             'clientPage' => $clientPage,
             'contents' => $contents,
@@ -272,6 +269,30 @@ class ClientController extends AbstractController
             'clientCampaign' => $this->campaignRepository->findPreferredForClient($client),
             'clientCampaignCurrent' => $this->campaignRepository->findCurrentForClient($client),
         ]);
+    }
+
+    /**
+     * Enregistre la box « Configuration publication » (admin / CM). Lue par Lucy via l'export.
+     */
+    #[Route('/{id}/configuration-publication', name: 'app_client_publishing_settings', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function savePublishingSettings(Client $client, Request $request): Response
+    {
+        if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_CM')) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $redirect = $this->generateUrl('app_client_show', ['id' => $client->getId()]).'#configuration-publication';
+        if (!$this->isCsrfTokenValid('publishing'.$client->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide. Rechargez la page.');
+
+            return $this->redirect($redirect);
+        }
+
+        $client->setPublishingSettings(PublishingSettings::normalize($request->request->all('settings')));
+        $this->entityManager->flush();
+        $this->addFlash('success', 'Configuration de publication enregistrée.');
+
+        return $this->redirect($redirect);
     }
 
     #[Route('/{id}/todo/toggle/{todoId}', name: 'app_client_todo_toggle', requirements: ['id' => '\d+', 'todoId' => '\d+'], methods: ['POST'])]

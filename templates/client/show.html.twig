@@ -241,6 +241,7 @@
 {% set todayDate = 'now'|date('Y-m-d') %}
 
 {% if is_granted('ROLE_ADMIN') or is_granted('ROLE_CM') %}
+    {% include 'client/_publishing_settings.html.twig' %}
     {% include 'client/_metricool.html.twig' %}
 {% endif %}
 

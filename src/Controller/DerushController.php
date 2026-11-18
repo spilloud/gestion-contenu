@@ -12,6 +12,7 @@ use App\Repository\StatusRepository;
 use App\Service\ContentWorkflowService;
 use App\Service\AsanaBidirectionalSyncService;
 use App\Service\DerushCmAsanaTrigger;
+use App\Service\SubtitlesReviewAsanaTrigger;
 use App\Service\VideoAssigneeResolver;
 use App\Service\VideoMontageAsanaTrigger;
 use App\Service\VideoMontageDueOnResolver;
@@ -37,6 +38,7 @@ class DerushController extends AbstractController
         private readonly VideoMontageDueOnResolver $montageDueOnResolver,
         private readonly DerushCmAsanaTrigger $derushCmAsanaTrigger,
         private readonly AsanaBidirectionalSyncService $asanaBidirectionalSync,
+        private readonly SubtitlesReviewAsanaTrigger $subtitlesReviewAsanaTrigger,
     ) {
     }
 
@@ -63,9 +65,14 @@ class DerushController extends AbstractController
             }
 
             $rows = $request->request->all('videos');
-            $plannedIds = array_values(array_filter(array_map('intval', (array) $request->request->all('planned_ids'))));
-            $plannedMontageDue = $request->request->all('planned_montage_due');
+            // « Ces vidéos sont déjà montées » : pas de montage à planifier ni de tâche Asana monteur.
+            $alreadyEdited = $request->request->getBoolean('already_edited');
+            $plannedIds = $alreadyEdited
+                ? []
+                : array_values(array_filter(array_map('intval', (array) $request->request->all('planned_ids'))));
+            $plannedMontageDue = $alreadyEdited ? [] : $request->request->all('planned_montage_due');
             $globalRushesUrl = trim($request->request->getString('rushes_url_global')) ?: null;
+            $skippedNoDate = 0;
             $created = 0;
             $plannedMoved = 0;
             $plannedDatesUpdated = 0;
@@ -131,6 +138,41 @@ class DerushController extends AbstractController
                     continue;
                 }
 
+                $hasSubtitles = ($row['has_subtitles'] ?? '') === '1';
+                $rowDate = isset($row['date']) ? (string) $row['date'] : null;
+
+                if ($alreadyEdited) {
+                    // La colonne de date = date de publication (obligatoire, pas de J+14 automatique).
+                    $publication = $this->montageDueOnResolver->parseOptional($rowDate);
+                    if ($publication === null) {
+                        ++$skippedNoDate;
+                        continue;
+                    }
+
+                    $content = new Content();
+                    $content
+                        ->setTitle($title)
+                        ->setClient($client)
+                        ->setScheduledDate(\DateTime::createFromImmutable($publication))
+                        ->setFormat($videoFormat)
+                        ->setStatus($this->findOrCreateVideoStatus(
+                            $hasSubtitles ? 'Sous-titres à valider' : 'À valider (CM)',
+                            Status::COLOR_YELLOW,
+                            $hasSubtitles ? 170 : 180,
+                        ))
+                        ->setVideoHasSubtitles($hasSubtitles)
+                        ->setVideoEditUrl($globalRushesUrl);
+
+                    $this->videoAssigneeResolver->applyClientTeamDefaultsForForm($content);
+
+                    $this->entityManager->persist($content);
+                    $newContents[] = $content;
+                    $derushedContents[] = $content;
+                    // Volontairement absent de $touchedContents : aucune tâche Asana de montage.
+                    $created++;
+                    continue;
+                }
+
                 // Planification : on ne demande pas la date au dérush.
                 // On met une date par défaut à +14 jours si l'utilisateur ne planifie pas encore.
                 $scheduledDate = (new \DateTimeImmutable('today'))->modify('+14 days');
@@ -142,10 +184,10 @@ class DerushController extends AbstractController
                     ->setScheduledDate($scheduledDate)
                     ->setFormat($videoFormat)
                     ->setStatus($statusMontageAFaire)
-                    ->setVideoHasSubtitles(($row['has_subtitles'] ?? '') === '1')
+                    ->setVideoHasSubtitles($hasSubtitles)
                     ->setVideoRushesUrl($globalRushesUrl)
                     ->setAsanaMontageDueOn(
-                        $this->montageDueOnResolver->parseOptional(isset($row['montage_due_on']) ? (string) $row['montage_due_on'] : null)
+                        $this->montageDueOnResolver->parseOptional($rowDate ?? (isset($row['montage_due_on']) ? (string) $row['montage_due_on'] : null))
                             ?? $this->montageDueOnResolver->defaultFromPublication($scheduledDate),
                     );
 
@@ -160,7 +202,7 @@ class DerushController extends AbstractController
 
             $touchedList = array_values($touchedContents);
 
-            if ($touchedList !== []) {
+            if ($touchedList !== [] || $newContents !== []) {
                 $this->entityManager->flush();
 
                 foreach ($newContents as $content) {
@@ -170,7 +212,14 @@ class DerushController extends AbstractController
                     $this->entityManager->flush();
                 }
 
-                $asanaCreated = $this->montageAsanaTrigger->ensureBatchForDerush($touchedList);
+                if ($alreadyEdited) {
+                    // Même effet que l'arrivée normale en « Sous-titres à valider » : tâche Asana relecture pour la CM.
+                    foreach ($newContents as $content) {
+                        $this->subtitlesReviewAsanaTrigger->ensureWhenStatusIsSubtitlesReview($content);
+                    }
+                }
+
+                $asanaCreated = $touchedList !== [] ? $this->montageAsanaTrigger->ensureBatchForDerush($touchedList) : 0;
                 if ($asanaCreated > 0 || $plannedDatesUpdated > 0) {
                     $this->entityManager->flush();
                 }
@@ -181,6 +230,7 @@ class DerushController extends AbstractController
                         $client,
                         $derushedContents,
                         $globalRushesUrl,
+                        $alreadyEdited,
                     );
                     if ($cmTaskGid !== null) {
                         $this->asanaBidirectionalSync->registerDerushFollowUpTask($client, $derushedContents, $cmTaskGid);
@@ -197,7 +247,9 @@ class DerushController extends AbstractController
                     $messages[] = sprintf('%d vidéo(s) planifiée(s) passée(s) en montage.', $plannedMoved);
                 }
                 if ($created > 0) {
-                    $messages[] = sprintf('%d vidéo(s) créée(s).', $created);
+                    $messages[] = $alreadyEdited
+                        ? sprintf('%d vidéo(s) déjà montée(s) ajoutée(s) au flux (sans tâche de montage).', $created)
+                        : sprintf('%d vidéo(s) créée(s).', $created);
                 }
                 if ($messages !== []) {
                     $this->addFlash('success', implode(' ', $messages));
@@ -212,7 +264,11 @@ class DerushController extends AbstractController
                     && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
                     $this->addFlash('warning', 'Tâche Asana suivi CM non créée (projet client ou CM Asana manquant).');
                 }
-                if ($asanaCreated === 0
+                if ($skippedNoDate > 0) {
+                    $this->addFlash('warning', sprintf('%d ligne(s) ignorée(s) : date de publication manquante.', $skippedNoDate));
+                }
+                if (!$alreadyEdited
+                    && $asanaCreated === 0
                     && getenv('ASANA_ACCESS_TOKEN') !== false
                     && trim((string) getenv('ASANA_ACCESS_TOKEN')) !== '') {
                     $stillMissing = false;
@@ -229,7 +285,9 @@ class DerushController extends AbstractController
                 return $this->redirectToRoute('app_calendar', ['formats' => [$videoFormat->getId()]]);
             }
 
-            $this->addFlash('error', 'Aucune vidéo sélectionnée ou créée (vérifie le client, les cases, ou les titres).');
+            $this->addFlash('error', $skippedNoDate > 0
+                ? 'Aucune vidéo créée : la date de publication est obligatoire pour les vidéos déjà montées.'
+                : 'Aucune vidéo sélectionnée ou créée (vérifie le client, les cases, ou les titres).');
         }
 
         $clients = $this->clientRepository->findAllOrderedByClientName();
@@ -282,26 +340,6 @@ class DerushController extends AbstractController
         $this->entityManager->flush();
 
         return $format;
-    }
-
-    private function findInitialVideoStatus(): Status
-    {
-        foreach ($this->statusRepository->findAllOrdered() as $status) {
-            if ($status->getName() === 'Brouillon (Dérush)') {
-                return $status;
-            }
-        }
-
-        // fallback: create if missing (safe for fresh DBs)
-        $status = new Status();
-        $status->setName('Brouillon (Dérush)');
-        $status->setColor(Status::COLOR_GRAY);
-        $status->setSortOrder(100);
-        $status->setWorkflow(Status::WORKFLOW_VIDEO);
-        $this->entityManager->persist($status);
-        $this->entityManager->flush();
-
-        return $status;
     }
 
     private function findOrCreateVideoStatus(string $name, string $color, int $sortOrder): Status

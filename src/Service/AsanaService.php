@@ -1206,6 +1206,7 @@ class AsanaService
         array $videoUrls,
         ?string $assigneeGid,
         ?string $fallbackAssigneeGid,
+        bool $alreadyEdited = false,
     ): ?string {
         if (!$this->isEnabled() || $videos === []) {
             return null;
@@ -1230,7 +1231,7 @@ class AsanaService
         $count = count($videos);
 
         $name = sprintf(
-            'Suivi dérush — %s — %d vidéo%s — %s',
+            $alreadyEdited ? 'Vidéos montées ajoutées — %s — %d vidéo%s — %s' : 'Suivi dérush — %s — %d vidéo%s — %s',
             $clientName,
             $count,
             $count > 1 ? 's' : '',
@@ -1256,16 +1257,27 @@ class AsanaService
             $subtitles = ($video->getVideoHasSubtitles() ?? false) ? 'Oui' : 'Non';
             $ficheUrl = $videoUrls[$video->getId() ?? 0] ?? null;
             $rushesUrl = trim((string) ($video->getVideoRushesUrl() ?? ''));
+            $editUrl = trim((string) ($video->getVideoEditUrl() ?? ''));
 
-            $block = [
-                '• '.$title,
-                '  Publication : '.$pub,
-                '  Montage souhaité : '.$montage,
-                '  Monteur : '.$editor,
-                '  Sous-titres : '.$subtitles,
-            ];
+            $block = $alreadyEdited
+                ? [
+                    '• '.$title,
+                    '  Publication : '.$pub,
+                    '  Sous-titres : '.$subtitles,
+                    '  Statut : '.($video->getStatus()?->getName() ?? '—'),
+                ]
+                : [
+                    '• '.$title,
+                    '  Publication : '.$pub,
+                    '  Montage souhaité : '.$montage,
+                    '  Monteur : '.$editor,
+                    '  Sous-titres : '.$subtitles,
+                ];
             if ($rushesUrl !== '') {
                 $block[] = '  Rushs : '.$rushesUrl;
+            }
+            if ($alreadyEdited && $editUrl !== '') {
+                $block[] = '  Montage : '.$editUrl;
             }
             if ($ficheUrl !== null && $ficheUrl !== '') {
                 $block[] = '  Fiche : '.$ficheUrl;
@@ -1280,16 +1292,22 @@ class AsanaService
         $cmName = $client->getCommunityManager()?->getName() ?? '—';
 
         $notes = implode("\n", array_filter([
-            'Contrôle / suivi du dérush (Gestion des contenus).',
-            'Vérifier que les rushs, titres, dates et consignes sont corrects avant le montage.',
+            $alreadyEdited
+                ? 'Vidéos déjà montées ajoutées au flux (Gestion des contenus) — pas de montage à faire.'
+                : 'Contrôle / suivi du dérush (Gestion des contenus).',
+            $alreadyEdited
+                ? 'Vérifier titres, dates de publication et sous-titres.'
+                : 'Vérifier que les rushs, titres, dates et consignes sont corrects avant le montage.',
             '',
             'Client : '.$clientName,
             'Community manager : '.$cmName,
             'Date du dérush : '.$today->format('d/m/Y'),
             'Échéance suivi : '.$dueLabelFr.' (J+1)',
-            $globalRushesUrl !== null && trim($globalRushesUrl) !== '' ? 'Lien rushs commun : '.trim($globalRushesUrl) : null,
+            $globalRushesUrl !== null && trim($globalRushesUrl) !== ''
+                ? ($alreadyEdited ? 'Lien montages commun : ' : 'Lien rushs commun : ').trim($globalRushesUrl)
+                : null,
             '',
-            sprintf('Vidéos passées en montage (%d) :', $count),
+            sprintf($alreadyEdited ? 'Vidéos ajoutées (%d) :' : 'Vidéos passées en montage (%d) :', $count),
             $videoLines !== [] ? implode("\n\n", $videoLines) : '—',
         ]));
 

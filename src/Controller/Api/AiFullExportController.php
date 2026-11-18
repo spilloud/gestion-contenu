@@ -256,6 +256,8 @@ class AiFullExportController extends AbstractController
             'id' => $c->getId(),
             'title' => $c->getTitle(),
             'scheduledDate' => $scheduled !== null ? $scheduled->format('Y-m-d') : null,
+            'scheduledTime' => $c->getScheduledTime()?->format('H:i'),
+            'metricoolApprovedAt' => $c->getMetricoolApprovedAt()?->format(\DateTimeInterface::ATOM),
             'notes' => $c->getNotes(),
             'client' => $c->getClient() !== null ? $this->serializeClient($c->getClient()) : null,
             'format' => $c->getFormat() !== null ? $this->serializeFormat($c->getFormat()) : null,

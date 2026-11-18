@@ -85,11 +85,11 @@ class ReportsController extends AbstractController
         // Elles sont basées sur les statuts actuels de l'app.
         $stages = [
             // Montage = "fait" dès qu'on n'est plus en dérush/montage à faire.
-            ['key' => 'montage', 'label' => 'Montage', 'doneIfNotIn' => ['Brouillon (Dérush)', 'Montage à faire']],
+            ['key' => 'montage', 'label' => 'Montage', 'doneIfNotIn' => ['Tournage à prévoir', 'Montage à faire']],
             // Sous-titres = "fait" si on n'est pas dans l'étape sous-titres (ou avant). On reste simple.
-            ['key' => 'subtitles', 'label' => 'Sous-titres', 'doneIfNotIn' => ['Brouillon (Dérush)', 'Montage à faire', 'Sous-titres à valider']],
+            ['key' => 'subtitles', 'label' => 'Sous-titres', 'doneIfNotIn' => ['Tournage à prévoir', 'Montage à faire', 'Sous-titres à valider']],
             // Terminé = statut final (on couvre plusieurs libellés possibles).
-            ['key' => 'done', 'label' => 'Terminé', 'doneIfIn' => ['Terminé', 'Publié', 'Livré', 'Validé', 'OK']],
+            ['key' => 'done', 'label' => 'Terminé', 'doneIfIn' => ['Publiée', 'Programmée']],
         ];
 
         return $this->render('reports/editing_status.html.twig', [

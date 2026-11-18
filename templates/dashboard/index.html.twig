@@ -269,7 +269,7 @@
 
     {% if dashboardProfile.showVideoProd %}
     <section class="panel">
-        <h2>Montages à contrôler <span class="pill-count">{{ montagesAControler|length }}</span></h2>
+        <h2>À valider (CM) <span class="pill-count">{{ montagesAControler|length }}</span></h2>
         {% if montagesAControler is empty %}
             <p class="priority-empty">Rien à contrôler pour le moment.</p>
         {% else %}

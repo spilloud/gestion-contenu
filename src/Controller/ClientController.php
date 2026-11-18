@@ -4,6 +4,9 @@ namespace App\Controller;
 
 use App\Entity\Client;
 use App\Entity\ClientPage;
+use App\Entity\Content;
+use App\Entity\ContentActionLog;
+use App\Service\ContentWorkflowService;
 use App\Form\ClientPageType;
 use App\Repository\CalendarEventRepository;
 use App\Repository\CampaignRepository;
@@ -26,7 +29,139 @@ class ClientController extends AbstractController
         private readonly StatusRepository $statusRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly YearPlanningGridBuilder $yearPlanningGridBuilder,
+        private readonly ContentWorkflowService $contentWorkflowService,
+        private readonly \App\Service\ContentFormatHelper $contentFormatHelper,
     ) {
+    }
+
+    /** Statuts « prêts » listés dans la zone Metricool (vidéo / post). */
+    private const METRICOOL_READY_STATUSES = ['Prête à programmer', 'Prêt à publier'];
+
+    /** Heures proposées dans le menu (08:00 par défaut). */
+    private const METRICOOL_HOURS = [
+        '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+        '12:00', '12:30', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00',
+    ];
+
+    private const METRICOOL_DEFAULT_HOUR = '08:00';
+
+    /**
+     * Raison pour laquelle un contenu prêt ne peut pas partir dans Metricool (null = envoyable).
+     */
+    private function metricoolBlockReason(Content $content): ?string
+    {
+        $missing = array_filter([
+            trim((string) $content->getVideoFinalUrl()) === '' && trim((string) $content->getVideoThumbnailUrl()) === '' ? 'pas de visuel' : null,
+            trim((string) $content->getVideoCaption()) === '' ? 'pas de légende' : null,
+            $content->getScheduledDate() !== null && $content->getScheduledDate()->format('Y-m-d') < date('Y-m-d') ? 'date de publication passée' : null,
+        ]);
+
+        return $missing === [] ? null : ucfirst(implode(', ', $missing));
+    }
+
+    /**
+     * Tous les contenus prêts du client, pas encore envoyés dans Metricool (pas de filtre par semaine).
+     *
+     * @return list<array{content: Content, isVideo: bool, time: string, reason: ?string}>
+     */
+    private function buildMetricoolRows(Client $client): array
+    {
+        /** @var list<Content> $contents */
+        $contents = $this->contentRepository->createQueryBuilder('c')
+            ->leftJoin('c.status', 's')->addSelect('s')
+            ->leftJoin('c.format', 'f')->addSelect('f')
+            ->andWhere('c.client = :client')
+            ->andWhere('s.name IN (:ready)')
+            ->andWhere('c.metricoolApprovedAt IS NULL')
+            ->setParameter('client', $client)
+            ->setParameter('ready', self::METRICOOL_READY_STATUSES)
+            ->orderBy('c.scheduledDate', 'ASC')
+            ->addOrderBy('c.scheduledTime', 'ASC')
+            ->addOrderBy('c.id', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        $rows = [];
+        foreach ($contents as $content) {
+            $rows[] = [
+                'content' => $content,
+                'isVideo' => $this->contentFormatHelper->isVideoContent($content),
+                'time' => $content->getScheduledTime()?->format('H:i') ?? self::METRICOOL_DEFAULT_HOUR,
+                'reason' => $this->metricoolBlockReason($content),
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * « Envoyer dans Metricool » : enregistre l'heure et la validation CM. Rien d'autre :
+     * c'est Lucy qui lit metricoolApprovedAt dans l'export et pousse dans Metricool.
+     */
+    #[Route('/{id}/metricool', name: 'app_client_metricool_approve', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function approveForMetricool(Client $client, Request $request): Response
+    {
+        if (!$this->isGranted('ROLE_ADMIN') && !$this->isGranted('ROLE_CM')) {
+            throw $this->createAccessDeniedException();
+        }
+
+        $redirect = $this->generateUrl('app_client_show', ['id' => $client->getId()]).'#metricool';
+
+        if (!$this->isCsrfTokenValid('metricool'.$client->getId(), $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide. Rechargez la page.');
+
+            return $this->redirect($redirect);
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $request->request->all('ids')))));
+        $times = $request->request->all('times');
+        if ($ids === []) {
+            $this->addFlash('error', 'Aucun contenu coché.');
+
+            return $this->redirect($redirect);
+        }
+
+        $now = new \DateTimeImmutable();
+        $sent = 0;
+        $refused = 0;
+        foreach ($this->contentRepository->findBy(['id' => $ids, 'client' => $client]) as $content) {
+            $statusName = $content->getStatus()?->getName();
+            if (!in_array($statusName, self::METRICOOL_READY_STATUSES, true)
+                || $content->getMetricoolApprovedAt() !== null
+                || $this->metricoolBlockReason($content) !== null) {
+                ++$refused;
+                continue;
+            }
+
+            $time = (string) ($times[$content->getId()] ?? self::METRICOOL_DEFAULT_HOUR);
+            if (!in_array($time, self::METRICOOL_HOURS, true)) {
+                $time = self::METRICOOL_DEFAULT_HOUR;
+            }
+
+            $content->setScheduledTime(new \DateTimeImmutable('1970-01-01 '.$time.':00'));
+            $content->setMetricoolApprovedAt($now);
+            $content->setUpdatedAt($now);
+
+            $date = $content->getScheduledDate()?->format('d/m/Y') ?? '—';
+            $this->contentWorkflowService->logFieldChange(
+                $content,
+                ContentActionLog::TYPE_METRICOOL_APPROVED,
+                'Envoi Metricool demandé',
+                sprintf("Publication : %s à %s\nPar : %s", $date, $time, $this->getUser()?->getUserIdentifier() ?? '—'),
+                false,
+            );
+            ++$sent;
+        }
+        $this->entityManager->flush();
+
+        if ($sent > 0) {
+            $this->addFlash('success', sprintf('%d contenu(s) envoyé(s) à Lucy pour Metricool.', $sent));
+        }
+        if ($refused > 0) {
+            $this->addFlash('warning', sprintf('%d contenu(s) ignoré(s) (plus prêt, déjà envoyé, sans visuel / légende ou date passée).', $refused));
+        }
+
+        return $this->redirect($redirect);
     }
 
     #[Route('/{id}/planning/{year}', name: 'app_client_year_planning', requirements: ['id' => '\d+', 'year' => '\d{4}'], methods: ['GET'])]
@@ -120,6 +255,8 @@ class ClientController extends AbstractController
         );
 
         return $this->render('client/show.html.twig', [
+            'metricoolRows' => $this->buildMetricoolRows($client),
+            'metricoolHours' => self::METRICOOL_HOURS,
             'client' => $client,
             'clientPage' => $clientPage,
             'contents' => $contents,

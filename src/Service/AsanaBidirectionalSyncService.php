@@ -21,8 +21,6 @@ final class AsanaBidirectionalSyncService
     /** Statuts vidéo où la complétion Asana montage doit avancer le workflow. */
     private const MONTAGE_ACTIVE_STATUSES = [
         'Montage à faire',
-        'Montage en cours',
-        'Retouches (Monteur)',
     ];
 
     /** Statuts post où la complétion Asana « Création post » avance le workflow. */
@@ -355,7 +353,7 @@ final class AsanaBidirectionalSyncService
                     $content,
                     'Montage terminé (Asana)',
                     $this->asanaDetail(
-                        'Tâche Asana cochée — statut avancé automatiquement vers « À valider (Prod) ».',
+                        sprintf('Tâche Asana cochée — statut avancé automatiquement vers « %s ».', $content->getStatus()?->getName() ?? '—'),
                         $actor,
                     ),
                 );

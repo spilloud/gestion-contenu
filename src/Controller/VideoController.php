@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Entity\Content;
 use App\Entity\Format;
+use App\Entity\Status;
+use App\Service\ContentWorkflowService;
 use App\Form\VideoContentType;
 use App\Repository\ClientRepository;
 use App\Repository\ContentRepository;
@@ -90,6 +92,63 @@ class VideoController extends AbstractController
             'sort' => $sort,
             'dir' => strtolower($dir),
         ]);
+    }
+
+    /**
+     * Changement de statut en lot depuis la liste des vidéos.
+     * Chaque contenu passe par applyManualStatusChange (journal + effets habituels).
+     */
+    #[Route('/statut-en-lot', name: 'app_videos_bulk_status', methods: ['POST'])]
+    public function bulkStatus(Request $request, ContentWorkflowService $contentWorkflowService): Response
+    {
+        $returnTo = $this->normalizeReturnTo($request->request->getString('_return_to'), $request)
+            ?? $this->generateUrl('app_videos_index');
+
+        if (!$this->isCsrfTokenValid('videos_bulk_status', $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Jeton de sécurité invalide. Rechargez la page.');
+
+            return $this->redirect($returnTo);
+        }
+
+        $status = $this->statusRepository->find($request->request->getInt('status_id'));
+        $allowed = array_map(
+            static fn (Status $s): ?int => $s->getId(),
+            $this->statusRepository->findSelectableForWorkflow(Status::WORKFLOW_VIDEO),
+        );
+        if (!$status instanceof Status || !in_array($status->getId(), $allowed, true)) {
+            $this->addFlash('error', 'Choisis un statut dans la liste.');
+
+            return $this->redirect($returnTo);
+        }
+
+        $ids = array_values(array_unique(array_filter(array_map('intval', $request->request->all('ids')))));
+        if ($ids === []) {
+            $this->addFlash('error', 'Aucune vidéo sélectionnée.');
+
+            return $this->redirect($returnTo);
+        }
+
+        $changed = 0;
+        $unchanged = 0;
+        foreach ($this->contentRepository->findBy(['id' => $ids]) as $content) {
+            if (!$this->contentFormatHelper->isVideoContent($content)) {
+                continue;
+            }
+            if ($content->getStatus()?->getId() === $status->getId()) {
+                ++$unchanged;
+                continue;
+            }
+            $contentWorkflowService->applyManualStatusChange($content, $status, 'liste vidéos (lot)');
+            ++$changed;
+        }
+
+        $message = sprintf('%d vidéo(s) passée(s) en « %s ».', $changed, $status->getName());
+        if ($unchanged > 0) {
+            $message .= sprintf(' %d déjà à ce statut.', $unchanged);
+        }
+        $this->addFlash('success', $message);
+
+        return $this->redirect($returnTo);
     }
 
     /**

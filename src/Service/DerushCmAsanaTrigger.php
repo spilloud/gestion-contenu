@@ -21,7 +21,7 @@ final class DerushCmAsanaTrigger
     /**
      * @param list<Content> $derushedVideos Vidéos passées en montage lors de cette session dérush.
      */
-    public function createFollowUpTask(Client $client, array $derushedVideos, ?string $globalRushesUrl): ?string
+    public function createFollowUpTask(Client $client, array $derushedVideos, ?string $globalRushesUrl, bool $alreadyEdited = false): ?string
     {
         if ($derushedVideos === [] || !$this->asanaService->isEnabled()) {
             return null;
@@ -49,6 +49,7 @@ final class DerushCmAsanaTrigger
             $videoUrls,
             $this->assigneeResolver->asanaGidForCommunityManager($client),
             $fallback,
+            $alreadyEdited,
         );
     }
 }

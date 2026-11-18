@@ -52,10 +52,14 @@
     </div>
 </form>
 
+<form method="post" action="{{ path('app_videos_bulk_status') }}" id="bulk-status-form">
+<input type="hidden" name="_token" value="{{ csrf_token('videos_bulk_status') }}">
+<input type="hidden" name="_return_to" value="{{ app.request.requestUri }}">
 <div style="overflow-x:auto; border: 1px solid var(--card-border); border-radius: 12px; background: var(--card-bg);">
     <table class="list-sort-table" style="width:100%; min-width: 1100px; border-collapse: collapse;">
         <thead>
             <tr style="background: rgba(148, 163, 184, 0.12);">
+                <th style="padding: 0.6rem; width: 1%;"><input type="checkbox" id="bulk-check-all" title="Tout cocher" aria-label="Tout cocher"></th>
                 <th style="text-align:left; padding: 0.6rem;">{{ list_sort.sort_link('app_videos_index', 'date', 'Date', sort, dir) }}</th>
                 <th style="text-align:left; padding: 0.6rem;">{{ list_sort.sort_link('app_videos_index', 'client', 'Client', sort, dir) }}</th>
                 <th style="text-align:left; padding: 0.6rem;">Titre</th>
@@ -69,6 +73,9 @@
         <tbody>
         {% for c in contents %}
             <tr>
+                <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
+                    <input type="checkbox" class="bulk-check" name="ids[]" value="{{ c.id }}" aria-label="Sélectionner {{ c.title }}">
+                </td>
                 <td style="padding: 0.6rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
                     {{ c.scheduledDate|date('d/m/Y') }}
                 </td>
@@ -103,10 +110,65 @@
                 </td>
             </tr>
         {% else %}
-            <tr><td colspan="8" style="padding: 0.8rem; color: var(--muted);">Aucune vidéo.</td></tr>
+            <tr><td colspan="9" style="padding: 0.8rem; color: var(--muted);">Aucune vidéo.</td></tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
+
+<div id="bulk-status-bar" style="display:none; position: sticky; bottom: 0; margin-top: 0.75rem; padding: 0.75rem 1rem; gap: 0.6rem; align-items: center; flex-wrap: wrap; background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,0.12);">
+    <strong><span id="bulk-count">0</span> vidéo(s) sélectionnée(s)</strong>
+    <label for="bulk-status-select" style="margin:0;">→ passer en</label>
+    <select id="bulk-status-select" name="status_id" required style="max-width: 280px;">
+        <option value="">— Choisir un statut —</option>
+        {% for s in statuses %}
+            <option value="{{ s.id }}">{{ s.name }}</option>
+        {% endfor %}
+    </select>
+    <button type="submit" class="btn">Appliquer</button>
+    <button type="button" class="btn" style="background:#64748b;" id="bulk-clear">Désélectionner</button>
+</div>
+</form>
+
+<script>
+(function () {
+    const form = document.getElementById('bulk-status-form');
+    if (!form) return;
+    const all = document.getElementById('bulk-check-all');
+    const bar = document.getElementById('bulk-status-bar');
+    const count = document.getElementById('bulk-count');
+    const boxes = () => Array.from(form.querySelectorAll('.bulk-check'));
+
+    function refresh() {
+        const n = boxes().filter(b => b.checked).length;
+        count.textContent = n;
+        bar.style.display = n > 0 ? 'flex' : 'none';
+        if (all) {
+            all.checked = n > 0 && n === boxes().length;
+            all.indeterminate = n > 0 && n < boxes().length;
+        }
+    }
+
+    form.addEventListener('change', function (e) {
+        if (e.target === all) {
+            boxes().forEach(b => { b.checked = all.checked; });
+        }
+        refresh();
+    });
+    document.getElementById('bulk-clear').addEventListener('click', function () {
+        boxes().forEach(b => { b.checked = false; });
+        refresh();
+    });
+    form.addEventListener('submit', function (e) {
+        const n = boxes().filter(b => b.checked).length;
+        const select = document.getElementById('bulk-status-select');
+        const label = select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : '';
+        if (!confirm('Passer ' + n + ' vidéo(s) en « ' + label + ' » ?')) {
+            e.preventDefault();
+        }
+    });
+    refresh();
+})();
+</script>
 {% endblock %}
 

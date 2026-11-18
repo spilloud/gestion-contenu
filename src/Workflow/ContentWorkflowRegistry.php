@@ -13,50 +13,29 @@ use App\Service\ContentFormatHelper;
 final class ContentWorkflowRegistry
 {
     /**
-     * Certains statuts existent en double (legacy / synonymes) mais représentent la même étape.
-     * On les "aplatit" pour que le recul revienne à l'étape métier précédente.
-     */
-    private const VIDEO_EQUIVALENT_STATUS_GROUPS = [
-        // Étape "Client" (deux libellés possibles) → étape précédente = validation CM
-        ['À valider (Client)', 'À faire valider au client'],
-    ];
-
-    /** Statuts conservés en base mais hors parcours standard (recul, barre de progression). */
-    private const VIDEO_LEGACY_STEP_STATUSES = [
-        'Brouillon (Dérush)',
-        'Rushs / à dispatcher',
-        'Montage en cours',
-    ];
-
-    /**
      * Phases affichées dans la barre de progression (fiche vidéo).
      *
      * @var list<array{label: string, statuses: list<string>}>
      */
     public const VIDEO_PHASES = [
         ['label' => 'Planif.', 'statuses' => ['Tournage à prévoir']],
-        ['label' => 'Montage', 'statuses' => ['Montage à faire', 'Retouches (Monteur)', 'Montage en cours', 'Brouillon (Dérush)', 'Rushs / à dispatcher']],
-        ['label' => 'Production', 'statuses' => ['À valider (Prod)', 'Sous-titrage (SubMagic)', 'Prépa CM (sans sous-titres)']],
+        ['label' => 'Montage', 'statuses' => ['Montage à faire']],
         ['label' => 'Qualité', 'statuses' => ['Sous-titres à valider', 'À valider (CM)']],
-        ['label' => 'Client', 'statuses' => ['À valider (Client)', 'À faire valider au client']],
+        ['label' => 'Client', 'statuses' => ['À valider (Client)']],
         ['label' => 'Diffusion', 'statuses' => ['Prête à programmer', 'Programmée', 'Publiée']],
     ];
 
-    /** @var list<string> */
+    /**
+     * Parcours vidéo (8 statuts). « Sous-titres à valider » seulement si la vidéo a des sous-titres.
+     *
+     * @var list<string>
+     */
     public const VIDEO_ORDER = [
         'Tournage à prévoir',
-        'Brouillon (Dérush)',
-        'Rushs / à dispatcher',
         'Montage à faire',
-        'Montage en cours',
-        'Retouches (Monteur)',
-        'À valider (Prod)',
-        'Sous-titrage (SubMagic)',
-        'Prépa CM (sans sous-titres)',
         'Sous-titres à valider',
         'À valider (CM)',
         'À valider (Client)',
-        'À faire valider au client',
         'Prête à programmer',
         'Programmée',
         'Publiée',
@@ -115,10 +94,7 @@ final class ContentWorkflowRegistry
     public static function selectableStatusNames(string $workflow): array
     {
         if ($workflow === Status::WORKFLOW_VIDEO) {
-            return array_values(array_filter(
-                self::VIDEO_ORDER,
-                static fn (string $name): bool => !in_array($name, self::VIDEO_LEGACY_STEP_STATUSES, true),
-            ));
+            return self::VIDEO_ORDER;
         }
 
         return self::STANDARD_ORDER;
@@ -194,79 +170,27 @@ final class ContentWorkflowRegistry
             return null;
         }
 
-        // Si on est sur un statut "équivalent" vidéo, on force le recul vers l'étape précédente.
-        if ($this->formatHelper->isVideoContent($content)) {
-            foreach (self::VIDEO_EQUIVALENT_STATUS_GROUPS as $group) {
-                if (in_array($current, $group, true)) {
-                    return 'À valider (CM)';
-                }
-            }
-        }
+        $order = $this->orderedStatusNamesFor($content);
+        $isVideo = $this->formatHelper->isVideoContent($content);
 
+        // Le journal peut citer d'anciens statuts supprimés : on ne le suit que s'il pointe vers le parcours actuel.
         $fromJournal = $this->actionLogRepository->resolvePreviousStatusName($content);
-        if ($this->formatHelper->isVideoContent($content)) {
-            $fromJournal = $this->normalizeVideoStepBackCandidate($content, $fromJournal);
-        }
-        if ($fromJournal !== null) {
+        if ($fromJournal !== null && in_array($fromJournal, $order, true)) {
             return $fromJournal;
         }
 
-        $order = $this->orderedStatusNamesFor($content);
         $index = array_search($current, $order, true);
         if ($index === false || $index <= 0) {
             return null;
         }
 
-        if ($this->formatHelper->isVideoContent($content)) {
-            return $this->walkBackInVideoOrder($order, $index);
+        $previous = $order[$index - 1];
+        // Sans sous-titres, on saute l'étape « Sous-titres à valider ».
+        if ($isVideo && $previous === 'Sous-titres à valider' && $content->getVideoHasSubtitles() !== true) {
+            return $order[$index - 2] ?? null;
         }
 
-        return $order[$index - 1];
-    }
-
-    /**
-     * Évite les étapes legacy ou « fantômes » (ex. Montage à faire jamais enregistré avant Montage en cours).
-     */
-    private function normalizeVideoStepBackCandidate(Content $content, ?string $candidate): ?string
-    {
-        if ($candidate === null) {
-            return null;
-        }
-
-        if (in_array($candidate, self::VIDEO_LEGACY_STEP_STATUSES, true)) {
-            $index = array_search($candidate, self::VIDEO_ORDER, true);
-
-            return $index !== false ? $this->walkBackInVideoOrder(self::VIDEO_ORDER, $index) : null;
-        }
-
-        if (
-            $candidate === 'Montage à faire'
-            && !$this->actionLogRepository->hasTransitionToStatus($content, 'Montage à faire')
-        ) {
-            $index = array_search('Montage à faire', self::VIDEO_ORDER, true);
-
-            return $index !== false ? $this->walkBackInVideoOrder(self::VIDEO_ORDER, $index) : null;
-        }
-
-        return $candidate;
-    }
-
-    /**
-     * @param list<string> $order
-     */
-    private function walkBackInVideoOrder(array $order, int $index): ?string
-    {
-        while ($index > 0) {
-            --$index;
-            $candidate = $order[$index];
-            if (in_array($candidate, self::VIDEO_LEGACY_STEP_STATUSES, true)) {
-                continue;
-            }
-
-            return $candidate;
-        }
-
-        return null;
+        return $previous;
     }
 
     /**
@@ -289,7 +213,12 @@ final class ContentWorkflowRegistry
     public function getTransition(string $actionId, Content $content): ?array
     {
         if ($this->formatHelper->isVideoContent($content)) {
-            return $this->videoTransitions()[$actionId] ?? null;
+            $transition = $this->videoTransitions()[$actionId] ?? null;
+            if ($transition !== null && $actionId === 'montage_done') {
+                $transition['to'] = self::statusAfterMontage($content);
+            }
+
+            return $transition;
         }
 
         return $this->standardTransitions()[$actionId] ?? null;
@@ -332,70 +261,13 @@ final class ContentWorkflowRegistry
                     'group' => null,
                 ],
             ],
-            'Brouillon (Dérush)', 'Rushs / à dispatcher' => [
-                [
-                    'id' => 'montage_request',
-                    'label' => 'Demande de montage (créer la tâche)',
-                    'subtitle' => 'Crée la tâche Asana pour le monteur assigné.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
-            ],
-            'Montage à faire', 'Montage en cours' => [
+            'Montage à faire' => [
                 [
                     'id' => 'montage_done',
                     'label' => 'Montage terminé',
-                    'subtitle' => 'Clôture la tâche Asana montage. Fichier prêt pour la validation prod.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
-                [
-                    'id' => 'retouches',
-                    'label' => 'Demande de retouches',
-                    'subtitle' => 'Le monteur doit corriger avant validation prod.',
-                    'variant' => 'secondary',
-                    'group' => null,
-                ],
-            ],
-            'Retouches (Monteur)' => [
-                [
-                    'id' => 'montage_done',
-                    'label' => 'Montage terminé',
-                    'subtitle' => 'Clôture la tâche Asana montage après retouches.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
-            ],
-            'À valider (Prod)' => [
-                [
-                    'id' => 'subtitles_yes',
-                    'label' => 'Avec sous-titres (SubMagic)',
-                    'subtitle' => null,
-                    'variant' => 'primary',
-                    'group' => 'subtitles',
-                ],
-                [
-                    'id' => 'subtitles_no',
-                    'label' => 'Sans sous-titres',
-                    'subtitle' => null,
-                    'variant' => 'secondary',
-                    'group' => 'subtitles',
-                ],
-            ],
-            'Sous-titrage (SubMagic)' => [
-                [
-                    'id' => 'subtitles_review',
-                    'label' => 'Sous-titres à valider (CM)',
-                    'subtitle' => 'Crée la tâche Asana pour la CM.',
-                    'variant' => 'primary',
-                    'group' => null,
-                ],
-            ],
-            'Prépa CM (sans sous-titres)' => [
-                [
-                    'id' => 'cm_validation',
-                    'label' => 'À valider (CM)',
-                    'subtitle' => null,
+                    'subtitle' => $content->getVideoHasSubtitles() === true
+                        ? 'Clôture la tâche Asana montage. Passe en « Sous-titres à valider » (tâche Asana CM).'
+                        : 'Clôture la tâche Asana montage. Passe en « À valider (CM) ».',
                     'variant' => 'primary',
                     'group' => null,
                 ],
@@ -418,7 +290,7 @@ final class ContentWorkflowRegistry
                     'group' => null,
                 ],
             ],
-            'À valider (Client)', 'À faire valider au client' => [
+            'À valider (Client)' => [
                 [
                     'id' => 'ready_to_schedule',
                     'label' => 'Prête à programmer',
@@ -447,6 +319,14 @@ final class ContentWorkflowRegistry
             ],
             default => [],
         };
+    }
+
+    /**
+     * Étape qui suit le montage : sous-titres à valider si la vidéo en a, sinon validation CM.
+     */
+    public static function statusAfterMontage(Content $content): string
+    {
+        return $content->getVideoHasSubtitles() === true ? 'Sous-titres à valider' : 'À valider (CM)';
     }
 
     /**
@@ -489,65 +369,16 @@ final class ContentWorkflowRegistry
     {
         return [
             'montage_request' => [
-                'from' => ['Tournage à prévoir', 'Brouillon (Dérush)', 'Rushs / à dispatcher'],
-                'to' => 'Montage à faire',
-                'label' => 'Demande de montage (créer la tâche)',
-                'effects' => [],
-            ],
-            // Transitions historiques (recul journal, anciennes fiches).
-            'derush_launch_montage' => [
                 'from' => ['Tournage à prévoir'],
                 'to' => 'Montage à faire',
                 'label' => 'Demande de montage (créer la tâche)',
                 'effects' => [],
             ],
-            'rushes_ready' => [
-                'from' => ['Brouillon (Dérush)'],
-                'to' => 'Rushs / à dispatcher',
-                'label' => 'Rushs prêtes — à dispatcher',
-                'effects' => [],
-            ],
-            'montage_queued' => [
-                'from' => ['Rushs / à dispatcher'],
-                'to' => 'Montage à faire',
-                'label' => 'Demande de montage (créer la tâche)',
-                'effects' => [],
-            ],
-            'montage_started' => [
-                'from' => ['Montage à faire'],
-                'to' => 'Montage en cours',
-                'label' => 'Le monteur a démarré',
-                'effects' => [],
-            ],
-            'retouches' => [
-                'from' => ['Montage à faire', 'Montage en cours'],
-                'to' => 'Retouches (Monteur)',
-                'label' => 'Demande de retouches',
-                'effects' => [],
-            ],
             'montage_done' => [
-                'from' => ['Montage à faire', 'Montage en cours', 'Retouches (Monteur)'],
-                'to' => 'À valider (Prod)',
+                'from' => ['Montage à faire'],
+                'to' => 'À valider (CM)', // remplacé par statusAfterMontage() dans getTransition()
                 'label' => 'Montage terminé',
                 'effects' => ['complete_asana_montage'],
-            ],
-            'subtitles_yes' => [
-                'from' => ['À valider (Prod)'],
-                'to' => 'Sous-titrage (SubMagic)',
-                'label' => 'Avec sous-titres (SubMagic)',
-                'effects' => ['set_subtitles_yes'],
-            ],
-            'subtitles_no' => [
-                'from' => ['À valider (Prod)'],
-                'to' => 'Prépa CM (sans sous-titres)',
-                'label' => 'Sans sous-titres',
-                'effects' => ['set_subtitles_no'],
-            ],
-            'subtitles_review' => [
-                'from' => ['Sous-titrage (SubMagic)'],
-                'to' => 'Sous-titres à valider',
-                'label' => 'Sous-titres à valider (CM)',
-                'effects' => ['trigger_subtitles_asana'],
             ],
             'subtitles_validated' => [
                 'from' => ['Sous-titres à valider'],
@@ -555,20 +386,14 @@ final class ContentWorkflowRegistry
                 'label' => 'Sous-titres validés',
                 'effects' => ['complete_asana_subtitles'],
             ],
-            'cm_validation' => [
-                'from' => ['Prépa CM (sans sous-titres)'],
-                'to' => 'À valider (CM)',
-                'label' => 'À valider (CM)',
-                'effects' => [],
-            ],
             'client_validation' => [
                 'from' => ['À valider (CM)'],
-                'to' => 'À faire valider au client',
+                'to' => 'À valider (Client)',
                 'label' => 'À valider par le client',
                 'effects' => [],
             ],
             'ready_to_schedule' => [
-                'from' => ['À valider (Client)', 'À faire valider au client'],
+                'from' => ['À valider (Client)'],
                 'to' => 'Prête à programmer',
                 'label' => 'Prête à programmer',
                 'effects' => [],

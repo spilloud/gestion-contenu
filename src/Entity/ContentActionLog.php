@@ -21,6 +21,7 @@ class ContentActionLog
     public const TYPE_SUBTITLES_REVIEWER_CHANGED = 'subtitles_reviewer_changed';
     public const TYPE_MANUAL_STATUS = 'manual_status';
     public const TYPE_ASANA_SYNC = 'asana_sync';
+    public const TYPE_METRICOOL_APPROVED = 'metricool_approved';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

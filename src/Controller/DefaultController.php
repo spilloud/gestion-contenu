@@ -305,9 +305,9 @@ class DefaultController extends AbstractController
         // --- Colonnes vidéo (to-do) ---
         $videoFormat = $this->findVideoFormat($entityManager);
         $statusMontageAFaire = $statusRepository->findOneBy(['name' => 'Montage à faire']);
-        $statusMontageAControler = $statusRepository->findOneBy(['name' => 'À valider (Prod)']);
+        $statusMontageAControler = $statusRepository->findOneBy(['name' => 'À valider (CM)']);
         $statusSousTitresRelire = $statusRepository->findOneBy(['name' => 'Sous-titres à valider']);
-        $statusAValiderClient = $statusRepository->findOneBy(['name' => 'À faire valider au client']);
+        $statusAValiderClient = $statusRepository->findOneBy(['name' => 'À valider (Client)']);
 
         $montagesAFaire = $this->findDashboardVideoItems($contentRepository, $videoFormat, $statusMontageAFaire, $visibleClientIds, 12);
         if ($isEditor && !$isAdmin) {

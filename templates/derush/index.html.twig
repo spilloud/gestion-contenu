@@ -32,14 +32,25 @@
     <input type="hidden" name="_token" value="{{ csrf_token('derush') }}">
     <input type="hidden" name="client_id" value="{{ defaultClientId }}">
 
+    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px; display:flex; gap: 0.8rem; align-items: center;">
+        <label class="toggle-switch" style="margin:0;">
+            <input type="checkbox" name="already_edited" value="1" id="already-edited">
+            <span class="toggle-switch-ui" aria-hidden="true"></span>
+        </label>
+        <label for="already-edited" style="margin:0; cursor:pointer;">
+            <strong>Ces vidéos sont déjà montées</strong><br>
+            <span style="color: var(--muted); font-size: 0.85rem;">Pas de montage ni de tâche monteur : la date devient la date de publication, et les vidéos entrent en « Sous-titres à valider » (si sous-titres) ou « À valider (CM) ».</span>
+        </label>
+    </div>
+
     <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
         <h2 style="margin-top:0;">Liens</h2>
-        <label class="field-label" for="rushes_url_global">Lien KDrive (rushs) — commun</label>
+        <label class="field-label" for="rushes_url_global" id="rushes-url-label">Lien KDrive (rushs) — commun</label>
         <input id="rushes_url_global" name="rushes_url_global" type="url" placeholder="https://kdrive..." style="width: 100%;">
         <p style="margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem;">Ce lien sera appliqué aux vidéos cochées / créées ci-dessous.</p>
     </div>
 
-    <div style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
+    <div id="planned-section" style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 12px;">
         <h2 style="margin-top:0;">Vidéos planifiées (CM) — en attente de flux</h2>
         {% if plannedVideos is empty %}
             <p style="color: var(--muted); margin: 0;">Aucune vidéo planifiée « Tournage à prévoir » pour ce client.</p>
@@ -82,7 +93,7 @@
                 <thead>
                     <tr style="background: rgba(148, 163, 184, 0.12);">
                         <th style="text-align:left; padding: 0.6rem;">Titre</th>
-                        <th style="text-align:left; padding: 0.6rem;">Montage souhaité</th>
+                        <th style="text-align:left; padding: 0.6rem;" id="casier-date-header">Montage souhaité</th>
                         <th style="text-align:left; padding: 0.6rem;">Sous-titres</th>
                         <th style="padding: 0.6rem; width: 1%; white-space: nowrap;">Actions</th>
                     </tr>
@@ -96,9 +107,11 @@
                             </td>
                             <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
                                 <input
-                                    name="videos[{{ i }}][montage_due_on]"
+                                    name="videos[{{ i }}][date]"
+                                    class="casier-date"
                                     type="date"
                                     value="{{ casierMontageDefault|date('Y-m-d') }}"
+                                    data-montage-default="{{ casierMontageDefault|date('Y-m-d') }}"
                                     style="width: 100%; padding: 0.45rem 0.5rem; min-height: 40px;"
                                 >
                             </td>
@@ -151,7 +164,7 @@ function addRow() {
             <input name="videos[${i}][title]" type="text" placeholder="Ex: Sujet / angle / hook..." style="width: 100%;">
         </td>
         <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
-            <input name="videos[${i}][montage_due_on]" type="date" style="width: 100%; padding: 0.45rem 0.5rem; min-height: 40px;">
+            <input name="videos[${i}][date]" class="casier-date" type="date" style="width: 100%; padding: 0.45rem 0.5rem; min-height: 40px;">
         </td>
         <td style="padding: 0.6rem; border-top: 1px solid var(--card-border);">
             <input type="hidden" name="videos[${i}][has_subtitles]" value="0">
@@ -165,7 +178,56 @@ function addRow() {
         </td>
     `;
     tbody.appendChild(tr);
+    applyAlreadyEdited();
 }
+
+// « Ces vidéos sont déjà montées » : le casier change de comportement.
+function applyAlreadyEdited() {
+    const toggle = document.getElementById('already-edited');
+    if (!toggle) return;
+    const on = toggle.checked;
+
+    document.getElementById('casier-date-header').textContent = on ? 'Date de publication' : 'Montage souhaité';
+    document.getElementById('rushes-url-label').textContent = on ? 'Lien KDrive (montages) — commun' : 'Lien KDrive (rushs) — commun';
+    const submit = document.getElementById('derush-submit');
+    if (submit) submit.textContent = on ? 'Ajouter au flux (déjà montées)' : 'Valider le dérush (montage)';
+
+    // Les vidéos planifiées partent en montage : pas concernées par ce mode.
+    const planned = document.getElementById('planned-section');
+    if (planned) {
+        planned.style.display = on ? 'none' : '';
+        planned.querySelectorAll('input').forEach(function (input) { input.disabled = on; });
+    }
+
+    document.querySelectorAll('.casier-date').forEach(function (input) {
+        if (on) {
+            if (input.dataset.mode !== 'publication') {
+                input.dataset.montageValue = input.value;
+                input.value = '';
+            }
+            input.dataset.mode = 'publication';
+        } else {
+            if (input.dataset.mode === 'publication') {
+                input.value = input.dataset.montageValue || input.dataset.montageDefault || '';
+            }
+            input.dataset.mode = 'montage';
+        }
+        // Date obligatoire seulement si la ligne a un titre.
+        const row = input.closest('tr');
+        const title = row ? row.querySelector('input[name$="[title]"]') : null;
+        input.required = on && !!(title && title.value.trim() !== '');
+    });
+}
+
+(function () {
+    const toggle = document.getElementById('already-edited');
+    if (!toggle) return;
+    toggle.addEventListener('change', applyAlreadyEdited);
+    document.getElementById('rows').addEventListener('input', function (e) {
+        if (e.target.matches('input[name$="[title]"]')) applyAlreadyEdited();
+    });
+    applyAlreadyEdited();
+})();
 
 function removeRow(btn) {
     const tr = btn && btn.closest ? btn.closest('tr') : null;

@@ -21,26 +21,18 @@ final class EditorWorkloadPlanningBuilder
     /** Tournage / rush / dérush — pas encore en montage actif. */
     private const UPCOMING_STATUSES = [
         'Tournage à prévoir',
-        'Brouillon (Dérush)',
-        'Rushs / à dispatcher',
     ];
 
     /** Montage en cours chez le monteur. */
     private const IN_PROGRESS_STATUSES = [
         'Montage à faire',
-        'Retouches (Monteur)',
-        'Montage en cours',
     ];
 
     /** Montage livré : validations, sous-titres, programmation (hors Publiée). */
     private const DELIVERED_STATUSES = [
-        'À valider (Prod)',
-        'Sous-titrage (SubMagic)',
-        'Prépa CM (sans sous-titres)',
         'Sous-titres à valider',
         'À valider (CM)',
         'À valider (Client)',
-        'À faire valider au client',
         'Prête à programmer',
         'Programmée',
     ];

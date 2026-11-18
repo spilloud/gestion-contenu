@@ -614,25 +614,6 @@ class ContentController extends AbstractController
         return $status;
     }
 
-    private function findInitialVideoStatus(): \App\Entity\Status
-    {
-        foreach ($this->statusRepository->findAllOrdered() as $status) {
-            if ($status->getName() === 'Brouillon (Dérush)') {
-                return $status;
-            }
-        }
-
-        // fallback: create if missing (safe for fresh DBs)
-        $status = new \App\Entity\Status();
-        $status->setName('Brouillon (Dérush)');
-        $status->setColor(\App\Entity\Status::COLOR_GRAY);
-        $status->setSortOrder(100);
-        $status->setWorkflow(\App\Entity\Status::WORKFLOW_VIDEO);
-        $this->entityManager->persist($status);
-        $this->entityManager->flush();
-
-        return $status;
-    }
 
     private function findPlannedVideoStatus(): \App\Entity\Status
     {

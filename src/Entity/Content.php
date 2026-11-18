@@ -23,6 +23,14 @@ class Content
     #[ORM\Column(type: Types::DATE_MUTABLE)]
     private ?\DateTimeInterface $scheduledDate = null;
 
+    /** Heure de publication (choisie dans la zone Metricool, 08:00 par défaut). */
+    #[ORM\Column(type: Types::TIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $scheduledTime = null;
+
+    /** Date à laquelle la CM a cliqué « Envoyer dans Metricool ». Lucy ne pousse que ces contenus. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $metricoolApprovedAt = null;
+
     #[ORM\ManyToOne(inversedBy: 'contents')]
     #[ORM\JoinColumn(nullable: false)]
     private ?Client $client = null;
@@ -151,6 +159,30 @@ class Content
     public function setScheduledDate(?\DateTimeInterface $scheduledDate): static
     {
         $this->scheduledDate = $scheduledDate;
+
+        return $this;
+    }
+
+    public function getScheduledTime(): ?\DateTimeImmutable
+    {
+        return $this->scheduledTime;
+    }
+
+    public function setScheduledTime(?\DateTimeImmutable $scheduledTime): static
+    {
+        $this->scheduledTime = $scheduledTime;
+
+        return $this;
+    }
+
+    public function getMetricoolApprovedAt(): ?\DateTimeImmutable
+    {
+        return $this->metricoolApprovedAt;
+    }
+
+    public function setMetricoolApprovedAt(?\DateTimeImmutable $metricoolApprovedAt): static
+    {
+        $this->metricoolApprovedAt = $metricoolApprovedAt;
 
         return $this;
     }

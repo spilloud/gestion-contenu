@@ -38,6 +38,7 @@ class ContentActionLogRepository extends ServiceEntityRepository
                 ContentActionLog::TYPE_CM_USER_CHANGED,
                 ContentActionLog::TYPE_SCHEDULED_DATE_CHANGED,
                 ContentActionLog::TYPE_ASANA_SYNC,
+                ContentActionLog::TYPE_METRICOOL_APPROVED,
             ])
             ->orderBy('l.createdAt', 'ASC')
             ->addOrderBy('l.id', 'ASC')

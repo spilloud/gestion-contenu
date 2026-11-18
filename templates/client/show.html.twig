@@ -240,6 +240,10 @@
 {% set nextMonth = calendarMonthStart|date_modify('+1 month') %}
 {% set todayDate = 'now'|date('Y-m-d') %}
 
+{% if is_granted('ROLE_ADMIN') or is_granted('ROLE_CM') %}
+    {% include 'client/_metricool.html.twig' %}
+{% endif %}
+
 {{ form_start(form) }}
 {% if form.todoItems is defined %}
     {% do form.todoItems.setRendered %}

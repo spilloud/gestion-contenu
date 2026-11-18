@@ -1,0 +1,101 @@
+{# Zone « Metricool » : la CM envoie les contenus prêts. Le CMS n'appelle jamais Metricool — Lucy lit metricoolApprovedAt dans l'export. #}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
+{% set selectable = metricoolRows|filter(r => r.reason is null)|length %}
+
+<div id="metricool" style="background: var(--card-bg); border: 1px solid var(--card-border); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; color: var(--text);">
+    <h2 style="margin:0;">Metricool</h2>
+    <p style="color: var(--muted); font-size: 0.85rem; margin: 0.4rem 0 0.8rem;">
+        Tous les contenus prêts (« Prête à programmer » / « Prêt à publier ») pas encore envoyés. Cocher puis envoyer : Lucy les crée dans Metricool à la date et l'heure choisies.
+    </p>
+
+    {% if metricoolRows is empty %}
+        <p style="color: var(--muted); margin: 0;">Aucun contenu prêt à envoyer.</p>
+    {% else %}
+        <form method="post" action="{{ path('app_client_metricool_approve', {id: client.id}) }}" id="metricool-form">
+            <input type="hidden" name="_token" value="{{ csrf_token('metricool' ~ client.id) }}">
+
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse: collapse; min-width: 640px;">
+                    <thead>
+                        <tr style="background: rgba(148, 163, 184, 0.12);">
+                            <th style="padding: 0.5rem; width: 1%;"></th>
+                            <th style="text-align:left; padding: 0.5rem;">Date</th>
+                            <th style="text-align:left; padding: 0.5rem;">Heure</th>
+                            <th style="text-align:left; padding: 0.5rem;">Format</th>
+                            <th style="text-align:left; padding: 0.5rem;">Titre</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in metricoolRows %}
+                        {% set c = row.content %}
+                        <tr style="{{ row.reason ? 'opacity: 0.6;' : '' }}">
+                            <td style="padding: 0.5rem; border-top: 1px solid var(--card-border);">
+                                <input type="checkbox" class="metricool-check" name="ids[]" value="{{ c.id }}"
+                                       {{ row.reason ? 'disabled' : '' }} aria-label="Sélectionner {{ c.title }}">
+                            </td>
+                            <td style="padding: 0.5rem; border-top: 1px solid var(--card-border); white-space: nowrap;">
+                                {{ jours[c.scheduledDate|date('w')] }} {{ c.scheduledDate|date('d/m/Y') }}
+                            </td>
+                            <td style="padding: 0.5rem; border-top: 1px solid var(--card-border);">
+                                <select name="times[{{ c.id }}]" {{ row.reason ? 'disabled' : '' }} style="padding: 0.3rem 0.4rem;">
+                                    {% for h in metricoolHours %}
+                                        <option value="{{ h }}" {{ h == row.time ? 'selected' : '' }}>{{ h }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td style="padding: 0.5rem; border-top: 1px solid var(--card-border);">
+                                {{ c.format ? c.format.name : '—' }}
+                            </td>
+                            <td style="padding: 0.5rem; border-top: 1px solid var(--card-border);">
+                                <a href="{{ row.isVideo ? path('app_video_show', {id: c.id}) : path('app_content_edit', {id: c.id}) }}">{{ c.title }}</a>
+                                {% if row.reason %}
+                                    <div style="color: #b91c1c; font-size: 0.82rem;">{{ row.reason }} — complète la fiche pour pouvoir l'envoyer.</div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display:flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 0.75rem;">
+                <button type="button" class="btn" style="background:#64748b;" id="metricool-check-all" {{ selectable == 0 ? 'disabled' : '' }}>Tout cocher</button>
+                <button type="submit" class="btn" id="metricool-submit" disabled>Envoyer dans Metricool (<span id="metricool-count">0</span>)</button>
+            </div>
+        </form>
+
+        <script>
+        (function () {
+            const form = document.getElementById('metricool-form');
+            if (!form) return;
+            const boxes = Array.from(form.querySelectorAll('.metricool-check:not([disabled])'));
+            const count = document.getElementById('metricool-count');
+            const submit = document.getElementById('metricool-submit');
+            const checkAll = document.getElementById('metricool-check-all');
+
+            function refresh() {
+                const n = boxes.filter(b => b.checked).length;
+                count.textContent = n;
+                submit.disabled = n === 0;
+                checkAll.textContent = n > 0 && n === boxes.length ? 'Tout décocher' : 'Tout cocher';
+            }
+
+            checkAll.addEventListener('click', function () {
+                const allChecked = boxes.length > 0 && boxes.every(b => b.checked);
+                boxes.forEach(b => { b.checked = !allChecked; });
+                refresh();
+            });
+            form.addEventListener('change', refresh);
+            form.addEventListener('submit', function (e) {
+                const n = boxes.filter(b => b.checked).length;
+                if (!confirm('Envoyer ' + n + ' contenu(s) dans Metricool ?')) {
+                    e.preventDefault();
+                    return;
+                }
+                submit.disabled = true;
+            });
+            refresh();
+        })();
+        </script>
+    {% endif %}
+</div>
